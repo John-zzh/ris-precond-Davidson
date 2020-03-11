@@ -26,7 +26,8 @@ def davidson(A, eig): # matrix A and how many eignvalues to solve
             for j in range(0,k):
                 V[:,j] = t[:,j]/np.linalg.norm(t[:,j])  # V[:,j] is the jth column of V. norm returns the length of a vector
         V,R = np.linalg.qr(V) #np.shape(V) is n*n
-        T = np.linalg.multi_dot([V[:,:(m+1)].T,A,V[:,:(m+1)]])  #first step, T is left up m*m block of A. (m+1 is not included).  T is m*m matrix, the projected Hamiltonian in the subspace defined by guess vectors.
+        #print (np.round(V,2))
+        T = np.linalg.multi_dot([V[:,:m].T,A,V[:,:m]])  #first step, T is left up m*m block of A. (m+1 is not included).  T is m*m matrix, the projected Hamiltonian in the subspace defined by guess vectors.
         THETA,S = np.linalg.eig(T)  #Diagonalize the subspace Hamiltonian. S is eigenkets of T, THETA is eigenvalues (in form of row vector).
         idx = THETA.argsort()  #idx is increasing eigtenvalues's indexes in original THETA. For exapmle, if THETA = [7,5,6], then idx = [1,2,0], '1' measns the senond value '5'
         theta = THETA[idx] #eigenvalues
@@ -34,11 +35,11 @@ def davidson(A, eig): # matrix A and how many eignvalues to solve
         #rearrange eigenvalues from smallest to largest, and corresponding eigenkets #shape of s is actually 'm'
         sum_norm = 0
         for j in range(0,k):
-            residual = np.linalg.multi_dot([(A - theta[j]*I),V[:,:(m+1)],s[:,j]])  # V*s projects the eigenvector back into the original space.
+            residual = np.linalg.multi_dot([(A - theta[j]*I),V[:,:m],s[:,j]])  # V*s projects the eigenvector back into the original space.
             norm = np.linalg.norm(residual)
             #new_vec = np.dot(np.diag(1/np.diag(np.diag((np.diag(A)-theta[j])))), residual)
             new_vec = residual/(np.diag(A)-theta[j])
-            V[:,(m+j+1)] = new_vec
+            V[:,(m+j)] = new_vec
             if norm < tol:
                 sum_norm = sum_norm +1
         #print ('Number of converged guess vectors:',sum_norm)

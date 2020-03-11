@@ -4,16 +4,21 @@ import time
 np.set_printoptions (linewidth=300)
 
 
+def orthonormal (v1, v2):
+    v2 = v2 - (np.dot(v1, v2) / np.linalg.norm(v1)) * v1
+    v2 = v2/np.linalg.norm(v2)
+    return v2
+    
 def davidson(A, eig): # matrix A and how many eignvalues to solve
     start = time.time()
     n = np.shape(A)
     n = n[0]
-    tol = 0.00000001      # Convergence tolerance
+    tol = 0.000001      # Convergence tolerance
     k = 2 * eig         # number of initial guess vectors
     mmax = 90      # Maximum number of iterations
     #print ('Amount of Eigenvalues we want:', eig)
    
-    t = np.eye(n,k) # [initial guess vectors]. (np.eye(n) Return a 2-D identity matrix: array with ones on the diagonal and zeros elsewhere) set of k unit vectors as guess, k is amount of columns shown in the output. While np.eye(3, k=1) return a one-line-up-shifted identity matrix.
+    t = np.eye(n,k) # [initial guess vectors]. they should be orthonormal. (np.eye(n) Return a 2-D identity matrix: array with ones on the diagonal and zeros elsewhere) set of k unit vectors as guess, k is amount of columns shown in the output. While np.eye(3, k=1) return a one-line-up-shifted identity matrix.
     V = np.zeros((n,n)) # array of zeros to hold guess vec
     I = np.eye(n) # identity matrix same dimension as A
 
@@ -24,33 +29,38 @@ def davidson(A, eig): # matrix A and how many eignvalues to solve
         #print ('Iteration =', Iteration)
         if m == k:
             for j in range(0,k):
-                V[:,j] = t[:,j]/np.linalg.norm(t[:,j])  # V[:,j] is the jth column of V. norm returns the length of a vector
-        V,R = np.linalg.qr(V) #np.shape(V) is n*n
-        W = np.dot(A, V[:,:(m+1)])
-        T = np.dot(V[:,:(m+1)].T, W) #T is m*m matrix
-        #T = np.linalg.multi_dot([V[:,:(m+1)].T,A,V[:,:(m+1)]])  #first step, T is left up m*m block of A. (m+1 is not included).  T is m*m matrix, the projected Hamiltonian in the subspace defined by guess vectors.
+                V[:,j] = t[:,j]
+               
+        W = np.dot(A, V[:,:m])
+        T = np.dot(V[:,:m].T, W) #T is m*m matrix
+        #print ('shape of T:', np.shape(T))
         
-        THETA,S = np.linalg.eig(T)  #Diagonalize the subspace Hamiltonian. S is eigenkets of T, THETA is eigenvalues (in form of row vector).
-        idx = THETA.argsort()  #idx is increasing eigtenvalues's indexes in original THETA. For exapmle, if THETA = [7,5,6], then idx = [1,2,0], '1' measns the senond value '5'
-        theta = THETA[idx] #eigenvalues
-        s = S[:,idx]       #eigenkets, m*m
-        #rearrange eigenvalues from smallest to largest, and corresponding eigenkets #shape of s is actually 'm'
-        sum_norm = 0
+        THETA,S = np.linalg.eig(T)  #Diagonalize the subspace Hamiltonian.
+        idx = THETA.argsort()
+        theta = THETA[idx]    #eigenvalues
+        s = S[:,idx]          #eigenkets, m*m
        
+        
+        sum_norm = 0
         for j in range(0,k):
-            residual = np.dot((W- theta[j]*V[:,:(m+1)]), s[:,j])
+            residual = np.dot((W- theta[j]*V[:,:m]), s[:,j])
             norm = np.linalg.norm(residual)
-            
-            #new_vec = np.dot(np.diag(1/np.diag(np.diag((np.diag(A)-theta[j])))), residual)
             new_vec = residual/(np.diag(A)-theta[j])
-            
-            V[:,(m+j+1)] = new_vec
+#            for p in range (0, m+j-1):
+#                new_vec = orthonormal(V[:,p], new_vec)
+            V[:,(m+j)] = new_vec
             if norm < tol:
                 sum_norm = sum_norm +1
-        #print ('Number of converged guess vectors:',sum_norm)
         if sum_norm == k:
-            #print ('All', sum_norm, 'Guess Vectors Converged')
-            break
+                #print ('All', sum_norm, 'Guess Vectors Converged')
+                break
+        
+
+        #Gram-Schimidt block,
+        for p in range(0, k):
+            for q in range (0, m+p):
+                V[:,m+p] = orthonormal(V[:,q], V[:,m+p])
+        
     end = time.time()
     print ('Davidson2 time (seconds):', round(end-start,2))
     return (theta[:eig])
