@@ -20,7 +20,7 @@ def davidson(A, eig): # matrix A and how many eignvalues to solve
    
     t = np.eye(n,k) # [initial guess vectors]. they should be orthonormal. (np.eye(n) Return a 2-D identity matrix: array with ones on the diagonal and zeros elsewhere) set of k unit vectors as guess, k is amount of columns shown in the output. While np.eye(3, k=1) return a one-line-up-shifted identity matrix.
     V = np.zeros((n,n)) # array of zeros to hold guess vec
-    I = np.eye(n) # identity matrix same dimension as A
+    
 
     # Begin iterations
     Iteration = 0
@@ -62,6 +62,6 @@ def davidson(A, eig): # matrix A and how many eignvalues to solve
                 V[:,m+p] = orthonormal(V[:,q], V[:,m+p])
         
     end = time.time()
-    print ('Davidson2 time (seconds):', round(end-start,2))
+    print ('Davidson2 time (seconds):', round(end-start,4))
     return (theta[:eig])
        

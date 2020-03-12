@@ -19,8 +19,8 @@ def davidson(A, eig): # matrix A and how many eignvalues to solve
     #print ('Amount of Eigenvalues we want:', eig)
    
     t = np.eye(n,k) # [initial guess vectors]. they should be orthonormal.
-    V = np.zeros((n,n)) #array of zeros. just a container to hold guess vectors
-    W = np.zeros((n,n)) #array of zeros. just a container to hold transformed guess vectors
+    V = np.zeros((n,n)) #array of zeros. a container to hold guess vectors
+    W = np.zeros((n,n)) #array of zeros. a container to hold transformed guess vectors
     
     
     # Begin iterations
@@ -31,8 +31,7 @@ def davidson(A, eig): # matrix A and how many eignvalues to solve
         if m == k:
             for j in range(0,k):
                 V[:,j] = t[:,j]
-            for y in range (0,k):
-                W[:, y]= np.dot(A, V[:,y])
+            W[:,0:k]= np.dot(A, V[:,0:k])
     
         T = np.dot(V[:,:m].T, W[:,:m])
         THETA,S = np.linalg.eig(T)  #Diagonalize the subspace Hamiltonian.
@@ -59,10 +58,9 @@ def davidson(A, eig): # matrix A and how many eignvalues to solve
         for p in range(0, k):
             for q in range (0, m+p):
                 V[:,m+p] = orthonormal(V[:,q], V[:,m+p])
-        for x in range (0, k):
-            W[:, (m+x)] = np.dot(A, V[:,(m+x)])
-    Eigenkets = np.dot(V[:,:m], s[:, :eig])
+        W[:, m:m+k] = np.dot(A, V[:,m:m+k])
     end = time.time()
-    print ('Davidson2 time (seconds):', round(end-start,2))
+    Eigenkets = np.dot(V[:,:m], s[:, :eig])
+    print ('Davidson3 time (seconds):', round(end-start,4))
     return (theta[:eig])
        
