@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 import numpy as np
-import davidson1, davidson2, davidson3, davidson4
+import davidson1, davidson2, davidson3
 np.set_printoptions(precision = 5)
 a = 3000 #dimension of H
 b = 2
@@ -16,11 +16,11 @@ print ('Dimension of H:', a)
 print ('Amount of eigenvalues we want:', b)
 #print ('Davidson2 =',davidson2.davidson (A,b))  # eigenvalues by Davidson1
 #print ('Davidson3 =',davidson3.davidson (A,b))  # eigenvalues by Davidson2
-#print ('Davidson4 =',davidson4.davidson (A,b))
+
 
 davidson2.davidson (A,b)
 davidson3.davidson (A,b)
-davidson4.davidson (A,b)
+
 
 #E,vec = np.linalg.eig(A)
 #idx = E.argsort()
