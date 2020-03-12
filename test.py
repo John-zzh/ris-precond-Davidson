@@ -1,8 +1,9 @@
 #!/usr/bin/env python
 import numpy as np
-import davidson1, davidson2, davidson3
-np.set_printoptions(precision = 3)
-a = 5000 #dimension of H
+import davidson1, davidson2, davidson3, davidson4
+np.set_printoptions(precision = 5)
+a = 3000 #dimension of H
+b = 2
 sparsity = 0.001
 A = np.zeros((a,a))
 for i in range(0,a):
@@ -12,10 +13,14 @@ A = (A.T + A)/2   # A is a random Hermition
 
 
 print ('Dimension of H:', a)
-print ('Amount of eigenvalues we want:', 2)
-print ('Davidson2 =',davidson1.davidson (A,2))  # eigenvalues by Davidson1
-print ('Davidson3 =',davidson2.davidson (A,2))  # eigenvalues by Davidson2
+print ('Amount of eigenvalues we want:', b)
+#print ('Davidson2 =',davidson2.davidson (A,b))  # eigenvalues by Davidson1
+#print ('Davidson3 =',davidson3.davidson (A,b))  # eigenvalues by Davidson2
+#print ('Davidson4 =',davidson4.davidson (A,b))
 
+davidson2.davidson (A,b)
+davidson3.davidson (A,b)
+davidson4.davidson (A,b)
 
 #E,vec = np.linalg.eig(A)
 #idx = E.argsort()
