@@ -31,8 +31,8 @@ def davidson(A, eig): # matrix A and how many eignvalues to solve
         if m == k:
             for j in range(0,k):
                 V[:,j] = t[:,j]
-            W[:,0:k]= np.dot(A, V[:,0:k])
-    
+            
+        W[:, m:m+k] = np.dot(A, V[:,m:m+k])
         T = np.dot(V[:,:m].T, W[:,:m])
         THETA,S = np.linalg.eig(T)  #Diagonalize the subspace Hamiltonian.
         idx = THETA.argsort()
@@ -58,7 +58,7 @@ def davidson(A, eig): # matrix A and how many eignvalues to solve
         for p in range(0, k):
             for q in range (0, m+p):
                 V[:,m+p] = orthonormal(V[:,q], V[:,m+p])
-        W[:, m:m+k] = np.dot(A, V[:,m:m+k])
+        
     end = time.time()
     Eigenkets = np.dot(V[:,:m], s[:, :eig])
     print ('Davidson3 time (seconds):', round(end-start,4))
