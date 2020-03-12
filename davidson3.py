@@ -32,7 +32,7 @@ def davidson(A, eig): # matrix A and how many eignvalues to solve
             for j in range(0,k):
                 V[:,j] = t[:,j]
             
-        W[:, m:m+k] = np.dot(A, V[:,m:m+k])
+        W[:, m-k:m] = np.dot(A, V[:,m-k:m])
         T = np.dot(V[:,:m].T, W[:,:m])
         THETA,S = np.linalg.eig(T)  #Diagonalize the subspace Hamiltonian.
         idx = THETA.argsort()
