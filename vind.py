@@ -3,7 +3,7 @@ import numpy as np
 from pyscf import gto, scf, dft, tddft
 import davidson4
 mol = gto.Mole()
-mol.build(atom = 'H 0 0 0; H 0 0 1.2', basis = '631g', symmetry = True)
+mol.build(atom = 'H 0 0 0; F 0 0 1.3', basis = '631g', symmetry = True)
 mf = dft.RKS(mol) #RKS, restrict the geometry, no optimization.
    #mf is ground density?
 mf.xc = 'b3lyp'
@@ -54,8 +54,8 @@ def davidson(vind, eig): # matrix A and how many eignvalues to solve
     #print ('Amount of Eigenvalues we want:', eig)
 
     t = np.eye(n,k) # [initial guess vectors]. they should be orthonormal.
-    V = np.zeros((n,20*eig)) #array of zeros. a container to hold guess vectors
-    W = np.zeros((n,20*eig)) #array of zeros. a container to hold transformed guess vectors
+    V = np.zeros((n,40*eig)) #array of zeros. a container to hold guess vectors
+    W = np.zeros((n,40*eig)) #array of zeros. a container to hold transformed guess vectors
 
 
     # Begin iterations
