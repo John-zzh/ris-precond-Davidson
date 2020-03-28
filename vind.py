@@ -1,0 +1,95 @@
+import time
+import numpy as np
+from pyscf import gto, scf, dft, tddft
+import davidson4
+mol = gto.Mole()
+mol.build(atom = 'H 0 0 0; F 0 0 1.2', basis = '631g', symmetry = True)
+mf = dft.RKS(mol) #RKS, restrict the geometry, no optimization.
+   #mf is ground density?
+mf.xc = 'b3lyp'
+mf.kernel()  #single point energy
+td = tddft.TDA(mf)
+td.kernel()    #compute first few excited states.
+
+
+#mytd = tddft.TDDFT(mf)
+#mytd.kernel()
+
+vind, hdiag = td.gen_vind(mf)
+n = len(hdiag) #n is size of Hamiltonian
+print ('size of H is', n)
+
+I = np.eye(n)
+Z = np.zeros((n,n))
+for i in range (0, n):
+    Z[:,i] = vind (I[:, i]) #Z is Hamiltonian rebuild from vind function, it is correct if we call TDA methos, rather than tddft method.
+
+#E,vec = np.linalg.eig(Z)
+#idx = E.argsort()
+#e = E[idx]
+#print ('numpy =', 27.2114 * e[:3])  # Standard eigenvalues
+
+print (davidson4.davidson (Z,3)) # my own codes
+
+
+
+#d = Z.diagonal()
+##Gram-Schimidt block,
+#def orthonormal (v1, v2):
+#    v2 = v2 - (np.dot(v1, v2) / np.linalg.norm(v1)) * v1
+#    v2 = v2/np.linalg.norm(v2)
+#    return v2
+#
+##davidson block
+#def davidson(vind, eig): # matrix A and how many eignvalues to solve
+#    start = time.time()
+#
+#    tol = 0.000001      # Convergence tolerance
+#    k = 2 * eig         # number of initial guess vectors
+#    mmax = 90      # Maximum number of iterations
+#    #print ('Amount of Eigenvalues we want:', eig)
+#
+#    t = np.eye(n,k) # [initial guess vectors]. they should be orthonormal.
+#    V = np.zeros((n,20*eig)) #array of zeros. a container to hold guess vectors
+#    W = np.zeros((n,20*eig)) #array of zeros. a container to hold transformed guess vectors
+#
+#
+#    # Begin iterations
+#    Iteration = 0
+#    for m in range(k,mmax,k):
+#        Iteration = Iteration + 1
+#        #print ('Iteration =', Iteration)
+#        if m == k:
+#            for j in range(0,k):
+#                V[:,j] = t[:,j]
+#
+#        for i in range(m-k,m):
+#            W[:, i] = vind (V[:,i])
+#
+#        T = np.dot(V[:,:m].T, W[:,:m])
+#        THETA,S = np.linalg.eig(T)  #Diagonalize the subspace Hamiltonian.
+#        idx = THETA.argsort()
+#        theta = THETA[idx]    #eigenvalues
+#        s = S[:,idx]          #eigenkets, m*m
+#        sum_norm = 0
+#        for j in range(0,k):
+#            residual = np.dot((W[:,:m]- theta[j] * V[:,:m]), s[:,j])
+#            norm = np.linalg.norm(residual)
+#            new_vec = residual/(d-theta[j])
+#            V[:,(m+j)] = new_vec
+#            if norm < tol:
+#                sum_norm = sum_norm +1
+#        if sum_norm == k:
+#                #print ('All', sum_norm, 'Guess Vectors Converged')
+#                break
+#        #Gram-Schimidt block,
+#        for p in range(0, k):
+#            for q in range (0, m+p):
+#                V[:,m+p] = orthonormal(V[:,q], V[:,m+p])
+#    #print (sum_norm)
+#    end = time.time()
+#    Eigenkets = np.dot(V[:,:m], s[:, :eig])
+#    print ('Davidson time (seconds):', round(end-start,4))
+#    return (theta[:eig])
+#
+#print (davidson(vind,3))
