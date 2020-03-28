@@ -34,7 +34,7 @@ def davidson(A, eig): # matrix A and how many eignvalues to solve
             
         W[:, m-k:m] = np.dot(A, V[:,m-k:m])
         T = np.dot(V[:,:m].T, W[:,:m])
-        THETA,S = np.linalg.eig(T)  #Diagonalize the subspace Hamiltonian.
+        THETA,S = np.linalg.eigh(T)  #Diagonalize the subspace Hamiltonian.
         idx = THETA.argsort()
         theta = THETA[idx]    #eigenvalues
         s = S[:,idx]          #eigenkets, m*m
@@ -44,7 +44,9 @@ def davidson(A, eig): # matrix A and how many eignvalues to solve
         for j in range(0,k):
             residual = np.dot((W[:,:m]- theta[j] * V[:,:m]), s[:,j])
             norm = np.linalg.norm(residual)
-            new_vec = residual/(np.diag(A)-theta[j])
+            d = np.diag(A)-theta[j]
+            d[d < 1.0e-8 ] = 0.0000001
+            new_vec = residual/d
 
             V[:,(m+j)] = new_vec
             if norm < tol:
@@ -52,7 +54,7 @@ def davidson(A, eig): # matrix A and how many eignvalues to solve
         if sum_norm == k:
                 #print ('All', sum_norm, 'Guess Vectors Converged')
                 break
-        
+        print ('sum_norm =', sum_norm)
 
         #Gram-Schimidt block,
         for p in range(0, k):
@@ -61,6 +63,6 @@ def davidson(A, eig): # matrix A and how many eignvalues to solve
         
     end = time.time()
     Eigenkets = np.dot(V[:,:m], s[:, :eig])
-    print ('Davidson3 time (seconds):', round(end-start,4))
+    print ('Davidson4 time (seconds):', round(end-start,4))
     return (theta[:eig])
        
