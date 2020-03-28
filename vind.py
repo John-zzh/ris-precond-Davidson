@@ -3,7 +3,7 @@ import numpy as np
 from pyscf import gto, scf, dft, tddft
 import davidson4
 mol = gto.Mole()
-mol.build(atom = 'H 0 0 0; F 0 0 1.2', basis = '631g', symmetry = True)
+mol.build(atom = 'Na 0 0 0; Cl 0 0 1.2', basis = '631g', symmetry = True)
 mf = dft.RKS(mol) #RKS, restrict the geometry, no optimization.
    #mf is ground density?
 mf.xc = 'b3lyp'
@@ -24,12 +24,17 @@ Z = np.zeros((n,n))
 for i in range (0, n):
     Z[:,i] = vind (I[:, i]) #Z is Hamiltonian rebuild from vind function, it is correct if we call TDA methos, rather than tddft method.
 
+#check if Z is symmetric
+def check_symmetric(a, tol=1e-8):
+    return np.all(np.abs(a-a.T) < tol)
+print (check_symmetric(Z, tol=1e-8))
+
 #E,vec = np.linalg.eig(Z)
 #idx = E.argsort()
 #e = E[idx]
 #print ('numpy =', 27.2114 * e[:3])  # Standard eigenvalues
 
-print (davidson4.davidson (Z,3)) # my own codes
+print (27.2114 * davidson4.davidson (Z,3)) # my own codes
 
 
 
