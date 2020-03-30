@@ -3,7 +3,7 @@ import numpy as np
 from pyscf import gto, scf, dft, tddft
 import davidson4
 mol = gto.Mole()
-mol.build(atom = 'Na 0 0 0; Cl 0 0 1.2', basis = '631g', symmetry = True)
+mol.build(atom = 'H 0 0 0; O 0 0 1.2;H 0.8 0 1.2', basis = '631g', symmetry = True)
 mf = dft.RKS(mol) #RKS, restrict the geometry, no optimization #mf is ground density?
 mf.xc = 'b3lyp'
 mf.kernel()  #single point energy
@@ -17,29 +17,39 @@ print ('Pyscf time =', round(end-start,4))
 
 vind, hdiag = td.gen_vind(mf)
 n = len(hdiag) #n is size of Hamiltonian
-sort = hdiag.argsort()
+
 print ('size of H is', n)
 
 #Gram-Schimidt block,
 def orthonormal (v1, v2):
-    v2 = v2 - (np.dot(v1, v2) / np.linalg.norm(v1)) * v1
-    v2 = v2/np.linalg.norm(v2)
+    for i in range (0,n):
+        v2 = v2 - (np.dot(v1, v2) / np.linalg.norm(v1)) * v1
+        norm = np.linalg.norm(v2)
+        av2 = np.maximum (v2, -v2)
+        asort = av2.argsort()
+        if norm < 1e-8:
+            v2 [int(np.argwhere(asort == i))] = 1e-8/(np.sqrt(n))
+        else:
+            break
+    v2 = v2/norm
     return v2
 #davidson block
 def davidson(vind, eig): # matrix A and how many eignvalues to solve
     start = time.time()
-    tol = 1e-12      # Convergence tolerance
+    tol = 1e-8      # Convergence tolerance
     k = eig         # number of expension for each iteration
     mmax = 90      # Maximum number of iterations
     #print ('Amount of Eigenvalues we want:', eig)
-    V = np.zeros((n,20*eig)) #array of zeros. a container to hold guess vectors
-    W = np.zeros((n,20*eig)) #array of zeros. a container to hold transformed guess vectors
+    V = np.zeros((n,30*eig)) #array of zeros. a container to hold guess vectors
+    W = np.zeros((n,30*eig)) #array of zeros. a container to hold transformed guess vectors
     # Begin iterations
     Iteration = 0
     for m in range(k,mmax,k):
         Iteration = Iteration + 1
         #print ('Iteration =', Iteration)
         if m == k:
+            ahdiag = np.maximum (hdiag, - hdiag) #ahdiag is a all-values-positive version of hdiag
+            sort = ahdiag.argsort()
             for i in range(0,k):
                 V[int(np.argwhere(sort == i)),i] = 1
         for i in range(m-k,m):
@@ -54,7 +64,7 @@ def davidson(vind, eig): # matrix A and how many eignvalues to solve
             residual = np.dot((W[:,:m]- theta[j]*V[:,:m]), s[:,j])
             norm = np.linalg.norm(residual)
             d = hdiag-theta[j]
-            d[d<1.0e-8] = 1.0e-8
+            d[d<1e-8 ] = 1e-8
             new_vec = residual/d
             V[:,(m+j)] = new_vec
             if norm < tol:
@@ -66,7 +76,7 @@ def davidson(vind, eig): # matrix A and how many eignvalues to solve
         for p in range(0, k):
             for q in range (0, m+p):
                 V[:,m+p] = orthonormal(V[:,q], V[:,m+p])
-    print (sum_norm)
+    #print (sum_norm)
     print ('Iteration =', Iteration)
     end = time.time()
     Eigenkets = np.dot(V[:,:m], s[:, :eig])
