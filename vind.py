@@ -38,8 +38,8 @@ def davidson(vind, k): # fucntion vind and how many eignvalues to solve
 
         if i == 0:              #first step
             sort = hdiag.argsort()
-            for i in range(0,m):
-                V[int(np.argwhere(sort == i)),i] = 1   #positions with lowest values set as 1
+            for j in range(0,m):
+                V[int(np.argwhere(sort == j)),j] = 1   #positions with lowest values set as 1
         for j in range(0,m):
             W[:, j] = vind (V[:,j])   #Hv, create transformed guess vectors
         T = np.dot(V[:,:m].T, W[:,:m])  # T is subspace Hmailtonian
@@ -60,7 +60,7 @@ def davidson(vind, k): # fucntion vind and how many eignvalues to solve
                 d[(d>-1e-8)&(d<0)] = -1e-8   #kick out all small values
                 new_vec = residual/d          #new guess vectors, core step of Davidson method
                 new_vec = new_vec/np.linalg.norm (new_vec)
-                for y in range (0, m + lasit_newvec):
+                for y in range (0, m + lasit_newvec):  #orthornormalize the new vector against all vectors
                     new_vec = new_vec - np.dot(V[:,y], new_vec) * V[:,y]   #/ np.linalg.norm(V[:,i])) = 1 should be after np.dot
                 norm = np.linalg.norm (new_vec)
                 if norm > 1e-15:
