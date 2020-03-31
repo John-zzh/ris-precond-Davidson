@@ -3,7 +3,7 @@ import numpy as np
 from pyscf import gto, scf, dft, tddft
 import davidson4
 mol = gto.Mole()
-mol.build(atom = 'H 0 0 0; F 0 0 1.2', basis = '631g', symmetry = True)
+mol.build(atom = 'H 0 0 0; O 0 0 1.2; H 0 1 1.2', basis = '631g', symmetry = True)
 mf = dft.RKS(mol) #RKS, restrict the geometry, no optimization #mf is ground density?
 mf.xc = 'b3lyp'
 mf.kernel()  #single point energy
@@ -22,7 +22,7 @@ print ('size of H is', n)
 #davidson block
 def davidson(vind, k): # fucntion vind and how many eignvalues to solve
     start = time.time()
-    tol = 1e-8      # Convergence tolerance
+    tol = 1e-7      # Convergence tolerance
     max = 90      # Maximum number of iterations
     V = np.zeros((n,30*k)) #array of zeros. a container to hold guess vectors
     W = np.zeros((n,30*k)) #array of zeros. a container to hold transformed guess vectors
@@ -31,17 +31,17 @@ def davidson(vind, k): # fucntion vind and how many eignvalues to solve
     Iteration   = 0
     
     m = 2*k  # m is size of initial subspace Hamiltonian
-    lasit_newvec = 0  #amount of new vector added in last iteration
+    lasit_newvec = 0  #amount of new vector added in last iteration, ranging from 1 to k
     for i in range(0, max):
         Iteration = Iteration + 1
         m += lasit_newvec #m is size of current subspace Hamiltonian
-       
+
         if i == 0:              #first step
             sort = hdiag.argsort()
             for i in range(0,m):
                 V[int(np.argwhere(sort == i)),i] = 1   #positions with lowest values set as 1
-        for i in range(0,m):
-            W[:, i] = vind (V[:,i])   #Hv, create transformed guess vectors
+        for j in range(0,m):
+            W[:, j] = vind (V[:,j])   #Hv, create transformed guess vectors
         T = np.dot(V[:,:m].T, W[:,:m])  # T is subspace Hmailtonian
         THETA,S = np.linalg.eigh(T)  #Diagonalize the subspace Hamiltonian.
         idx = THETA.argsort()
@@ -50,8 +50,8 @@ def davidson(vind, k): # fucntion vind and how many eignvalues to solve
         
         sum_convec = 0
         lasit_newvec = 0
-        for i in range(0,k):      #looking at first k vecrors one by one, check if they are roots
-            residual = np.dot((W[:,:m]- theta[i]*V[:,:m]), s[:,i])
+        for x in range(0,k):      #looking at first k vecrors one by one, check if they are roots
+            residual = np.dot((W[:,:m]- theta[x]*V[:,:m]), s[:,x])
             norm = np.linalg.norm(residual)
                    # number of added new guess vectors from last iteration.
             if norm > tol:         # norm > tol means we didn't find correct eigenkets, so we create new guess vectors
@@ -59,8 +59,9 @@ def davidson(vind, k): # fucntion vind and how many eignvalues to solve
                 d[(d<1e-8)&(d>=0)] = 1e-8
                 d[(d>-1e-8)&(d<0)] = -1e-8   #kick out all small values
                 new_vec = residual/d          #new guess vectors, core step of Davidson method
-                for i in range (0, m + lasit_newvec):
-                    new_vec = new_vec - np.dot(V[:,i], new_vec) * V[:,i]   #/ np.linalg.norm(v1)) = 1 should be after np.dot
+                new_vec = new_vec/np.linalg.norm (new_vec)
+                for y in range (0, m + lasit_newvec):
+                    new_vec = new_vec - np.dot(V[:,y], new_vec) * V[:,y]   #/ np.linalg.norm(V[:,i])) = 1 should be after np.dot
                 norm = np.linalg.norm (new_vec)
                 if norm > 1e-15:
                     new_vec = new_vec/norm
