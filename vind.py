@@ -3,7 +3,12 @@ import numpy as np
 from pyscf import gto, scf, dft, tddft
 import davidson4
 mol = gto.Mole()
-mol.build(atom = 'H 0 0 0; O 0 0 1.2; H 0 1 1.2', basis = '631g', symmetry = True)
+mol.build(atom = 'C         -5.14247        3.17333        0.00000;\
+O         -4.07247        3.17333        0.00000;\
+H         -5.49914        2.49946       -0.75072;\
+H         -5.49914        4.16041       -0.20823;\
+H         -5.49914        2.86013        0.95895;\
+H         -3.74914        3.45727       -0.86933', basis = '631g', symmetry = True)
 mf = dft.RKS(mol) #RKS, restrict the geometry, no optimization #mf is ground density?
 mf.xc = 'b3lyp'
 mf.kernel()  #single point energy
@@ -30,8 +35,8 @@ def davidson(vind, k): # fucntion vind and how many eignvalues to solve
     # Begin iterations
     Iteration   = 0
     
-    m = 2*k  # m is size of initial subspace Hamiltonian
-    lasit_newvec = 0  #amount of new vector added in last iteration, ranging from 1 to k
+    m = k  # m is size of initial subspace Hamiltonian, amount of initial guesses   #m=k works for H2, m=4k works for H2O
+    lasit_newvec = 0  #it records amount of new vector added in last iteration, ranging from 1 to k
     for i in range(0, max):
         Iteration = Iteration + 1
         m += lasit_newvec #m is size of current subspace Hamiltonian
@@ -59,23 +64,25 @@ def davidson(vind, k): # fucntion vind and how many eignvalues to solve
                 d[(d<1e-8)&(d>=0)] = 1e-8
                 d[(d>-1e-8)&(d<0)] = -1e-8   #kick out all small values
                 new_vec = residual/d          #new guess vectors, core step of Davidson method
-                new_vec = new_vec/np.linalg.norm (new_vec)
+                new_vec = new_vec/np.linalg.norm (new_vec) #normalize before GS
+                
                 for y in range (0, m + lasit_newvec):  #orthornormalize the new vector against all vectors
                     new_vec = new_vec - np.dot(V[:,y], new_vec) * V[:,y]   #/ np.linalg.norm(V[:,i])) = 1 should be after np.dot
+                
                 norm = np.linalg.norm (new_vec)
-                if norm > 1e-15:
+                if norm > 1e-16:
                     new_vec = new_vec/norm
                     V[:, m + lasit_newvec] = new_vec
                     lasit_newvec += 1
             else:
                 sum_convec += 1
-        print ('sum_convec =', sum_convec)
-        print ('lasit_newvec =', lasit_newvec)
+#        print ('sum_convec =', sum_convec)
+#        print ('lasit_newvec =', lasit_newvec)
         if sum_convec == k:
             break
                     
                    
-    #print ('Iteration =', Iteration)
+    print ('Iteration =', Iteration)
     
     end = time.time()
     Eigenkets = np.dot(V[:,:m], s[:, :k])
