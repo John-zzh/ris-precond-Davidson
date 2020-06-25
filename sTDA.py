@@ -198,21 +198,19 @@ C = np.dot(X,C)
 #function to generate q matrix for a certain atom
 def generateQ (atom_id):
     q = np.zeros([N_bf, N_bf])
-    #N_bf is number Atimic orbitals, q is same size with C
     for r in range (0, N_bf):
         for s in range (0, N_bf):
-            #for a certain element q[i,p]
+            #for a certain element q[r,s]
             #first two loops is to iterate all ith and pth column of C
             for mu in range (0, N_bf):
                 if AO[mu] == atom_id:
-                    #to check whether this basis function centered on atom_id
                     #collect all basis functions centered on atom_id
                     # the last loop is to sum up all C_mui*C_mup, calculate element q[i,p]
                     q[r,s] += C[mu,r]*C[mu,s]
     return q
 
 Qmatrix = [(generateQ(atom_id)) for atom_id in range (0, Natm)]
-#a list of q matrix
+#a list of q matrix, make them ready to use
 
 
 
@@ -289,8 +287,7 @@ def build_A ():
     for i in range (0, occupied):
         for a in range (occupied, N_bf):
             m += 1
-            #print ('m =', m)
-            #for ia pair, it corresponds to a certain row
+            #for each ia pair, it corresponds to a certain row
             n = -1
             for j in range (0, occupied):
                 for b in range (occupied, N_bf):
@@ -301,6 +298,7 @@ def build_A ():
                     else:
                         A[m,n] = 2*ele_intK(i,a,j,b) - ele_intJ(i,j,a,b)
     return A
+
 start = time.time()
 A = build_A ()
 end = time.time()
@@ -315,4 +313,4 @@ print ('symmetry of A_sTDA matrix :', check_symmetric(A, tol=1e-8))
 
 eigv,eigk = np.linalg.eigh(A)
 print (np.round(eigv[:6]*27.21138624598853,5))
-#firt 5 eigenvalues
+#firt few eigenvalues
