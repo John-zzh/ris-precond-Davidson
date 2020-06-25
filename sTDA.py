@@ -4,7 +4,6 @@ import pyscf
 import matplotlib.pylab as plt
 from pyscf import gto, scf, dft, tddft, data
 
-
 elements = ['H' , 'He', 'Li', 'Be', 'B' , 'C' , 'N' , 'O' , 'F' , 'Ne',
     'Na', 'Mg', 'Al', 'Si', 'P' , 'S' , 'Cl', 'Ar', 'K' , 'Ca',
     'Sc', 'Ti', 'V' , 'Cr', 'Mn', 'Fe', 'Co', 'Ni', 'Cu', 'Zn',
@@ -113,195 +112,207 @@ hardness = [
 0.18551941,
 0.22370139]
 #list of chemical hardness, they are floats, containing elements 1-94
-
-
+#in Hartree
 HARDNESS = dict(zip(elements,hardness))
 #print (HARDNESS)
-#create a dictionary by mappig two iteratable subject
+#create a dictionary by mappig two iteratable subject, list
+
+# mol = gto.Mole()
+# mol.build(atom = 'O         -4.89126        3.29770        0.00029;\
+# H         -3.49307        3.28429       -0.00328;\
+# H         -5.28213        2.58374        0.75736', basis = 'def2-SVP', symmetry = True)
+# # mol.atom is the atoms and coordinates!
+# # type(mol.atom) is a class <str>
 
 mol = gto.Mole()
-mol.build(atom = 'O 0 0 0; H 0 0 1; H 0 0 -1 ', basis = 'def2-SVP', symmetry = True)
-#print (mol.atom)
-# mol.atom is the atoms and coordinates!
-# type(mol.atom) is a class <str>
+mol.build(atom = 'C         -4.89126        3.29770        0.00029;\
+O         -3.49307        3.28429       -0.00328;\
+H         -5.28213        2.58374        0.75736;\
+H         -5.28213        3.05494       -1.01161;\
+H         -5.23998        4.31540        0.27138;\
+H         -3.22959        2.35981       -0.24953', basis = 'def2-SVP', symmetry = True)
 
-#print (mol.atom_coords())
-#the molecular geometry, in matrix form
+# mf = dft.RKS(mol)
+# mf.conv_tol = 1e-14
+# mf.grids.level = 9
+# mf.xc = 'b3lyp'
+# mf.kernel()  #single point energy
 
-#print (mol.atom_symbol(0))
-# mol.atom_symbol(0) is to return the element symbol, including special characters
+mf = scf.RHF(mol)
+mf.conv_tol = 1e-13
+mf.kernel()
 
-#print (mol.atom_pure_symbol(0))
-#to return pure element symbol only, no special characters
+# td = tddft.TDA(mf)
+# start = time.time()
+# td.kernel()    #compute first few excited states.
+# end = time.time()
+# print ('Pyscf time =', round(end-start,4))
 
-#print (mol.atom_coord(0))
-#to return the coordinates of a certain atom, it is a ndarray, vector
-
-#print (mol.natm)
-#number of atoms # therefore, atom_id is in rnage (0, mol.natm)
+#mf.mulliken_pop_meta_lowdin_ao()
+##population analysis
 
 
+#mol.ao_labels()
+AO = [int(i.split(' ',1)[0]) for i in mol.ao_labels()]
+# .split(' ',1) is to split each element by space, split once.
+# mol.ao_labels() it is a list of all AOs and corresponding atom_id, AO is a list of atom_id
+# AO == [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2]
 
-mf = dft.RKS(mol) #mf is ground density?
-mf.xc = 'b3lyp'
-mf.kernel()  #single point energy
-
-a_x = 0.3
-# a_x is hybrid parameter
+N_bf = len(AO)
+#print ('Atomic orbitals: ', AO)
+print ('Total number of AOs =', N_bf)
 
 #mf.analyze()
 ##MO energies
 
-mf.mulliken_pop_meta_lowdin_ao()
-#population analysis
+Natm = mol.natm #number of atoms
+MOe = mf.mo_energy  #an array of MO energies, in Hartree
+#print (MOe)
 
-#nocc = mol.nelectron
-# mol.nelectron is number of electrons, not necessary the number of MOs
+#mf.mo_occ is an array of occupance [2,2,2,2,2,0,0,0,0.....]
+occupied = len(np.where(mf.mo_occ > 0)[0])
+#occupied is number of occupied orbitals
+print ('number of occupied orbitals: ', occupied)
 
-C = pyscf.lo.orth.orth_ao(mol, method = 'lowdin')
-#C = mf.mo_coeff
-#C_orthog = np.dot(S**0.5,C)
-# mf.mo_coeff is the coefficient matrix
+virtual = N_bf - occupied
+#virtual is number of virtual orbitals
+print ('number of virtual orbitals: ', virtual)
 
-# S = mf.get_ovlp() #.get_ovlp()  is not basis overlap matrix
-# s,ket = np.linalg.eigh(S)
-# s = s **0.5
-# S = np.linalg.multi_dot([ket.T,np.diag(s),ket])
 
-#print (np.round(C,2))
+C = mf.mo_coeff
+#the coefficient matrix
+S = mf.get_ovlp() #.get_ovlp()  is not basis overlap matrix
+#or S = np.dot(np.linalg.inv(C.T), np.linalg.inv(C))
 
-#mol.ao_labels() #a list of each arom's atomic bobitals
-AO = [int(i.split(' ',1)[0]) for i in mol.ao_labels()]
-# .split(' ',1) is to split each element by space, split once.
-# mol.ao_labels() it is a list of all AOs
-N_bf = len(AO)
-#print (AO)
-def generate_q (atom_id):
+
+s,ket = np.linalg.eig(S)
+s = s**0.5
+X = np.linalg.multi_dot([ket,np.diag(s),ket.T])
+#X == S^1/2
+
+C = np.dot(X,C)
+# #now C is orthonormalized
+#np.dot(C.T,C) is a identity matrix
+
+
+#function to generate q matrix for a certain atom
+def generateQ (atom_id):
     q = np.zeros([N_bf, N_bf])
-    #q is same size with C
-    for i in range (0, N_bf):
-        for p in range (0, N_bf):
-            #q[i,p]
-            #first two loops is to iterate all ith row and pth column of C
-            for x in range (0, N_bf):
-                # the last loop is to sum up all C_mui*C_mup
-                if AO[x] == atom_id:
-                    q[i,p] += C[x,i]*C[x,p]
+    #N_bf is number Atimic orbitals, q is same size with C
+    for r in range (0, N_bf):
+        for s in range (0, N_bf):
+            #for a certain element q[i,p]
+            #first two loops is to iterate all ith and pth column of C
+            for mu in range (0, N_bf):
+                if AO[mu] == atom_id:
+                    #to check whether this basis function centered on atom_id
+                    #collect all basis functions centered on atom_id
+                    # the last loop is to sum up all C_mui*C_mup, calculate element q[i,p]
+                    q[r,s] += C[mu,r]*C[mu,s]
     return q
 
-
-for atom_id in range (0, mol.natm):
-    locals()['q_atom_' + str(atom_id)] = generate_q (atom_id)
-    #name = 'q_atom_' + str(atom_id)
-    #to create a serial name: q_atom_1, q_atom_2, q_atom_3....
-
-
-# start = time.time()
-# td = tddft.TDA(mf)   #TDA is turned on
-# td.kernel()    #compute first few excited states.
-# end = time.time()
-#
-# print ('Pyscf time =', round(end-start,4))
-#
-#
-# vind, hdiag = td.gen_vind(mf)
-
-#this block is to reprocude the TDA A matrix
-# n = len(hdiag)
-# print ('size of H is', n)
-# A = np.zeros((n,n))
-# I = np.eye(n)
-# for i in range (0,n):
-#     A[:,i] = vind (I[:,i])
-# plt.matshow(A)
-# plt.show() #visualize the matrix
+Qmatrix = [(generateQ(atom_id)) for atom_id in range (0, Natm)]
+#a list of q matrix
 
 
 
-# # davidson block
-# def davidson(vind, k): # fucntion vind and how many eignvalues to solve
-#     start = time.time()
-#     tol = 1e-5      # Convergence tolerance
-#     max = 90      # Maximum number of iterations
-#     V = np.zeros((n,30*k)) #array of zeros. a container to hold guess vectors
-#     W = np.zeros((n,30*k)) #array of zeros. a container to hold transformed guess vectors
-#
-#
-#     # Begin iterations
-#     Iteration   = 0
-#     m = 4*k  # m is size of subspace Hamiltonian, amount of initial guesses   #m=k works for H2, m=4k works for H2O
-#     for i in range(0, max):
-#         Iteration = Iteration + 1
-#
-#         if i == 0:              #first step
-#             sort = hdiag.argsort()
-#             for j in range(0,m):
-#                 V[int(np.argwhere(sort == j)),j] = 1   #positions with lowest values set as 1
-#         for j in range(0,m):
-#             W[:, j] = vind (V[:,j])   #Hv, create transformed guess vectors
-#         T = np.dot(V[:,:m].T, W[:,:m])  # T is subspace Hmailtonian
-#         THETA,S = np.linalg.eigh(T)  #Diagonalize the subspace Hamiltonian.
-#         idx = THETA.argsort()
-#         theta = THETA[idx]    #eigenvalues
-#         s = S[:,idx]          #eigenkets, m*m
-#
-#         sum_convec = 0
-#         lasit_newvec = 0  #it records amount of new vector added in last iteration, ranging from 1 to k
-#         for x in range(0,k):      #looking at first k vecrors one by one, check if they are roots
-#             residual = np.dot((W[:,:m]- theta[x]*V[:,:m]), s[:,x])
-#             norm = np.linalg.norm(residual)
-#
-#             if norm > tol:         # norm > tol means we didn't find correct eigenkets, so we create new guess vectors
-#                 # d = hdiag-theta[i]
-#                 # d[(d<1e-8)&(d>=0)] = 1e-9
-#                 # d[(d>-1e-8)&(d<0)] = -1e-9   #kick out all small values
-#
-#
-#                 new_vec = np.dot(np.linalg.inv(A-theta[i]), residual)          #new guess vectors, core step of Davidson method
-#                 new_vec = new_vec/np.linalg.norm (new_vec) #normalize before GS
-#
-#                 for y in range (0, m + lasit_newvec):  #orthornormalize the new vector against all vectors
-#                     new_vec = new_vec - np.dot(V[:,y], new_vec) * V[:,y]   #/ np.linalg.norm(V[:,i])) = 1 should be after np.dot
-#
-#                 norm = np.linalg.norm (new_vec)
-#                 if norm > 1e-16:
-#                     new_vec = new_vec/norm
-#                     V[:, m + lasit_newvec] = new_vec
-#                     lasit_newvec += 1
-#             else:
-#                 sum_convec += 1
-#
-#
-#         m += lasit_newvec   #now m is size of subspace Hamiltonian in next iteration
-#         if sum_convec == k:
-#             break
-#
-#
-#     print ('Iteration =', Iteration)
-#
-#     end = time.time()
-#     Eigenkets = np.dot(V[:,:m], s[:, :k])
-#     print ('Davidson time:', round(end-start,4))
-#     return (theta[:k])
-#
-# print (27.21138624598853 * davidson(vind,3))
+#function to return chemical hardness from dictionary HARDNESS
+def Hardness (atom_id):
+    atom = mol.atom_pure_symbol(atom_id)
+    #the symbol of atom looked at
+    return HARDNESS[atom]
+#mol.atom_pure_symbol(atom_id) is to return pure element symbol only, no special characters
+
+def eta (atom_A_id, atom_B_id):
+    eta = (Hardness(atom_A_id) + Hardness(atom_B_id))*0.5
+    return eta
+
+R = pyscf.gto.mole.inter_distance(mol, coords=None)
+#Inter-particle distance array, unit == ’Bohr’
 
 
 
+a_x = 0.25
+beta1=0.2
+beta2=1.83
+alpha1=1.42
+alpha2=0.48
+beta = beta1 + beta2 * a_x
+alpha = alpha1 + alpha2 * a_x
+print ('beta =', beta, 'alpha =', alpha)
 
-#I = np.eye(n)
-#Z = np.zeros((n,n))
-#for i in range (0, n):
-#    Z[:,i] = vind (I[:, i]) #Z is Hamiltonian rebuild from vind function. It will be a hermition if we call TDA methos, rather than tddft method.
-#print ('Hamiltonian built')
-#check whether Z is symmetric
-#def check_symmetric(a, tol=1e-8):
-#    return np.all(np.abs(a-a.T) < tol)
-#print (check_symmetric(Z, tol=1e-8))
 
-#E,vec = np.linalg.eig(Z)
-#idx = E.argsort()
-#e = E[idx]
-#print ('numpy =', 27.2114 * e[:3])  # Standard eigenvalues
+#define gammaJ and gammaK values
+def gammaJ(atom_A_id, atom_B_id):
+    gamma_A_B_J = (1/(R[atom_A_id, atom_B_id]**beta + (a_x*eta(atom_A_id, atom_B_id))**(-beta)))**(1/beta)
+    return gamma_A_B_J
 
-#print (27.211386245988 * davidson4.davidson (Z,3)) # my own codes
+def gammaK(atom_A_id, atom_B_id):
+    gamma_A_B_K = (1/(R[atom_A_id, atom_B_id]**alpha \
+                   + eta(atom_A_id, atom_B_id)**(-alpha)))\
+                    **(1/alpha)
+    return gamma_A_B_K
+
+#store gammaJ and gammaK as matrix, make them ready to use
+GammaJ = np.zeros([Natm, Natm])
+for i in range (0, Natm):
+    for j in range (0, Natm):
+        GammaJ[i,j] = gammaJ (i,j)
+
+GammaK = np.zeros([Natm, Natm])
+for i in range (0, Natm):
+    for j in range (0, Natm):
+        GammaK[i,j] = gammaK (i,j)
+
+#define two electron intergeral (pq|rs)
+def ele_intJ (i,j,a,b):
+    ijab = 0
+    for atom_A_id in range (0, Natm):
+        for atom_B_id in range (0, Natm):
+            ijab += Qmatrix[atom_A_id][i,j] * Qmatrix[atom_B_id][a,b] * GammaJ[atom_A_id, atom_B_id]
+    return ijab
+def ele_intK (i,a,j,b):
+    iajb = 0
+    for atom_A_id in range (0, Natm):
+        for atom_B_id in range (0, Natm):
+            iajb += Qmatrix[atom_A_id][i,a] * Qmatrix[atom_B_id][j,b] * GammaK[atom_A_id, atom_B_id]
+            #(ia|jb)
+    return iajb
+
+
+
+#build A matrix
+def build_A ():
+    A = np.zeros ([occupied*virtual, occupied*virtual])
+    print ('shape of A-sTDA is: ', np.shape(A))
+    m = -1
+    for i in range (0, occupied):
+        for a in range (occupied, N_bf):
+            m += 1
+            #print ('m =', m)
+            #for ia pair, it corresponds to a certain row
+            n = -1
+            for j in range (0, occupied):
+                for b in range (occupied, N_bf):
+                    n += 1
+                #for each jb pair, it corresponds to a certain column
+                    if i==j and a==b:
+                        A[m,n] = (MOe[a]-MOe[i]) + 2*ele_intK(i,a,j,b) - ele_intJ(i,j,a,b)
+                    else:
+                        A[m,n] = 2*ele_intK(i,a,j,b) - ele_intJ(i,j,a,b)
+    return A
+start = time.time()
+A = build_A ()
+end = time.time()
+#print (m,n)
+print ('A_sTDA building time =', round (end - start, 2))
+
+#check whether A is symmetric
+def check_symmetric(a, tol=1e-8):
+    return np.all(np.abs(a-a.T) < tol)
+print ('symmetry of A_sTDA matrix :', check_symmetric(A, tol=1e-8))
+
+
+eigv,eigk = np.linalg.eigh(A)
+print (np.round(eigv[:6]*27.21138624598853,5))
+#firt 5 eigenvalues
