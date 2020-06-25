@@ -313,4 +313,4 @@ print ('symmetry of A_sTDA matrix :', check_symmetric(A, tol=1e-8))
 
 eigv,eigk = np.linalg.eigh(A)
 print (np.round(eigv[:6]*27.21138624598853,5))
-#firt few eigenvalues
+#first few eigenvalues
