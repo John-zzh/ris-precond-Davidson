@@ -9,16 +9,16 @@ from pyscf import gto, scf, dft, tddft, data
 
 ###########################################################################
 # Acetaldehyde, CH3CHO
-# mol = gto.Mole()
-# mol.build(atom = '\
-# C         -3.15617        2.59898        0.79547;\
-# C         -1.79169        2.11570        0.42917;\
-# O         -0.80893        2.56621        0.99508;\
-# H         -1.66947        1.36193       -0.34183;\
-# H         -3.35300        2.38970        1.86780;\
-# H         -3.91803        2.07820        0.17854;\
-# H         -3.22824        3.69190        0.61449',\
-# basis = 'def2-SVP', symmetry = True)
+mol = gto.Mole()
+mol.build(atom = '\
+C         -3.15617        2.59898        0.79547;\
+C         -1.79169        2.11570        0.42917;\
+O         -0.80893        2.56621        0.99508;\
+H         -1.66947        1.36193       -0.34183;\
+H         -3.35300        2.38970        1.86780;\
+H         -3.91803        2.07820        0.17854;\
+H         -3.22824        3.69190        0.61449',\
+basis = 'def2-SVP', symmetry = True)
 ###########################################################################
 
 ###########################################################################
@@ -33,13 +33,13 @@ from pyscf import gto, scf, dft, tddft, data
 
 # ###########################################################################
 # # Methanol, CH3OH
-mol = gto.Mole()
-mol.build(atom = 'C         -4.89126        3.29770        0.00029;\
-O         -3.49307        3.28429       -0.00328;\
-H         -5.28213        2.58374        0.75736;\
-H         -5.28213        3.05494       -1.01161;\
-H         -5.23998        4.31540        0.27138;\
-H         -3.22959        2.35981       -0.24953', basis = 'def2-SVP', symmetry = True)
+# mol = gto.Mole()
+# mol.build(atom = 'C         -4.89126        3.29770        0.00029;\
+# O         -3.49307        3.28429       -0.00328;\
+# H         -5.28213        2.58374        0.75736;\
+# H         -5.28213        3.05494       -1.01161;\
+# H         -5.23998        4.31540        0.27138;\
+# H         -3.22959        2.35981       -0.24953', basis = 'def2-SVP', symmetry = True)
 # ###########################################################################
 
 
@@ -405,12 +405,12 @@ def davidson_A_matrix (A, k): # matrix sTDA_A, and how many eignvalues to solve
     start = time.time()
     n = np.shape(A)[0]
     tol = 1e-5      # Convergence tolerance
-    max = 150      # Maximum number of iterations
+    max = 90       # Maximum number of iterations
     V = np.zeros((n,30*k)) #array of zeros, a container to hold guess vectors
     W = np.zeros((n,30*k)) #array of zeros, a container to hold transformed guess vectors, Av
 
     # Begin iterations
-    m = 4*k
+    m = 2*k
     # m is size of subspace Hamiltonian, amount of initial guess vectors
     # m=k works for H2, m=4k works for H2O
     for i in range(0, max):
@@ -486,8 +486,8 @@ def sTDA_init_p_davidson (k, tol):
 
     #tol = 1e-12      # Convergence tolerance
     max = 90      # Maximum number of iterations
-    V = np.zeros((n,40*k)) #array of zeros, a container to hold guess vectors
-    W = np.zeros((n,40*k)) #array of zeros, a container to hold transformed guess vectors
+    V = np.zeros((n,30*k)) #array of zeros, a container to hold guess vectors
+    W = np.zeros((n,30*k)) #array of zeros, a container to hold transformed guess vectors
     I = np.eye(n)
     # Begin iterations
     m = 2*k  # m is size of subspace Hamiltonian, amount of initial guesses   #m=k works for H2, m=4k works for H2O
@@ -555,8 +555,8 @@ def sTDA_p_davidson (k, tol):
     start = time.time()
 
     max = 90      # Maximum number of iterations
-    V = np.zeros((n,40*k)) #array of zeros, a container to hold guess vectors
-    W = np.zeros((n,40*k)) #array of zeros, a container to hold transformed guess vectors
+    V = np.zeros((n,30*k)) #array of zeros, a container to hold guess vectors
+    W = np.zeros((n,30*k)) #array of zeros, a container to hold transformed guess vectors
     I = np.eye(n)
 
     # Begin iterations
