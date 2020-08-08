@@ -115,7 +115,7 @@ hardness = [
 #in Hartree
 HARDNESS = dict(zip(elements,hardness))
 #print (HARDNESS)
-#create a dictionary by mappig two iteratable subject, list
+#create a dictionary by mappig two iteratable subject
 
 # mol = gto.Mole()
 # mol.build(atom = 'O         -4.89126        3.29770        0.00029;\
@@ -132,24 +132,14 @@ H         -5.28213        3.05494       -1.01161;\
 H         -5.23998        4.31540        0.27138;\
 H         -3.22959        2.35981       -0.24953', basis = 'def2-SVP', symmetry = True)
 
-# mf = dft.RKS(mol)
-# mf.conv_tol = 1e-14
+mf = scf.RHF(mol) #mf is ground density?
+mf.conv_tol = 1e-14
 # mf.grids.level = 9
 # mf.xc = 'b3lyp'
-# mf.kernel()  #single point energy
 
-mf = scf.RHF(mol)
-mf.conv_tol = 1e-12
-mf.kernel()
+mf.kernel()  #single point energy
 
-# mf = dft.RKS(mol)
-# mf.conv_tol = 1e-12
-# mf.grids.level = 9     # 0-9, big number for large mesh grids, default is 3
-# mf.xc = 'cam-b3lyp'
-# mf.kernel()  #single point energy
 
-#ORCA: FINAL SINGLE POINT ENERGY = -115.576160742154
-#Turbomole: total energy      =    -115.57615989622
 # td = tddft.TDA(mf)
 # start = time.time()
 # td.kernel()    #compute first few excited states.
@@ -157,7 +147,10 @@ mf.kernel()
 # print ('Pyscf time =', round(end-start,4))
 
 #mf.mulliken_pop_meta_lowdin_ao()
-##population analysis
+#population analysis
+
+
+
 
 
 #mol.ao_labels()
@@ -167,10 +160,10 @@ AO = [int(i.split(' ',1)[0]) for i in mol.ao_labels()]
 # AO == [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2]
 
 N_bf = len(AO)
-#print ('Atomic orbitals: ', AO)
+print ('Atomic orbitals: ', AO)
 print ('Total number of AOs =', N_bf)
 
-#mf.analyze()
+mf.analyze()
 ##MO energies
 
 Natm = mol.natm #number of atoms
@@ -189,6 +182,8 @@ print ('number of virtual orbitals: ', virtual)
 
 C = mf.mo_coeff
 #the coefficient matrix
+
+
 S = mf.get_ovlp() #.get_ovlp()  is not basis overlap matrix
 #or S = np.dot(np.linalg.inv(C.T), np.linalg.inv(C))
 
@@ -206,19 +201,21 @@ C = np.dot(X,C)
 #function to generate q matrix for a certain atom
 def generateQ (atom_id):
     q = np.zeros([N_bf, N_bf])
+    #N_bf is number Atimic orbitals, q is same size with C
     for r in range (0, N_bf):
         for s in range (0, N_bf):
-            #for a certain element q[r,s]
+            #for a certain element q[i,p]
             #first two loops is to iterate all ith and pth column of C
             for mu in range (0, N_bf):
                 if AO[mu] == atom_id:
+                    #to check whether this basis function centered on atom_id
                     #collect all basis functions centered on atom_id
                     # the last loop is to sum up all C_mui*C_mup, calculate element q[i,p]
                     q[r,s] += C[mu,r]*C[mu,s]
     return q
 
 Qmatrix = [(generateQ(atom_id)) for atom_id in range (0, Natm)]
-#a list of q matrix, make them ready to use
+#a list of q matrix
 
 
 
@@ -233,7 +230,7 @@ def eta (atom_A_id, atom_B_id):
     eta = (Hardness(atom_A_id) + Hardness(atom_B_id))*0.5
     return eta
 
-R = pyscf.gto.mole.inter_distance(mol, coords = None)
+R = pyscf.gto.mole.inter_distance(mol, coords=None)
 #Inter-particle distance array, unit == ’Bohr’
 
 
@@ -247,81 +244,58 @@ beta = beta1 + beta2 * a_x
 alpha = alpha1 + alpha2 * a_x
 print ('beta =', beta, 'alpha =', alpha)
 
-
-
-
-
-# a_x = 0.38
-# beta1= 1.86
-# beta2=0.00
-# alpha1= 0.90
-# alpha2=0.00
-# beta = beta1 + beta2 * a_x
-# alpha = alpha1 + alpha2 * a_x
-# print ('beta =', beta, 'alpha =', alpha)
-
-
-#define gammaJ and gammaK values
 def gammaJ(atom_A_id, atom_B_id):
     gamma_A_B_J = (1/(R[atom_A_id, atom_B_id]**beta + (a_x*eta(atom_A_id, atom_B_id))**(-beta)))**(1/beta)
     return gamma_A_B_J
+#gammaJ (2,1)
 
 def gammaK(atom_A_id, atom_B_id):
     gamma_A_B_K = (1/(R[atom_A_id, atom_B_id]**alpha \
                    + eta(atom_A_id, atom_B_id)**(-alpha)))\
                     **(1/alpha)
     return gamma_A_B_K
-
-#store gammaJ and gammaK as matrix, make them ready to use
-GammaJ = np.zeros([Natm, Natm])
-for i in range (0, Natm):
-    for j in range (0, Natm):
-        GammaJ[i,j] = gammaJ (i,j)
-
-GammaK = np.zeros([Natm, Natm])
-for i in range (0, Natm):
-    for j in range (0, Natm):
-        GammaK[i,j] = gammaK (i,j)
+#gammaK (2,1)
 
 #define two electron intergeral (pq|rs)
 def ele_intJ (i,j,a,b):
     ijab = 0
     for atom_A_id in range (0, Natm):
         for atom_B_id in range (0, Natm):
-            ijab += Qmatrix[atom_A_id][i,j] * Qmatrix[atom_B_id][a,b] * GammaJ[atom_A_id, atom_B_id]
+            ijab += Qmatrix[atom_A_id][i,j] * Qmatrix[atom_B_id][a,b] * gammaJ(atom_A_id, atom_B_id)
     return ijab
 def ele_intK (i,a,j,b):
     iajb = 0
     for atom_A_id in range (0, Natm):
         for atom_B_id in range (0, Natm):
-            iajb += Qmatrix[atom_A_id][i,a] * Qmatrix[atom_B_id][j,b] * GammaK[atom_A_id, atom_B_id]
+            iajb += Qmatrix[atom_A_id][i,a] * Qmatrix[atom_B_id][j,b] * gammaK(atom_A_id, atom_B_id)
             #(ia|jb)
     return iajb
 
+#a simple delta function
+def delta (a, b):
+    if a == b:
+        return 1
+    else:
+        return 0
 
 
 #build A matrix
-def build_A ():
-    A = np.zeros ([occupied*virtual, occupied*virtual])
-    print ('shape of A-sTDA is: ', np.shape(A))
-    m = -1
-    for i in range (0, occupied):
-        for a in range (occupied, N_bf):
-            m += 1
-            #for each ia pair, it corresponds to a certain row
-            n = -1
-            for j in range (0, occupied):
-                for b in range (occupied, N_bf):
-                    n += 1
-                #for each jb pair, it corresponds to a certain column
-                    if i==j and a==b:
-                        A[m,n] = (MOe[a]-MOe[i]) + 2*ele_intK(i,a,j,b) - ele_intJ(i,j,a,b)
-                    else:
-                        A[m,n] = 2*ele_intK(i,a,j,b) - ele_intJ(i,j,a,b)
-    return A
-
 start = time.time()
-A = build_A ()
+A = np.zeros ([occupied*virtual, occupied*virtual])
+print ('shape of A-sTDA is: ', np.shape(A))
+m = -1
+for i in range (0, occupied):
+    for a in range (occupied, N_bf):
+        m += 1
+        #print ('m =', m)
+        #for ia pair, it corresponds to a certain row
+        n = -1
+        for j in range (0, occupied):
+            for b in range (occupied, N_bf):
+                n += 1
+                #print ('n =',n)
+            #for each jb pair, it corresponds to a certain column
+                A[m,n] = delta(i,j)*delta(a,b)*(MOe[a]-MOe[i]) + 2*ele_intK(i,a,j,b) - ele_intJ(i,j,a,b)
 end = time.time()
 #print (m,n)
 print ('A_sTDA building time =', round (end - start, 2))
@@ -331,7 +305,6 @@ def check_symmetric(a, tol=1e-8):
     return np.all(np.abs(a-a.T) < tol)
 print ('symmetry of A_sTDA matrix :', check_symmetric(A, tol=1e-8))
 
-
 eigv,eigk = np.linalg.eigh(A)
-print (np.round(eigv[:6]*27.21138624598853,5))
-#first few eigenvalues
+print (eigv[:10]*27.21138624598853)
+#firt 5 eigenvalues

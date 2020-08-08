@@ -48,7 +48,7 @@ def davidson(A, eig): # matrix A and how many eignvalues to solve
 
             V[:,(m+j)] = new_vec
             if norm < tol:
-                sum_norm = sum_norm +1
+                sum_norm = sum_norm + 1
         if sum_norm == k:
                 #print ('All', sum_norm, 'Guess Vectors Converged')
                 break

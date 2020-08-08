@@ -19,8 +19,8 @@ def davidson(A, eig): # matrix A and how many eignvalues to solve
     #print ('Amount of Eigenvalues we want:', eig)
    
     t = np.eye(n,k) # [initial guess vectors]. they should be orthonormal.
-    V = np.zeros((n,20*eig)) #array of zeros. a container to hold guess vectors
-    W = np.zeros((n,20*eig)) #array of zeros. a container to hold transformed guess vectors
+    V = np.zeros((n,n)) #array of zeros. a container to hold guess vectors
+    W = np.zeros((n,n)) #array of zeros. a container to hold transformed guess vectors
     
     
     # Begin iterations
@@ -45,7 +45,7 @@ def davidson(A, eig): # matrix A and how many eignvalues to solve
             residual = np.dot((W[:,:m]- theta[j] * V[:,:m]), s[:,j])
             norm = np.linalg.norm(residual)
             d = np.diag(A)-theta[j]
-            d[d < 1.0e-8 ] = 0.0000001
+            d[d < 1e-8 ] = 1e-8
             new_vec = residual/d
 
             V[:,(m+j)] = new_vec
@@ -54,13 +54,13 @@ def davidson(A, eig): # matrix A and how many eignvalues to solve
         if sum_norm == k:
                 #print ('All', sum_norm, 'Guess Vectors Converged')
                 break
-        print ('sum_norm =', sum_norm)
+        
 
         #Gram-Schimidt block,
         for p in range(0, k):
             for q in range (0, m+p):
                 V[:,m+p] = orthonormal(V[:,q], V[:,m+p])
-        
+    print ('sum_norm =', sum_norm)
     end = time.time()
     Eigenkets = np.dot(V[:,:m], s[:, :eig])
     print ('Davidson4 time (seconds):', round(end-start,4))
