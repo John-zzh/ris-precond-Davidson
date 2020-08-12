@@ -1,9 +1,10 @@
 sTDA Accelerated Davidson Algorithm
 ===================================
 
-This is a Davidson code (Python3) to solve excitation energies in TDA_TDDFT scheme.
-It is based on PySCF pilot codes.
+This is a Davidson code (Python3) ased on PySCF pilot codes, to solve excitation energies in TDA-TDDFT scheme.
+
 You can specify different initial guess and preconditioner to compare their efficiency.
+
 To run this code with command line:
 
 $ python Davidson -c <xyzfile> -m <RHF/RKS/UHF/UKS> -f <xc_functiomal> -b <basis_set>
