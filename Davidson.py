@@ -220,9 +220,9 @@ elif args.functional == 'cam-b3lyp':
     beta= 1.86
     alpha= 0.90
 else:
-    a_x = 0.38
-    beta= 1.86
-    alpha= 0.90
+    a_x = 0.56
+    beta= 8.00
+    alpha= 4.58
 ######################################
 
 
@@ -352,7 +352,11 @@ def build_sTDA_A ():
 
 ########################################################################
 print ('-----------------------------------------------------------------')
-sTDA_A = build_sTDA_A()
+
+if 'sTDA_A' in dir():
+    pass
+else:
+    sTDA_A = build_sTDA_A()
 ## prepare sTDA_A matrix
 td = tddft.TDA(mf)
 vind, hdiag = td.gen_vind(mf)

@@ -4,7 +4,6 @@ import pyscf
 from pyscf import gto, scf, dft, tddft, data
 import argparse
 
-
 parser = argparse.ArgumentParser(description='methods')
 
 parser.add_argument('-c', '--filename',       type=str, default='methanol.xyz', help='input filename')    # coordinates from input file
@@ -18,14 +17,18 @@ args = parser.parse_args()
 
 #print (args.filename)
 
-f = open(args.filename)
-coordinates = f.readlines()
+# f = open(args.filename)
+# coordinates = f.readlines()
+
+print (args.filename)
 
 # pyscf.gto.mole.fromfile('methanol.xyz',  format='xyz')
 
-del coordinates[:2]
 
-###########################################################################
-mol = gto.Mole()
-mol.build(atom = coordinates, basis = args.basis_set, symmetry = True)
-###########################################################################
+
+# del coordinates[:2]
+#
+# ###########################################################################
+# mol = gto.Mole()
+# mol.build(atom = coordinates, basis = args.basis_set, symmetry = True)
+# ###########################################################################

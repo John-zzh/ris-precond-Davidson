@@ -24,4 +24,4 @@ Note:
 
 (2) sTDA A matrix does not support compute on-the-fly yet. And it will build sTDA A matrix anyway.
 
-(3) When calling for RHF, although it still uses as b3lyp as default <xc_functiomal>, it only defines the parameters in sTDA.
+(3) When calling for RHF, it use wb97x's fitting parameters in sTDA.
