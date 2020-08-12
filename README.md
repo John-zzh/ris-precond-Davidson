@@ -11,4 +11,5 @@ $ python Davidson -c <molecule.xyz> -m <RHF/RKS/UHF/UKS> -f <xc_functiomal> -b <
 -g <grid_level> -i <sTDA_A/diag_A> -p <sTDA_A/diag_A> -t <tolerance> -n <No.states>
 
 For example:
+
 $ python Davidson -c methanol.xyz -m RKS -f b3lyp -b def2-SVP -g 9 -i sTDA_A -p sTDA_A -t 1e-5 -n 4
