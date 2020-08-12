@@ -7,5 +7,5 @@ You can specify different initial guess and preconditioner to compare their effi
 
 To run this code with command line:
 
-$ python Davidson -c <xyzfile> -m <RHF/RKS/UHF/UKS> -f <xc_functiomal> -b <basis_set>
+$ python Davidson -c <molecule.xyz> -m <RHF/RKS/UHF/UKS> -f <xc_functiomal> -b <basis_set>
 -g <grid_level> -i <sTDA_A/diag_A> -p <sTDA_A/diag_A> -t <tolerance> -n <No.states>
