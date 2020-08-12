@@ -17,3 +17,11 @@ $ python Davidson -c methanol.xyz -m RKS -f b3lyp -b def2-SVP -g 9 -i sTDA_A -p 
 And if you just run $ python Davidson, default setting is:
 
 -c methanol.xyz -m RHF -f b3lyp -b def2-SVP -g 3 -i diag_A -p diag_A -t 1e-5 -n 4
+
+Note:
+
+(1) sTDA implementation does not support UHF/UKS yet.
+
+(2) sTDA A matrix does not support compute on-the-fly yet. And it will build sTDA A matrix anyway.
+
+(3) When calling for RHF, although it still uses as b3lyp as default <xc_functiomal>, it only defines the parameters in sTDA.
