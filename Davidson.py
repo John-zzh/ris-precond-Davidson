@@ -364,69 +364,7 @@ def sTDA_fly (V):
     return sTDA_V
 ###################################################################################################
 
-################################################################################
-# original Davidson, to solve eigenvalues and eigenkets of sTDA_A matrix
-def Davidson (k):
-    tol = 1e-5 # Convergence tolerance
-    n = occupied*virtual # size of sTDA_A matrix
-    max = 90
-    #################################################
-    # generate initial guess
-    # m is size of subspace
-    m = min([2*k, k+8, occupied*virtual])
-    # a container to hold guess vectors
-    V = np.zeros((n, 30*k))
-    W = np.zeros((n, 30*k))
 
-    # positions of hdiag with lowest values set as 1
-    # hdiag is non-interactiong A matrix
-    sort = hdiag.argsort()
-    for j in range(0,m):
-        V[int(np.argwhere(sort == j)), j] = 1
-
-    W[:, :m] = vind(V[:, :m].T).T
-    #generate initial guess and put in holders V and W
-
-    ###########################################################################################
-    for i in range(0, max):
-        # sub_A is subspace A matrix
-        sub_A = np.dot(V[:,:m].T, W[:,:m])
-        sub_eigenvalue, sub_eigenket = np.linalg.eigh(sub_A)
-        # Diagonalize the subspace Hamiltonian, and sorted.
-        #sub_eigenvalue[:k] are smallest k eigenvalues
-        residual = np.dot(W[:,:m], sub_eigenket[:,:k]) - np.dot(V[:,:m], sub_eigenket[:,:k] * sub_eigenvalue[:k])
-
-        Norms_of_r = np.linalg.norm (residual, axis=0, keepdims = True)
-
-        # largest residaul norm
-        max_norm = np.max(Norms_of_r)
-
-        if max_norm < tol:
-            break
-
-        # index for unconverged residuals
-        index = [i for i in range(np.shape(Norms_of_r)[1]) if Norms_of_r[0,i] > tol]
-
-        ########################################
-        # preconditioning step
-        # only generate new guess from unconverged residuals
-        new_guess = A_diag_preconditioner (residual[:,index], sub_eigenvalue[:k][index])
-
-        # orthonormalize the new guesses against old guesses
-        # and put into V holder
-        V, new_m = Gram_Schdmit_fill_holder (V, m, new_guess)
-        W[:, m:new_m] = sTDA_fly (V[:, m:new_m])
-        m = new_m
-    ###########################################################################################
-
-    full_guess = np.dot(V[:,:m], sub_eigenket[:, :k])
-
-    print ('Iteration steps =', i+1)
-    print ('Final subspace size = ', np.shape(sub_A))
-    # print ('Davidson time:', round(end-start,4))
-
-    return (full_guess)
-###########################################################################################
 
 
 
@@ -452,7 +390,7 @@ def Gram_Schdmit (A):
         bvec = Gram_Schdmit_bvec (B[:, :count], A[:, j])
         norm = np.linalg.norm(bvec)
         if norm > 1e-14:
-            B[:, count]  = bvec/np.linalg.norm(bvec)
+            B[:, count] = bvec/np.linalg.norm(bvec)
             count +=1
     return B[:, :count]
 
@@ -494,6 +432,79 @@ def check_orthonormal (A):
     return c
 ####################################################################
 
+################################################################################
+# original Davidson, to solve eigenvalues and eigenkets of sTDA_A matrix
+def Davidson0 (k):
+    tol = 1e-5 # Convergence tolerance
+    n = occupied*virtual # size of sTDA_A matrix
+    max = 90
+    #################################################
+    # generate initial guess
+    # m is size of subspace
+    m = min([2*k, k+8, occupied*virtual])
+    # a container to hold guess vectors
+    V = np.zeros((n, 30*k))
+    W = np.zeros((n, 30*k))
+
+    # positions of hdiag with lowest values set as 1
+    # hdiag is non-interactiong A matrix
+    sort = hdiag.argsort()
+    for j in range(0,m):
+        V[int(np.argwhere(sort == j)), j] = 1
+
+    W[:, :m] = vind(V[:, :m].T).T
+    #generate initial guess and put in holders V and W
+    ###########################################################################################
+    for i in range(0, max):
+        # sub_A is subspace A matrix
+        sub_A = np.dot(V[:,:m].T, W[:,:m])
+        sub_eigenvalue, sub_eigenket = np.linalg.eigh(sub_A)
+        # Diagonalize the subspace Hamiltonian, and sorted.
+        #sub_eigenvalue[:k] are smallest k eigenvalues
+        residual = np.dot(W[:,:m], sub_eigenket[:,:k]) - np.dot(V[:,:m], sub_eigenket[:,:k] * sub_eigenvalue[:k])
+
+        Norms_of_r = np.linalg.norm (residual, axis=0, keepdims = True)
+
+        # largest residaul norm
+        max_norm = np.max(Norms_of_r)
+
+        if max_norm < tol:
+            break
+
+        # index for unconverged residuals
+        index = [i for i in range(np.shape(Norms_of_r)[1]) if Norms_of_r[0,i] > tol]
+
+        ########################################
+        # preconditioning step
+        # only generate new guess from unconverged residuals
+        new_guess = A_diag_preconditioner (residual[:,index], sub_eigenvalue[:k][index])
+
+        # orthonormalize the new guesses against old guesses
+        # and put into V holder
+        V, new_m = Gram_Schdmit_fill_holder (V, m, new_guess)
+        W[:, m:new_m] = sTDA_fly (V[:, m:new_m])
+        m = new_m
+        #########################################################################################
+
+    full_guess = np.dot(V[:,:m], sub_eigenket[:, :k])
+
+    print ('Iteration steps =', i+1)
+    print ('Final subspace size = ', np.shape(sub_A))
+    # print ('Davidson time:', round(end-start,4))
+
+    return (full_guess)
+###########################################################################################
+
+########################################################################
+def solve_AX_Xla_B (sub_A, eigen_lambda, sub_B):
+    m = np.shape(sub_A)[0]
+    I = np.eye(m)
+    N_vectors = len(eigen_lambda)
+    X = np.zeros((m, N_vectors))
+    for i in range (0, N_vectors):
+        X[:, i] = np.linalg.solve (sub_A - eigen_lambda[i]*I, sub_B[:,i])
+    return X
+#########################################################################
 
 ########################################################################
 # sTDA preconditioner
@@ -514,8 +525,8 @@ def on_the_fly_sTDA_preconditioner (B, eigen_lambda):
     B = B/bnorm
 #     print ('shape of B=', np.shape(B))
     start = time.time()
-    tol = 1     # Convergence tolerance
-    max = 10   # Maximum number of iterations
+    tol = 1e-2     # Convergence tolerance
+    max = 15   # Maximum number of iterations
 
     V = np.zeros((N_rows, (max+1)*N_vectors))
     W = np.zeros((N_rows, (max+1)*N_vectors))
@@ -556,11 +567,14 @@ def on_the_fly_sTDA_preconditioner (B, eigen_lambda):
 
         # solve sub_A * X + X * (-Lambad) = sub_B
         sub_guess = scipy.linalg.solve_sylvester(sub_A, - Lambda, sub_B)
+
+        # sub_guess = solve_AX_Xla_B(sub_A, eigen_lambda, sub_B)
+
         full_guess = np.dot(V[:,:count], sub_guess)
         residual = np.dot(W[:,:count], sub_guess) - full_guess*eigen_lambda - B
-        print ('shape of residual =', np.shape(residual))
+        # print ('shape of residual =', np.shape(residual))
         Norms_of_r = np.linalg.norm (residual, axis=0, keepdims = True)
-        print ('shape of Norms_of_r =', np.shape(Norms_of_r))
+        # print ('shape of Norms_of_r =', np.shape(Norms_of_r))
         if i == 0:
             initial_residual = Norms_of_r
 
@@ -580,13 +594,13 @@ def on_the_fly_sTDA_preconditioner (B, eigen_lambda):
         W[:, count:new_count] = sTDA_fly(V[:, count:new_count])
         count = new_count
 
-        V_orthonormality = check_orthonormal(V[:,:count])
-
-        if V_orthonormality > 1e-5:
-            print ('Warning! Orthonormalily of V breakes down after ',i, ' steps')
-            print ('initial residual norms', initial_residual)
-            print ('current residual norms', Norms_of_r)
-            break
+        # V_orthonormality = check_orthonormal(V[:,:count])
+        # print (m, count)
+        # if V_orthonormality > 1e-5:
+        #     print ('Warning! Orthonormalily of V breakes down after ',i, ' steps')
+        #     print ('initial residual norms', initial_residual)
+        #     print ('current residual norms', Norms_of_r)
+        #     break
 
 #         # an awful backup plan in case of V_orthonormality > 1e-5
 #           # orthonormalize all existing guess_vectors
@@ -598,7 +612,7 @@ def on_the_fly_sTDA_preconditioner (B, eigen_lambda):
         print ('initial residual norms', initial_residual)
         print ('current residual norms', Norms_of_r)
         print ('max_norm = ', max_norm)
-        print ('orthonormality of V', V_orthonormality)
+        # print ('orthonormality of V', V_orthonormality)
         print ('shape of residuals = ',np.shape(residual))
     elif max_norm < tol:
         pass
@@ -622,6 +636,7 @@ vind, hdiag = td.gen_vind(mf)
 #############################################
 # initiate framework of Davidson's Algorithms
 ###############################################################################
+n = occupied*virtual
 def A_diag_initial_guess (k):
     # m is size of subspace A matrix, also is the amount of initial guesses
     m = min([2*k, k+8, occupied*virtual])
@@ -638,7 +653,6 @@ def A_diag_initial_guess (k):
     return (m, V, W)
 
 def sTDA_initial_guess (k):
-    n = occupied*virtual
 
     m = min([2*k, k+8, n])
 
@@ -656,7 +670,6 @@ def sTDA_initial_guess (k):
 
 #####################################################
 def A_diag_preconditioner (residual, sub_eigenvalue):
-    n = occupied*virtual
     # preconditioners for each corresponding residual
     k = np.shape(residual)[1]
     # force all values not in domain (-t, t)
@@ -674,7 +687,7 @@ def A_diag_preconditioner (residual, sub_eigenvalue):
 # original simple Davidson, just to solve eigenvalues and eigenkets of sTDA_A matrix
 def Davidson0 (k):
     tol = 1e-5 # Convergence tolerance
-    n = occupied*virtual # size of sTDA_A matrix
+
     max = 30
     #################################################
     # generate initial guess
@@ -721,6 +734,7 @@ def Davidson0 (k):
     # print ('Iteration steps =', i+1)
     # print ('Final subspace size = ', np.shape(sub_A))
     # print ('Davidson time:', round(end-start,4))
+    print ('sTDA as initial guess done!')
     return (full_guess)
 ###########################################################################################
 
@@ -788,6 +802,7 @@ def Davidson (k, tol, i, p):
         # and put into V holder
         V, new_m = Gram_Schdmit_fill_holder (V, m, new_guess)
         W[:, m:new_m] = vind (V[:, m:new_m].T).T
+        print ('preconditioned guesses:', new_m-m)
         m = new_m
     ###########################################################################################
 
@@ -809,7 +824,7 @@ print ('Number of excited states =', args.nstates)
 start = time.time()
 Excitation_energies, kets = Davidson (args.nstates, args.tolerance, args.initial_guess, args.preconditioner)
 end = time.time()
-print ('sTDA_Davidson time:', round(end-start,4))
+print ('In-house Davidson time:', round(end-start,4))
 print ('Excited State energies (eV) =')
 print (Excitation_energies)
 
@@ -819,6 +834,8 @@ print (Excitation_energies)
 print ('-----------------------------------------------------------------')
 print ('|-----------------    PySCF TDA-TDDFT codes   ------------------|')
 td.nstates = args.nstates
+td.conv_tol = 1e-10
+td.verbose = 5
 start = time.time()
 td.kernel()
 end = time.time()
