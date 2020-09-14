@@ -399,26 +399,27 @@ def Gram_Schdmit (A):
 def Gram_Schdmit_fill_holder (V, count, vecs):
     # V is a vectors holder
     # count is the amount of vectors that already sit in the holder
-    vecs = Gram_Schdmit(vecs)
+    # vecs = Gram_Schdmit(vecs)
     nvec = np.shape(vecs)[1]
     # amount of new vectors intended to fill in the V
 
-    i = count
-    # i will be final amount of vectors in V
+    # count will be final amount of vectors in V
     for j in range (0, nvec):
         vec = vecs[:, j]
-        vec = Gram_Schdmit_bvec(V[:, :i], vec)
-        vec = Gram_Schdmit_bvec(V[:, :count], vec)
+
+        #bug!!!!!!!!
+        vec = Gram_Schdmit_bvec(V[:, :count], vec)   #single orthonormalize
+        vec = Gram_Schdmit_bvec(V[:, :count], vec) #double orthonormalize
 #         print ('shape of V[:, i:]', np.shape(V[:, :i]))
         norm = np.linalg.norm(vec)
 #         print ('norm =', norm)
         if  norm > 1e-14:
             vec = vec/norm
-            V[:, i] = vec
-            i += 1
-#             print ('i =', i)
+            V[:, count] = vec
+            count += 1
+#
 #             print ('count =', count)
-    new_count = i
+    new_count = count
 #     print ('norms of V =', np.linalg.norm(V, axis=0, keepdims = True))
 #     print ('norms of W =', np.linalg.norm(W, axis=0, keepdims = True))
     return V, new_count
@@ -440,6 +441,9 @@ def Davidson0 (k):
     tol = 1e-5 # Convergence tolerance
     n = occupied*virtual # size of sTDA_A matrix
     max = 90
+
+
+
     #################################################
     # generate initial guess
     # m is size of subspace
@@ -456,6 +460,8 @@ def Davidson0 (k):
 
     W[:, :m] = vind(V[:, :m].T).T
     #generate initial guess and put in holders V and W
+
+
     ###########################################################################################
     for i in range(0, max):
         # sub_A is subspace A matrix
@@ -554,15 +560,25 @@ def on_the_fly_sTDA_preconditioner (B, eigen_lambda):
 
     # generate initial guess
     init = B/D
-    # V, new_count = Gram_Schdmit_fill_holder (V, count, init)
-    # W[:, count:new_count] = sTDA_fly(V[:, count:new_count])
-    # count = new_count
-
+    V, new_count = Gram_Schdmit_fill_holder (V, count, init)
+    W[:, count:new_count] = sTDA_fly(V[:, count:new_count])
+    count = new_count
     init = Gram_Schdmit(init)
     count = np.shape(init)[1]
     V[:, :count] = init
     W[:, :count] = sTDA_fly(V[:, :count])
 
+
+
+    #########################################
+    # init = Gram_Schdmit(init)
+    # residual = sTDA_fly(init) - init*eigen_lambda - B
+    # Norms_of_r = np.linalg.norm (residual, axis=0, keepdims = True)
+    # index = [i for i in range(np.shape(Norms_of_r)[1]) if Norms_of_r[0,i] > tol]
+    # new_guess = residual[:,index]/D[:,index]
+    #
+    # V, count = Gram_Schdmit_fill_holder (V, 0, new_guess)
+    # W[:, :count] = sTDA_fly(V[:, :count])
     ####################################################################################
     for i in range (0, max):
 #         print ('Iteration =', i)
@@ -574,9 +590,9 @@ def on_the_fly_sTDA_preconditioner (B, eigen_lambda):
         m = np.shape(sub_A)[0]
 
         # solve sub_A * X + X * (-Lambad) = sub_B
-        sub_guess = scipy.linalg.solve_sylvester(sub_A, - Lambda, sub_B)
+        # sub_guess = scipy.linalg.solve_sylvester(sub_A, - Lambda, sub_B)
 
-        # sub_guess = solve_AX_Xla_B(sub_A, eigen_lambda, sub_B)
+        sub_guess = solve_AX_Xla_B(sub_A, eigen_lambda, sub_B)
 
         full_guess = np.dot(V[:,:count], sub_guess)
         residual = np.dot(W[:,:count], sub_guess) - full_guess*eigen_lambda - B
@@ -596,7 +612,11 @@ def on_the_fly_sTDA_preconditioner (B, eigen_lambda):
 
         # preconditioning step
         # only generate new guess from unconverged residuals
-        new_guess = residual[:,index]/D[:,index]
+
+        ## bug!!!!!!!
+        new_guess = (residual[:,index] + B[:,index])/D[:,index]
+        # new_guess = residual[:,index]/D[:,index]
+
 
         V, new_count = Gram_Schdmit_fill_holder (V, count, new_guess)
         W[:, count:new_count] = sTDA_fly(V[:, count:new_count])
@@ -625,7 +645,7 @@ def on_the_fly_sTDA_preconditioner (B, eigen_lambda):
         print ('orthonormality of V', check_orthonormal(V[:,:count]))
         print ('shape of residuals = ',np.shape(residual))
     elif max_norm < tol:
-        print ('sTDA preconditioning done after ', i, 'steps; ', precondition_time, 'seconds')
+        print ('sTDA preconditioning done after ', i, 'steps; ', round(precondition_time, 3), 'seconds')
         pass
 #         print ('======================Converged!=================')
 
@@ -697,7 +717,7 @@ def A_diag_preconditioner (residual, sub_eigenvalue):
 ################################################################################
 # original simple Davidson, just to solve eigenvalues and eigenkets of sTDA_A matrix
 def Davidson0 (k):
-    tol = 1e-5 # Convergence tolerance
+    tol = 1e-2 # Convergence tolerance
 
     max = 30
     #################################################
@@ -851,7 +871,7 @@ print (Excitation_energies)
 # print ('|-----------------    PySCF TDA-TDDFT codes   ------------------|')
 # td.nstates = args.nstates
 # td.conv_tol = 1e-10
-# td.verbose = 5
+# # td.verbose = 5
 # start = time.time()
 # td.kernel()
 # end = time.time()
