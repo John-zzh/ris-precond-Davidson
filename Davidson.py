@@ -505,13 +505,21 @@ def Davidson0 (k):
 
 ########################################################################
 def solve_AX_Xla_B (sub_A, eigen_lambda, sub_B):
-    m = np.shape(sub_A)[0]
-    I = np.eye(m)
+    # m = np.shape(sub_A)[0]
+    # I = np.eye(m)
+    # N_vectors = len(eigen_lambda)
+    # X = np.zeros((m, N_vectors))
+    # for i in range (0, N_vectors):
+    #     X[:, i] = np.linalg.solve (sub_A - eigen_lambda[i]*I, sub_B[:,i])
+    # return X
     N_vectors = len(eigen_lambda)
-    X = np.zeros((m, N_vectors))
-    for i in range (0, N_vectors):
-        X[:, i] = np.linalg.solve (sub_A - eigen_lambda[i]*I, sub_B[:,i])
-    return X
+    a, u = np.linalg.eigh(sub_A)
+    ub = np.dot(u.T, sub_B)
+    ux = np.zeros_like(sub_B)
+    for k in range (N_vectors):
+        ux[:, k] = ub[:, k]/(a - eigen_lambda[k])
+    sub_guess = np.dot(u, ux)
+    return sub_guess
 #########################################################################
 
 ########################################################################
