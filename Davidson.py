@@ -384,9 +384,11 @@ def Gram_Schdmit (A):
     A = A/np.linalg.norm(A, axis=0, keepdims = True)
 
     B = np.zeros((N_rows,N_vectors))
-    B[:,0] = A[:,0]
-    count = 1
-    for j in range (1, N_vectors):
+    # B[:,0] = A[:,0]
+    count = 0
+
+    ############bug!!!!!!
+    for j in range (0, N_vectors):
         bvec = Gram_Schdmit_bvec (B[:, :count], A[:, j])
         norm = np.linalg.norm(bvec)
         if norm > 1e-14:
@@ -512,7 +514,7 @@ def on_the_fly_sTDA_preconditioner (B, eigen_lambda):
     # (sTDA_A - eigen_lambda*I)^-1 B = X
     # AX - X\lambda = B
     # columns in B are residuals (in Davidson's loop) to be preconditioned,
-
+    precondition_start = time.time()
     Lambda = np.diag(eigen_lambda)
     #     print ('shape of Lambda',np.shape(Lambda))
     N_rows = np.shape(B)[0]
@@ -525,13 +527,13 @@ def on_the_fly_sTDA_preconditioner (B, eigen_lambda):
     B = B/bnorm
 #     print ('shape of B=', np.shape(B))
     start = time.time()
-    tol = 1e-2     # Convergence tolerance
-    max = 15   # Maximum number of iterations
+    tol = 1e-2    # Convergence tolerance
+    max = 50   # Maximum number of iterations
 
     V = np.zeros((N_rows, (max+1)*N_vectors))
     W = np.zeros((N_rows, (max+1)*N_vectors))
     count = 0
-#     print ('norms of V =', np.linalg.norm(V, axis=0, keepdims = True))
+
     # now V and W are empty holders, 0 vectors
     # W = sTDA_fly(V)
     # count is the amount of vectors that already sit in the holder
@@ -541,19 +543,25 @@ def on_the_fly_sTDA_preconditioner (B, eigen_lambda):
     #initial guess: (diag(A) - \lambda)^-1 B.
     diag = delta_diag_A.flatten()
 #     # delta_diag_A.flatten() is (\spsilon_a-\spsilon_i)
+
     # D is preconditioner for each state
-    zz = 1e-8
+    t = 1e-10
     D = np.zeros((N_rows, N_vectors))
     for i in range (0, N_vectors):
         D[:,i] = diag - eigen_lambda[i]
-        D[:,i][(D[:,i]<zz)&(D[:,i]>=0)] = zz
-        D[:,i][(D[:,i]>-zz)&(D[:,i]<0)] = -zz
+        D[:,i][(D[:,i] < t)&(D[:,i] >= 0)] = t
+        D[:,i][(D[:,i] > -t)&(D[:,i] < 0)] = -t
 
     # generate initial guess
     init = B/D
-    V, new_count = Gram_Schdmit_fill_holder (V, count, init)
-    W[:, count:new_count] = sTDA_fly(V[:, count:new_count])
-    count = new_count
+    # V, new_count = Gram_Schdmit_fill_holder (V, count, init)
+    # W[:, count:new_count] = sTDA_fly(V[:, count:new_count])
+    # count = new_count
+
+    init = Gram_Schdmit(init)
+    count = np.shape(init)[1]
+    V[:, :count] = init
+    W[:, :count] = sTDA_fly(V[:, :count])
 
     ####################################################################################
     for i in range (0, max):
@@ -606,19 +614,22 @@ def on_the_fly_sTDA_preconditioner (B, eigen_lambda):
 #           # orthonormalize all existing guess_vectors
 #         if i%10 == 0 and i!= 0:
 #             V[:,:count] = Gram_Schdmit(V[:,:count])
-
+    precondition_end = time.time()
+    precondition_time = precondition_end - precondition_start
     if i == (max -1):
         print ('============sTDA preconditioner Failed due to iteration limmit==============')
+        print ('sTDA preconditioning failed after ', i, 'steps; ', precondition_time, 'seconds')
         print ('initial residual norms', initial_residual)
         print ('current residual norms', Norms_of_r)
         print ('max_norm = ', max_norm)
-        # print ('orthonormality of V', V_orthonormality)
+        print ('orthonormality of V', check_orthonormal(V[:,:count]))
         print ('shape of residuals = ',np.shape(residual))
     elif max_norm < tol:
+        print ('sTDA preconditioning done after ', i, 'steps; ', precondition_time, 'seconds')
         pass
 #         print ('======================Converged!=================')
 
-    end = time.time()
+
 
     return (full_guess*bnorm)
 ###########################################################################################
@@ -771,8 +782,11 @@ def Davidson (k, tol, i, p):
     #generate initial guess and put in holders V and W
     # m is size of subspace
 
+    # time cost for preconditioning
+    Pcost = 0
     ###########################################################################################
     for i in range(0, max):
+        print ('Davidson Step', i)
         # sub_A is subspace A matrix
         sub_A = np.dot(V[:,:m].T, W[:,:m])
 
@@ -796,8 +810,10 @@ def Davidson (k, tol, i, p):
         ########################################
         # preconditioning step
         # only generate new guess from unconverged residuals
+        sTDAP_start = time.time()
         new_guess = precondition (residual[:,index], sub_eigenvalue[:k][index])
-
+        sTDAP_end = time.time()
+        Pcost += sTDAP_end - sTDAP_start
         # orthonormalize the new guesses against old guesses
         # and put into V holder
         V, new_m = Gram_Schdmit_fill_holder (V, m, new_guess)
@@ -810,7 +826,7 @@ def Davidson (k, tol, i, p):
 
     print ('Iteration steps =', i+1)
     print ('Final subspace size = ', np.shape(sub_A))
-    # print ('Davidson time:', round(end-start,4))
+    print ('Preconditioning time:', round(Pcost,4))
 
     return (sub_eigenvalue[:k]*27.21138624598853, full_guess)
 ################################################################################
@@ -831,13 +847,13 @@ print (Excitation_energies)
 
 
 
-print ('-----------------------------------------------------------------')
-print ('|-----------------    PySCF TDA-TDDFT codes   ------------------|')
-td.nstates = args.nstates
-td.conv_tol = 1e-10
-td.verbose = 5
-start = time.time()
-td.kernel()
-end = time.time()
-print ('Built-in Davidson time:', round(end-start,4))
-print ('|---------------------------------------------------------------|')
+# print ('-----------------------------------------------------------------')
+# print ('|-----------------    PySCF TDA-TDDFT codes   ------------------|')
+# td.nstates = args.nstates
+# td.conv_tol = 1e-10
+# td.verbose = 5
+# start = time.time()
+# td.kernel()
+# end = time.time()
+# print ('Built-in Davidson time:', round(end-start,4))
+# print ('|---------------------------------------------------------------|')
