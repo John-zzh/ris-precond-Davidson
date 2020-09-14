@@ -563,10 +563,12 @@ def on_the_fly_sTDA_preconditioner (B, eigen_lambda):
     V, new_count = Gram_Schdmit_fill_holder (V, count, init)
     W[:, count:new_count] = sTDA_fly(V[:, count:new_count])
     count = new_count
-    init = Gram_Schdmit(init)
-    count = np.shape(init)[1]
-    V[:, :count] = init
-    W[:, :count] = sTDA_fly(V[:, :count])
+
+
+    # init = Gram_Schdmit(init)
+    # count = np.shape(init)[1]
+    # V[:, :count] = init
+    # W[:, :count] = sTDA_fly(V[:, :count])
 
 
 
@@ -614,8 +616,8 @@ def on_the_fly_sTDA_preconditioner (B, eigen_lambda):
         # only generate new guess from unconverged residuals
 
         ## bug!!!!!!!
-        new_guess = (residual[:,index] + B[:,index])/D[:,index]
-        # new_guess = residual[:,index]/D[:,index]
+        # new_guess = (residual[:,index] + B[:,index])/D[:,index]
+        new_guess = residual[:,index]/D[:,index]
 
 
         V, new_count = Gram_Schdmit_fill_holder (V, count, new_guess)
@@ -867,13 +869,13 @@ print (Excitation_energies)
 
 
 
-# print ('-----------------------------------------------------------------')
-# print ('|-----------------    PySCF TDA-TDDFT codes   ------------------|')
-# td.nstates = args.nstates
-# td.conv_tol = 1e-10
-# # td.verbose = 5
-# start = time.time()
-# td.kernel()
-# end = time.time()
-# print ('Built-in Davidson time:', round(end-start,4))
-# print ('|---------------------------------------------------------------|')
+print ('-----------------------------------------------------------------')
+print ('|-----------------    PySCF TDA-TDDFT codes   ------------------|')
+td.nstates = args.nstates
+td.conv_tol = 1e-10
+# td.verbose = 5
+start = time.time()
+td.kernel()
+end = time.time()
+print ('Built-in Davidson time:', round(end-start,4))
+print ('|---------------------------------------------------------------|')
