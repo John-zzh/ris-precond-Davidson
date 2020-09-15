@@ -19,6 +19,7 @@ parser.add_argument('-i', '--initial_guess',  type=str, default='sTDA', help='in
 parser.add_argument('-p', '--preconditioner', type=str, default='sTDA', help='preconditioner: diag_A or sTDA_A')
 parser.add_argument('-t', '--tolerance',      type=float, default= 1e-5, help='residual norm convergence threshold')
 parser.add_argument('-n', '--nstates',        type=int, default= 4 , help='number of excited states')
+parser.add_argument('-C', '--compare',        type=bool, default = False , help='whether to compare with PySCF TDA-TDDFT')
 args = parser.parse_args()
 ################################################
 # read xyz file and delete its first two lines
@@ -553,7 +554,7 @@ def on_the_fly_sTDA_preconditioner (B, eigen_lambda, current_dic):
     N_rows = np.shape(B)[0]
     B = B.reshape(N_rows, -1)
     N_vectors = np.shape(B)[1]
-    current_dic['amount of residual to be preconditioned'] = N_vectors
+    current_dic['residuals'] = N_vectors
 #     print ('n_residuals: ', N_vectors)
     #number of vectors to be preconditioned
     bnorm = np.linalg.norm(B, axis=0, keepdims = True)
@@ -629,10 +630,10 @@ def on_the_fly_sTDA_preconditioner (B, eigen_lambda, current_dic):
         full_guess = np.dot(V[:,:count], sub_guess)
         residual = np.dot(W[:,:count], sub_guess) - full_guess*eigen_lambda - B
         # print ('shape of residual =', np.shape(residual))
-        Norms_of_r = np.linalg.norm (residual, axis=0, keepdims = True)
+        Norms_of_r = np.linalg.norm (residual, axis=0, keepdims = False)
         # print ('shape of Norms_of_r =', np.shape(Norms_of_r))
-        if i == 0:
-            initial_residual = Norms_of_r
+        # if i == 0:
+        #     initial_residual = Norms_of_r
 
         max_norm = np.max(Norms_of_r)
 
@@ -640,16 +641,17 @@ def on_the_fly_sTDA_preconditioner (B, eigen_lambda, current_dic):
             break
 
         # index for unconverged residuals
-        index = [i for i in range(np.shape(Norms_of_r)[1]) if Norms_of_r[0,i] > tol]
+        index = [i for i in range(len(Norms_of_r)) if Norms_of_r[i] > tol]
 
 
         current_dic['step' + str(i)] = {}
 
-
-        current_dic['step' + str(i)]['r_norms'] = str(Norms_of_r)
-
-        current_dic['step' + str(i)]['index of unconverged residual'] = str(index)
-        current_dic['step' + str(i)]['amount of unconverged residual'] = len(index)
+        # print ('type of Norms_of_r', type(Norms_of_r))
+        # print ('shape of Norms_of_r', np.shape(Norms_of_r))
+        # print ('type of index', type(index))
+        current_dic['step' + str(i)]['r_norms'] = Norms_of_r.tolist()
+        # current_dic['step' + str(i)]['index_unconverge'] = list(index)
+        current_dic['step' + str(i)]['unconverged_r'] = len(index)
 
 
 
@@ -666,11 +668,8 @@ def on_the_fly_sTDA_preconditioner (B, eigen_lambda, current_dic):
         count = new_count
 
         V_orthonormality = check_orthonormal(V[:,:count])
-
-
-
         current_dic['step' + str(i)]['V_orthonormality'] = float(V_orthonormality)
-        # data_dic['V_orthonormality in iteration ' + str(i)] = str(V_orthonormality)
+
         # print (m, count)
         # if V_orthonormality > 1e-5:
         #     print ('Warning! Orthonormalily of V breakes down after ',i, ' steps')
@@ -858,8 +857,8 @@ def Davidson (k, tol, i, p):
         ## dictionary to collect data
         # Davidson_dic['Davidson iteration ' + str(ii)] = {}
 
-        Davidson_dic['Davidson iteration ' + str(ii)] = {}
-        current_dic = Davidson_dic['Davidson iteration ' + str(ii)]
+        Davidson_dic['iteration ' + str(ii)] = {}
+        current_dic = Davidson_dic['iteration ' + str(ii)]
         ##############################
 
 
@@ -889,6 +888,7 @@ def Davidson (k, tol, i, p):
         # only generate new guess from unconverged residuals
         sTDAP_start = time.time()
         new_guess, current_dic = precondition (residual[:,index], sub_eigenvalue[:k][index], current_dic)
+        Davidson_dic['iteration ' + str(ii)] = current_dic
         sTDAP_end = time.time()
         Pcost += sTDAP_end - sTDAP_start
         # orthonormalize the new guesses against old guesses
@@ -897,7 +897,7 @@ def Davidson (k, tol, i, p):
         W[:, m:new_m] = vind (V[:, m:new_m].T).T
         print ('preconditioned guesses:', new_m-m)
         m = new_m
-        Davidson_dic['Davidson iteration ' + str(ii)] = current_dic
+
     ###########################################################################################
 
     full_guess = np.dot(V[:,:m], sub_eigenket[:, :k])
@@ -927,18 +927,17 @@ print ('Excited State energies (eV) =')
 print (Excitation_energies)
 
 
-
-
-print ('-----------------------------------------------------------------')
-print ('|-----------------    PySCF TDA-TDDFT codes   ------------------|')
-td.nstates = args.nstates
-td.conv_tol = 1e-10
-td.verbose = 5
-start = time.time()
-td.kernel()
-end = time.time()
-print ('Built-in Davidson time:', round(end-start,4))
-print ('|---------------------------------------------------------------|')
+if args.compare == True:
+    print ('-----------------------------------------------------------------')
+    print ('|-----------------    PySCF TDA-TDDFT codes   ------------------|')
+    td.nstates = args.nstates
+    td.conv_tol = 1e-10
+    td.verbose = 5
+    start = time.time()
+    td.kernel()
+    end = time.time()
+    print ('Built-in Davidson time:', round(end-start,4))
+    print ('|---------------------------------------------------------------|')
 
 
 
