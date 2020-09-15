@@ -4,6 +4,9 @@ import pyscf
 from pyscf import gto, scf, dft, tddft, data
 import argparse
 import scipy
+import os
+import ruamel
+from ruamel import yaml
 
 parser = argparse.ArgumentParser(description='Davidson')
 
@@ -79,7 +82,7 @@ R = pyscf.gto.mole.inter_distance(mol, coords=None)
 # unit == ’Bohr’, Its value is 5.29177210903(80)×10^(−11) m
 ########################################################################
 
-
+total_start = time.time()
 ##################################################################################################
 # create a function for dictionary of chemical hardness, by mappig two iteratable subject, list
 # list of elements
@@ -202,6 +205,12 @@ R = pyscf.gto.mole.inter_distance(mol, coords=None)
 #Inter-particle distance array
 # unit == ’Bohr’, Its value is 5.29177210903(80)×10^(−11) m
 start = time.time()
+
+###############################
+# extract vind() function
+td = tddft.TDA(mf)
+vind, hdiag = td.gen_vind(mf)
+###############################
 
 
 ########################################################################
@@ -345,10 +354,13 @@ def ijab_fly (V):
     ijab_V = np.einsum('Aij, jAam -> iam', q_tensor_ij, Aab_V).reshape(occupied*virtual, -1)
     return ijab_V
 
-delta_diag_A = np.zeros((occupied, virtual))
-for i in range (0, occupied):
-    for a in range (0, virtual):
-        delta_diag_A[i,a] = (MOe[occupied+a] - MOe[i])
+# delta_diag_A = np.zeros((occupied, virtual))
+# for i in range (0, occupied):
+#     for a in range (0, virtual):
+#         delta_diag_A[i,a] = (MOe[occupied+a] - MOe[i])
+delta_diag_A = hdiag.reshape(occupied, virtual)
+
+
 
 def delta_fly (V):
     V = V.reshape(occupied, virtual, -1)
@@ -442,8 +454,6 @@ def Davidson0 (k):
     n = occupied*virtual # size of sTDA_A matrix
     max = 90
 
-
-
     #################################################
     # generate initial guess
     # m is size of subspace
@@ -473,7 +483,7 @@ def Davidson0 (k):
 
         Norms_of_r = np.linalg.norm (residual, axis=0, keepdims = True)
 
-        # largest residaul norm
+        # largest residual norm
         max_norm = np.max(Norms_of_r)
 
         if max_norm < tol:
@@ -485,7 +495,8 @@ def Davidson0 (k):
         ########################################
         # preconditioning step
         # only generate new guess from unconverged residuals
-        new_guess = A_diag_preconditioner (residual[:,index], sub_eigenvalue[:k][index])
+        Y = None
+        new_guess = A_diag_preconditioner (residual[:,index], sub_eigenvalue[:k][index], Y=None)
 
         # orthonormalize the new guesses against old guesses
         # and put into V holder
@@ -522,9 +533,17 @@ def solve_AX_Xla_B (sub_A, eigen_lambda, sub_B):
     return sub_guess
 #########################################################################
 
+
+
+
+
+
 ########################################################################
 # sTDA preconditioner
-def on_the_fly_sTDA_preconditioner (B, eigen_lambda):
+def on_the_fly_sTDA_preconditioner (B, eigen_lambda, current_dic):
+
+
+
     # (sTDA_A - eigen_lambda*I)^-1 B = X
     # AX - X\lambda = B
     # columns in B are residuals (in Davidson's loop) to be preconditioned,
@@ -534,6 +553,7 @@ def on_the_fly_sTDA_preconditioner (B, eigen_lambda):
     N_rows = np.shape(B)[0]
     B = B.reshape(N_rows, -1)
     N_vectors = np.shape(B)[1]
+    current_dic['amount of residual to be preconditioned'] = N_vectors
 #     print ('n_residuals: ', N_vectors)
     #number of vectors to be preconditioned
     bnorm = np.linalg.norm(B, axis=0, keepdims = True)
@@ -555,6 +575,7 @@ def on_the_fly_sTDA_preconditioner (B, eigen_lambda):
 
     ###########################################
     #initial guess: (diag(A) - \lambda)^-1 B.
+
     diag = delta_diag_A.flatten()
 #     # delta_diag_A.flatten() is (\spsilon_a-\spsilon_i)
 
@@ -590,6 +611,7 @@ def on_the_fly_sTDA_preconditioner (B, eigen_lambda):
     # V, count = Gram_Schdmit_fill_holder (V, 0, new_guess)
     # W[:, :count] = sTDA_fly(V[:, :count])
     ####################################################################################
+
     for i in range (0, max):
 #         print ('Iteration =', i)
         sub_B = np.dot(V[:,:count].T, B)
@@ -620,6 +642,17 @@ def on_the_fly_sTDA_preconditioner (B, eigen_lambda):
         # index for unconverged residuals
         index = [i for i in range(np.shape(Norms_of_r)[1]) if Norms_of_r[0,i] > tol]
 
+
+        current_dic['step' + str(i)] = {}
+
+
+        current_dic['step' + str(i)]['r_norms'] = str(Norms_of_r)
+
+        current_dic['step' + str(i)]['index of unconverged residual'] = str(index)
+        current_dic['step' + str(i)]['amount of unconverged residual'] = len(index)
+
+
+
         # preconditioning step
         # only generate new guess from unconverged residuals
 
@@ -632,7 +665,12 @@ def on_the_fly_sTDA_preconditioner (B, eigen_lambda):
         W[:, count:new_count] = sTDA_fly(V[:, count:new_count])
         count = new_count
 
-        # V_orthonormality = check_orthonormal(V[:,:count])
+        V_orthonormality = check_orthonormal(V[:,:count])
+
+
+
+        current_dic['step' + str(i)]['V_orthonormality'] = float(V_orthonormality)
+        # data_dic['V_orthonormality in iteration ' + str(i)] = str(V_orthonormality)
         # print (m, count)
         # if V_orthonormality > 1e-5:
         #     print ('Warning! Orthonormalily of V breakes down after ',i, ' steps')
@@ -644,6 +682,7 @@ def on_the_fly_sTDA_preconditioner (B, eigen_lambda):
 #           # orthonormalize all existing guess_vectors
 #         if i%10 == 0 and i!= 0:
 #             V[:,:count] = Gram_Schdmit(V[:,:count])
+    # print (data_dic)
     precondition_end = time.time()
     precondition_time = precondition_end - precondition_start
     if i == (max -1):
@@ -661,16 +700,12 @@ def on_the_fly_sTDA_preconditioner (B, eigen_lambda):
 
 
 
-    return (full_guess*bnorm)
+    return (full_guess*bnorm, current_dic)
 ###########################################################################################
 
 
 
-###############################
-# extract vind() function
-td = tddft.TDA(mf)
-vind, hdiag = td.gen_vind(mf)
-###############################
+
 
 
 
@@ -710,7 +745,7 @@ def sTDA_initial_guess (k):
 ######################################################################################
 
 #####################################################
-def A_diag_preconditioner (residual, sub_eigenvalue):
+def A_diag_preconditioner (residual, sub_eigenvalue, current_dic):
     # preconditioners for each corresponding residual
     k = np.shape(residual)[1]
     # force all values not in domain (-t, t)
@@ -721,7 +756,7 @@ def A_diag_preconditioner (residual, sub_eigenvalue):
         D[:,i][(D[:,i]<t)&(D[:,i]>=0)] = t
         D[:,i][(D[:,i]>-t)&(D[:,i]<0)] = -t
     new_guess = residual/D
-    return new_guess
+    return new_guess, current_dic
 #######################################################
 
 ################################################################################
@@ -755,7 +790,7 @@ def Davidson0 (k):
         residual = np.dot(W[:,:m], sub_eigenket[:,:k]) - np.dot(V[:,:m], sub_eigenket[:,:k] * sub_eigenvalue[:k])
 #         print ('shape of residual', np.shape(residual))
         Norms_of_r = np.linalg.norm (residual, axis=0, keepdims = True)
-        # largest residaul norm
+        # largest residual norm
         max_norm = np.max(Norms_of_r)
         if max_norm < tol:
             break
@@ -764,7 +799,8 @@ def Davidson0 (k):
         ########################################
         # preconditioning step
         # only generate new guess from unconverged residuals
-        new_guess = A_diag_preconditioner (residual[:,index], sub_eigenvalue[:k][index])
+        Y = None
+        new_guess, Y = A_diag_preconditioner (residual[:,index], sub_eigenvalue[:k][index], Y)
         # orthonormalize the new guesses against old guesses
         # and put into V holder
         V, new_m = Gram_Schdmit_fill_holder (V, m, new_guess)
@@ -779,7 +815,7 @@ def Davidson0 (k):
     return (full_guess)
 ###########################################################################################
 
-
+Davidson_dic = {}
 ################################################################################
 # Real Davidson frame, where we can choose different initial guess and preconditioner
 def Davidson (k, tol, i, p):
@@ -815,8 +851,19 @@ def Davidson (k, tol, i, p):
     # time cost for preconditioning
     Pcost = 0
     ###########################################################################################
-    for i in range(0, max):
-        print ('Davidson Step', i)
+    for ii in range(0, max):
+        print ('Davidson Step', ii)
+
+        ##############################
+        ## dictionary to collect data
+        # Davidson_dic['Davidson iteration ' + str(ii)] = {}
+
+        Davidson_dic['Davidson iteration ' + str(ii)] = {}
+        current_dic = Davidson_dic['Davidson iteration ' + str(ii)]
+        ##############################
+
+
+
         # sub_A is subspace A matrix
         sub_A = np.dot(V[:,:m].T, W[:,:m])
 
@@ -828,7 +875,7 @@ def Davidson (k, tol, i, p):
 
         Norms_of_r = np.linalg.norm (residual, axis=0, keepdims = True)
 
-        # largest residaul norm
+        # largest residual norm
         max_norm = np.max(Norms_of_r)
 
         if max_norm < tol:
@@ -841,7 +888,7 @@ def Davidson (k, tol, i, p):
         # preconditioning step
         # only generate new guess from unconverged residuals
         sTDAP_start = time.time()
-        new_guess = precondition (residual[:,index], sub_eigenvalue[:k][index])
+        new_guess, current_dic = precondition (residual[:,index], sub_eigenvalue[:k][index], current_dic)
         sTDAP_end = time.time()
         Pcost += sTDAP_end - sTDAP_start
         # orthonormalize the new guesses against old guesses
@@ -850,11 +897,12 @@ def Davidson (k, tol, i, p):
         W[:, m:new_m] = vind (V[:, m:new_m].T).T
         print ('preconditioned guesses:', new_m-m)
         m = new_m
+        Davidson_dic['Davidson iteration ' + str(ii)] = current_dic
     ###########################################################################################
 
     full_guess = np.dot(V[:,:m], sub_eigenket[:, :k])
 
-    print ('Iteration steps =', i+1)
+    print ('Iteration steps =', ii+1)
     print ('Final subspace size = ', np.shape(sub_A))
     print ('Preconditioning time:', round(Pcost,4))
 
@@ -863,14 +911,18 @@ def Davidson (k, tol, i, p):
 
 
 
+
+
+
+
 print ('-------------------------------------------------------------------')
-print ('|------------------   In-house Davdison codes   ------------------|')
+print ('|---------------   In-house Developed Davdison codes   -----------|')
 print ('Residual convergence threshold =', args.tolerance)
 print ('Number of excited states =', args.nstates)
-start = time.time()
+
 Excitation_energies, kets = Davidson (args.nstates, args.tolerance, args.initial_guess, args.preconditioner)
-end = time.time()
-print ('In-house Davidson time:', round(end-start,4))
+total_end = time.time()
+print ('In-house Davidson time:', round(total_end - total_start,4))
 print ('Excited State energies (eV) =')
 print (Excitation_energies)
 
@@ -881,9 +933,17 @@ print ('-----------------------------------------------------------------')
 print ('|-----------------    PySCF TDA-TDDFT codes   ------------------|')
 td.nstates = args.nstates
 td.conv_tol = 1e-10
-# td.verbose = 5
+td.verbose = 5
 start = time.time()
 td.kernel()
 end = time.time()
 print ('Built-in Davidson time:', round(end-start,4))
 print ('|---------------------------------------------------------------|')
+
+
+
+curpath = os.path.dirname(os.path.realpath(__file__))
+yamlpath = os.path.join(curpath, "data.yaml")
+
+with open(yamlpath, "w", encoding="utf-8") as f:
+    yaml.dump(Davidson_dic, f, Dumper=yaml.RoundTripDumper)

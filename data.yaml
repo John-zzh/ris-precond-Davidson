@@ -1,0 +1,171 @@
+Davidson iteration 0:
+  amount of residual to be preconditioned: 10
+  step0:
+    r_norms: "[[0.11757456 0.14107127 0.14462341 0.15134131 0.20565216 0.14235252\n\
+      \  0.16481275 0.21412194 0.22505856 0.17971336]]"
+    index of unconverged residual: '[0, 1, 2, 3, 4, 5, 6, 7, 8, 9]'
+    amount of unconverged residual: 10
+    V_orthonormality: 1.3705778179643392e-15
+  step1:
+    r_norms: "[[0.01412128 0.02836118 0.03403172 0.06046033 0.06730198 0.02814776\n\
+      \  0.0365399  0.1011835  0.07096186 0.06161618]]"
+    index of unconverged residual: '[0, 1, 2, 3, 4, 5, 6, 7, 8, 9]'
+    amount of unconverged residual: 10
+    V_orthonormality: 2.007579951786688e-15
+  step2:
+    r_norms: "[[0.00254147 0.00548034 0.0073629  0.0185572  0.02650154 0.02642218\n\
+      \  0.01091916 0.10292148 0.88449594 0.3439479 ]]"
+    index of unconverged residual: '[3, 4, 5, 6, 7, 8, 9]'
+    amount of unconverged residual: 7
+    V_orthonormality: 2.2048076774206994e-15
+  step3:
+    r_norms: "[[0.00243507 0.00481831 0.00549835 0.0062386  0.01951985 0.06143472\n\
+      \  0.00941338 0.01580168 0.01169379 0.02237912]]"
+    index of unconverged residual: '[4, 5, 7, 8, 9]'
+    amount of unconverged residual: 5
+    V_orthonormality: 2.2860403829547683e-15
+  step4:
+    r_norms: "[[0.00200992 0.01794553 0.00354884 0.00416517 0.00353329 0.01078688\n\
+      \  0.00213273 0.02942451 0.1185048  0.03665824]]"
+    index of unconverged residual: '[1, 5, 7, 8, 9]'
+    amount of unconverged residual: 5
+    V_orthonormality: 2.5932065168399384e-15
+Davidson iteration 1:
+  amount of residual to be preconditioned: 10
+  step0:
+    r_norms: "[[0.07828533 0.11601067 0.14105672 0.17728719 0.18353452 0.20791391\n\
+      \  0.17884623 0.15957128 0.16988679 0.22640015]]"
+    index of unconverged residual: '[0, 1, 2, 3, 4, 5, 6, 7, 8, 9]'
+    amount of unconverged residual: 10
+    V_orthonormality: 1.567777480911028e-15
+  step1:
+    r_norms: "[[0.00717605 0.0220519  0.02585499 0.02894556 0.0634053  0.03033005\n\
+      \  0.0477417  0.0405018  0.05358235 0.07370853]]"
+    index of unconverged residual: '[1, 2, 3, 4, 5, 6, 7, 8, 9]'
+    amount of unconverged residual: 9
+    V_orthonormality: 1.9656977417498296e-15
+  step2:
+    r_norms: "[[0.00700415 0.00390993 0.0692409  0.00987282 0.01163015 0.06472483\n\
+      \  0.00972709 0.02009836 0.05721406 0.04976021]]"
+    index of unconverged residual: '[2, 4, 5, 7, 8, 9]'
+    amount of unconverged residual: 6
+    V_orthonormality: 2.2162194295559644e-15
+  step3:
+    r_norms: "[[0.00640204 0.00273907 0.00284568 0.00517203 0.01158867 0.00974948\n\
+      \  0.02051112 0.020408   0.01609748 0.06035   ]]"
+    index of unconverged residual: '[4, 6, 7, 8, 9]'
+    amount of unconverged residual: 5
+    V_orthonormality: 2.554397128682907e-15
+Davidson iteration 2:
+  amount of residual to be preconditioned: 10
+  step0:
+    r_norms: "[[0.09729671 0.14240132 0.11599242 0.13982285 0.12316166 0.17361046\n\
+      \  0.18914067 0.19735182 0.19343388 0.2168217 ]]"
+    index of unconverged residual: '[0, 1, 2, 3, 4, 5, 6, 7, 8, 9]'
+    amount of unconverged residual: 10
+    V_orthonormality: 1.3929656728988812e-15
+  step1:
+    r_norms: "[[0.01016744 0.0250851  0.01714439 0.02363241 0.02680647 0.04212004\n\
+      \  0.05191937 0.05008568 0.05064387 0.07862218]]"
+    index of unconverged residual: '[0, 1, 2, 3, 4, 5, 6, 7, 8, 9]'
+    amount of unconverged residual: 10
+    V_orthonormality: 1.9211052188529066e-15
+  step2:
+    r_norms: "[[0.00126766 0.00666969 0.02567855 0.13056906 0.01605145 0.04826442\n\
+      \  0.10275709 0.06105412 0.085248   0.08940541]]"
+    index of unconverged residual: '[2, 3, 4, 5, 6, 7, 8, 9]'
+    amount of unconverged residual: 8
+    V_orthonormality: 2.250141098545487e-15
+  step3:
+    r_norms: "[[0.00091833 0.00312321 0.00128886 0.0167449  0.00259892 0.47380379\n\
+      \  0.42595769 0.02158393 0.03281207 0.00956711]]"
+    index of unconverged residual: '[3, 5, 6, 7, 8]'
+    amount of unconverged residual: 5
+    V_orthonormality: 2.2660102001678363e-15
+Davidson iteration 3:
+  amount of residual to be preconditioned: 10
+  step0:
+    r_norms: "[[0.08452813 0.12072465 0.11157296 0.08866617 0.15274999 0.13995621\n\
+      \  0.16802361 0.13598443 0.1641632  0.18551376]]"
+    index of unconverged residual: '[0, 1, 2, 3, 4, 5, 6, 7, 8, 9]'
+    amount of unconverged residual: 10
+    V_orthonormality: 1.3044756914959124e-15
+  step1:
+    r_norms: "[[0.01219037 0.02742472 0.02009904 0.02063296 0.02512668 0.02869628\n\
+      \  0.04535879 0.03537166 0.03822196 0.04840224]]"
+    index of unconverged residual: '[0, 1, 2, 3, 4, 5, 6, 7, 8, 9]'
+    amount of unconverged residual: 10
+    V_orthonormality: 1.997051567692691e-15
+  step2:
+    r_norms: "[[0.00230506 0.0044096  0.00506269 0.11208631 0.0062425  0.12294142\n\
+      \  0.03243271 0.05563981 0.10186258 0.34636905]]"
+    index of unconverged residual: '[3, 5, 6, 7, 8, 9]'
+    amount of unconverged residual: 6
+    V_orthonormality: 2.1595477534909657e-15
+  step3:
+    r_norms: "[[0.00231006 0.00174155 0.00378338 0.00503941 0.00477034 0.00986982\n\
+      \  0.00462456 0.00539718 0.02377929 0.01364808]]"
+    index of unconverged residual: '[8, 9]'
+    amount of unconverged residual: 2
+    V_orthonormality: 2.2731286647008594e-15
+  step4:
+    r_norms: "[[0.00222776 0.00139535 0.00417825 0.00454378 0.00397671 0.00390475\n\
+      \  0.0031707  0.00779818 0.00410042 0.07687398]]"
+    index of unconverged residual: '[9]'
+    amount of unconverged residual: 1
+    V_orthonormality: 2.276863156173501e-15
+Davidson iteration 4:
+  amount of residual to be preconditioned: 9
+  step0:
+    r_norms: "[[0.12233934 0.11108416 0.11325891 0.13226121 0.13640057 0.13926185\n\
+      \  0.17781493 0.11635352 0.18186591]]"
+    index of unconverged residual: '[0, 1, 2, 3, 4, 5, 6, 7, 8]'
+    amount of unconverged residual: 9
+    V_orthonormality: 1.4311713470005407e-15
+  step1:
+    r_norms: "[[0.01700295 0.01802995 0.02699815 0.030956   0.02495414 0.0293032\n\
+      \  0.04387344 0.02725991 0.04744443]]"
+    index of unconverged residual: '[0, 1, 2, 3, 4, 5, 6, 7, 8]'
+    amount of unconverged residual: 9
+    V_orthonormality: 1.8639956248848404e-15
+  step2:
+    r_norms: "[[0.00379882 0.00709559 0.01076937 0.00734383 0.0239932  0.00536026\n\
+      \  0.01858245 0.04926455 0.02768011]]"
+    index of unconverged residual: '[2, 4, 6, 7, 8]'
+    amount of unconverged residual: 5
+    V_orthonormality: 2.147954419905213e-15
+  step3:
+    r_norms: "[[0.00404962 0.00190784 0.00297552 0.04203156 0.00506609 0.0227703\n\
+      \  0.02761847 0.01826437 0.0244449 ]]"
+    index of unconverged residual: '[3, 5, 6, 7, 8]'
+    amount of unconverged residual: 5
+    V_orthonormality: 2.258268605391731e-15
+  step4:
+    r_norms: "[[0.00172675 0.00181225 0.00516955 0.00364745 0.00669543 0.00256811\n\
+      \  0.00541693 0.01521007 0.00478897]]"
+    index of unconverged residual: '[7]'
+    amount of unconverged residual: 1
+    V_orthonormality: 2.3039890793285413e-15
+Davidson iteration 5:
+  amount of residual to be preconditioned: 3
+  step0:
+    r_norms: '[[0.11809865 0.12373607 0.14607417]]'
+    index of unconverged residual: '[0, 1, 2]'
+    amount of unconverged residual: 3
+    V_orthonormality: 8.112425199729395e-16
+  step1:
+    r_norms: '[[0.03368477 0.01927207 0.03182761]]'
+    index of unconverged residual: '[0, 1, 2]'
+    amount of unconverged residual: 3
+    V_orthonormality: 1.0071876036756204e-15
+  step2:
+    r_norms: '[[0.01215799 0.01162866 0.01198992]]'
+    index of unconverged residual: '[0, 1, 2]'
+    amount of unconverged residual: 3
+    V_orthonormality: 8.927157198729879e-16
+  step3:
+    r_norms: '[[0.00511628 0.01215347 0.01766754]]'
+    index of unconverged residual: '[1, 2]'
+    amount of unconverged residual: 2
+    V_orthonormality: 1.0630878524670255e-15
+Davidson iteration 6: {}
