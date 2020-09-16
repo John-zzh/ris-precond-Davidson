@@ -282,8 +282,8 @@ Q_J = einsum('Bab, AB -> Aab', q_tensor_ab, GammaJ)
 # pre-calculate and store the Q-Gamma rank 3 tensor
 Qend = time.time()
 
-Q_gamma_tensors_building_time = Qend - Qstart
-print ('Q-Gamma tensors building time =', Q_gamma_tensors_building_time)
+Q_time = Qend - Qstart
+print ('Q-Gamma tensors building time =', round(Q_time, 4))
 ##################################################################################################
 
 
@@ -546,12 +546,19 @@ def A_diag_preconditioner (residual, sub_eigenvalue, current_dic):
     k = np.shape(residual)[1]
     # force all values not in domain (-t, t)
     t = 1e-14
+
+
+
     D = np.zeros((n, k))
+
     for i in range (0, k):
         D[:,i] = hdiag - sub_eigenvalue[i]
         D[:,i][(D[:,i]<t)&(D[:,i]>=0)] = t
         D[:,i][(D[:,i]>-t)&(D[:,i]<0)] = -t
+
+
     new_guess = residual/D
+
     return new_guess, current_dic
 #######################################################
 
@@ -709,7 +716,11 @@ print ('Number of excited states =', args.nstates)
 
 Excitation_energies, kets = Davidson (args.nstates, args.tolerance, args.initial_guess, args.preconditioner)
 total_end = time.time()
-print ('In-house Davidson time:', round(total_end - total_start,4))
+total_time = total_end - total_start
+if args.initial_guess == 'Adiag' and args.preconditioner == 'Adiag':
+    print ('In-house Davidson time:', round(total_time - Q_time, 4))
+else:
+    print ('In-house Davidson time:', round(total_time, 4))
 print ('Excited State energies (eV) =')
 print (Excitation_energies)
 
@@ -723,7 +734,8 @@ if args.compare == True:
     start = time.time()
     td.kernel()
     end = time.time()
-    print ('Built-in Davidson time:', round(end-start,4))
+    pyscf_time = end-start
+    print ('Built-in Davidson time:', round(pyscf_time, 4))
     print ('|---------------------------------------------------------------|')
 
 curpath = os.path.dirname(os.path.realpath(__file__))
