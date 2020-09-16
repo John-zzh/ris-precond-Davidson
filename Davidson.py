@@ -441,11 +441,16 @@ def on_the_fly_sTDA_preconditioner (B, eigen_lambda, current_dic):
     #initial guess: (diag(A) - \lambda)^-1 B.
     # D is preconditioner for each state
     t = 1e-10
-    D = np.zeros((N_rows, N_vectors))
-    for i in range (0, N_vectors):
-        D[:,i] = hdiag - eigen_lambda[i]
-        D[:,i][(D[:,i] < t)&(D[:,i] >= 0)] = t
-        D[:,i][(D[:,i] > -t)&(D[:,i] < 0)] = -t
+    # D = np.zeros((N_rows, N_vectors))
+    # for i in range (0, N_vectors):
+    #     D[:,i] = hdiag - eigen_lambda[i]
+    #     D[:,i][(D[:,i] < t)&(D[:,i] >= 0)] = t
+    #     D[:,i][(D[:,i] > -t)&(D[:,i] < 0)] = -t
+
+    D = np.repeat(hdiag.reshape(-1,1), N_vectors, axis=1) - eigen_lambda
+    D= np.where( abs(D) < t, np.sign(D)*t, D) # <t: returns np.sign(D)*t; else: D
+
+
     # generate initial guess
     init = B/D
     V, new_count = Gram_Schdmit_fill_holder (V, count, init)
@@ -549,12 +554,16 @@ def A_diag_preconditioner (residual, sub_eigenvalue, current_dic):
 
 
 
-    D = np.zeros((n, k))
+    # D = np.zeros((n, k))
+    #
+    # for i in range (0, k):
+    #     D[:,i] = hdiag - sub_eigenvalue[i]
+    #     D[:,i][(D[:,i]<t)&(D[:,i]>=0)] = t
+    #     D[:,i][(D[:,i]>-t)&(D[:,i]<0)] = -t
 
-    for i in range (0, k):
-        D[:,i] = hdiag - sub_eigenvalue[i]
-        D[:,i][(D[:,i]<t)&(D[:,i]>=0)] = t
-        D[:,i][(D[:,i]>-t)&(D[:,i]<0)] = -t
+    D = np.repeat(hdiag.reshape(-1,1), k, axis=1) - sub_eigenvalue
+    D= np.where( abs(D) < t, np.sign(D)*t, D)
+
 
 
     new_guess = residual/D
