@@ -5,9 +5,10 @@ from pyscf import gto, scf, dft, tddft, data
 import argparse
 import scipy
 import os
-import ruamel
-from ruamel import yaml
+import yaml
 
+# import ruamel
+# from ruamel
 parser = argparse.ArgumentParser(description='Davidson')
 
 parser.add_argument('-c', '--filename',       type=str, default='methanol.xyz', help='input filename')
@@ -87,6 +88,9 @@ total_start = time.time()
 ##################################################################################################
 # create a function for dictionary of chemical hardness, by mappig two iteratable subject, list
 # list of elements
+
+Qstart = time.time()
+
 elements = ['H' , 'He', 'Li', 'Be', 'B' , 'C' , 'N' , 'O' , 'F' , 'Ne',
     'Na', 'Mg', 'Al', 'Si', 'P' , 'S' , 'Cl', 'Ar', 'K' , 'Ca',
     'Sc', 'Ti', 'V' , 'Cr', 'Mn', 'Fe', 'Co', 'Ni', 'Cu', 'Zn',
@@ -202,10 +206,13 @@ def Hardness (atom_id):
 def eta (atom_A_id, atom_B_id):
     eta = (Hardness(atom_A_id) + Hardness(atom_B_id))/2
     return eta
+
+
 R = pyscf.gto.mole.inter_distance(mol, coords=None)
 #Inter-particle distance array
 # unit == ’Bohr’, Its value is 5.29177210903(80)×10^(−11) m
-start = time.time()
+
+
 
 ###############################
 # extract vind() function
@@ -255,30 +262,44 @@ parameters = [
 Functionals_parameters = dict(zip(Functionals, parameters))
 
 a_x, beta, alpha = Functionals_parameters[args.functional]
-GammaJ = np.zeros([Natm, Natm])
-for i in range (0, Natm):
-    for j in range (0, Natm):
-        GammaJ[i,j] = (R[i, j]**beta + (a_x * eta(i, j))**(-beta))**(-1/beta)
 
-GammaK = np.zeros([Natm, Natm])
-for i in range (0, Natm):
-    for j in range (0, Natm):
-        GammaK[i,j] = (R[i, j]**alpha + eta(i, j)**(-alpha)) **(-1/alpha)
+# creat eta matrix
+a = [Hardness (atom_id) for atom_id in range (Natm)]
+a = np.asarray(a).reshape(1,-1)
+eta = (a+a.T)/2
+
+# creat GammaK and GammaK matrix
+GammaJ = (R**beta + (a_x * eta)**(-beta))**(-1/beta)
+# GammaJ = np.zeros([Natm, Natm])
+# for i in range (0, Natm):
+#     for j in range (0, Natm):
+#         GammaJ[i,j] = (R[i, j]**beta + (a_x * eta(i, j))**(-beta))**(-1/beta)
+
+GammaK = (R**alpha + eta**(-alpha)) **(-1/alpha)
+# GammaK = np.zeros([Natm, Natm])
+# for i in range (0, Natm):
+#     for j in range (0, Natm):
+#         GammaK[i,j] = (R[i, j]**alpha + eta(i, j)**(-alpha)) **(-1/alpha)
 
 Natm = mol.natm
 def generateQ ():
+    aoslice = mol.aoslice_by_atom()
     q = np.zeros([Natm, N_bf, N_bf])
     #N_bf is number Atomic orbitals, occupied+virtual, q is same size with C
     for atom_id in range (0, Natm):
-        for i in range (0, N_bf):
-            for p in range (0, N_bf):
-                for mu in range (0, N_bf):
-                    if AO[mu] == atom_id:
-                        #collect all basis functions centered on atom_id
-                        # the last loop is to sum up all C_mui*C_mup, calculate element q[i,p]
-                        q[atom_id,i,p] += C[mu,i]*C[mu,p]
-                        #q[i,p] += 2*C[i,mu]*C[p,mu]
+        shst, shend, atstart, atend = aoslice[atom_id]
+        q[atom_id,:, :] = np.dot(C[atstart:atend, :].T, C[atstart:atend, :])
+    # for atom_id in range (0, Natm):
+    #     for i in range (0, N_bf):
+    #         for p in range (0, N_bf):
+    #             for mu in range (0, N_bf):
+    #                 if AO[mu] == atom_id:
+    #                     #collect all basis functions centered on atom_id
+    #                     # the last loop is to sum up all C_mui*C_mup, calculate element q[i,p]
+    #                     q[atom_id,i,p] += C[mu,i]*C[mu,p]
+    #                     #q[i,p] += 2*C[i,mu]*C[p,mu]
     return q
+
 
 q_tensors   = generateQ    ()
 q_tensor_ij = q_tensors [:, :occupied,:occupied]
@@ -288,9 +309,9 @@ q_tensor_ia = q_tensors [:, :occupied,occupied:]
 Q_K = np.einsum('Bjb, AB -> Ajb', q_tensor_ia, GammaK)
 Q_J = np.einsum('Bab, AB -> Aab', q_tensor_ab, GammaJ)
 # pre-calculate and store the Q-Gamma rank 3 tensor
-end = time.time()
+Qend = time.time()
 
-Q_gamma_tensors_building_time = end - start
+Q_gamma_tensors_building_time = Qend - Qstart
 print ('Q-Gamma tensors building time =', Q_gamma_tensors_building_time)
 ##################################################################################################
 
@@ -451,6 +472,7 @@ def check_orthonormal (A):
 ################################################################################
 # original Davidson, to solve eigenvalues and eigenkets of sTDA_A matrix
 def Davidson0 (k):
+
     tol = 1e-5 # Convergence tolerance
     n = occupied*virtual # size of sTDA_A matrix
     max = 90
@@ -843,7 +865,10 @@ def Davidson (k, tol, i, p):
 
     #################################################
     # generate initial guess
+    init_start = time.time ()
     m, V, W = initial_guess(k)
+    init_end = time.time ()
+    print ('Intial guess time :', (init_end - init_start))
     #generate initial guess and put in holders V and W
     # m is size of subspace
 
@@ -945,4 +970,4 @@ curpath = os.path.dirname(os.path.realpath(__file__))
 yamlpath = os.path.join(curpath, "data.yaml")
 
 with open(yamlpath, "w", encoding="utf-8") as f:
-    yaml.dump(Davidson_dic, f, Dumper=yaml.RoundTripDumper)
+    yaml.dump(Davidson_dic, f)
