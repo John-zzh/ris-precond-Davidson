@@ -1,13 +1,15 @@
 import time
 import numpy as np
-# from numpy import einsum
 from opt_einsum import contract as einsum
 import pyscf
-from pyscf import gto, scf, dft, tddft, data
+from pyscf import gto, scf, dft, tddft, data, lib
 import argparse
 import os
 import yaml
 from pyscf.tools import molden
+
+lib.num_threads(1)
+print ('lib.num_threads() = ', lib.num_threads())
 
 parser = argparse.ArgumentParser(description='Davidson')
 parser.add_argument('-c', '--filename',       type=str, default='*.xyz*', help='input filename')
@@ -56,7 +58,11 @@ if args.molden == False:
     mf.conv_tol = 1e-12
     print ('Molecule built')
     print ('Calculating SCF Energy...')
+    kernel_0 = time.time()
     mf.kernel()
+    kernel_1 = time.time()
+    kernel = round (kernel_1 - kernel_0, 4)
+    print ('SCF Done after ', kernel, 'seconds')
     # pyscf.tools.molden.from_mo(mol, molden, mo_coeff, spin=’Alpha’, symm=None, ene=None, occ=None, ignore_h=True)
     #single point energy
     ####################################################
@@ -436,7 +442,7 @@ def on_the_fly_sTDA_preconditioner (B, eigen_lambda, current_dic):
 
     start = time.time()
     tol = 1e-2    # Convergence tolerance
-    max = 50   # Maximum number of iterations
+    max = 30   # Maximum number of iterations
 
     V = np.zeros((N_rows, (max+1)*N_vectors))
     W = np.zeros((N_rows, (max+1)*N_vectors))
@@ -504,14 +510,13 @@ def on_the_fly_sTDA_preconditioner (B, eigen_lambda, current_dic):
     precondition_end = time.time()
     precondition_time = precondition_end - precondition_start
     if i == (max -1):
-        print ('============sTDA preconditioner Failed due to iteration limmit==============')
-        print ('sTDA preconditioning failed after ', i, 'steps; ', precondition_time, 'seconds')
+        print ('_________________ sTDA Preconditioner Failed Due to Iteration Limmit _________________')
+        print ('sTDA preconditioning failed after ', i, 'steps; ', round(precondition_time, 4), 'seconds')
         print ('current residual norms', Norms_of_r)
         print ('max_norm = ', max_norm)
         print ('orthonormality of V', check_orthonormal(V[:,:count]))
-        print ('shape of residuals = ',np.shape(residual))
     else:
-        print ('sTDA preconditioning done after ', i, 'steps; ', round(precondition_time, 4), 'seconds')
+        print ('sTDA Preconditioning Done after ', i, 'steps; ', round(precondition_time, 4), 'seconds')
 
     return (full_guess*bnorm, current_dic)
 ###########################################################################################
@@ -527,10 +532,18 @@ def A_diag_initial_guess (k, V, W):
     # m = min([2*k, k+8, occupied*virtual])
     m = k
     sort = hdiag.argsort()
-    for j in range(0,m):
-        V[int(np.argwhere(sort == j)), j] = 1
+    for j in range(m):
+        # V[int(np.argwhere(sort == j)), j] = 1
+        V[sort[j], j] = 1.0
 
-    return (m, V, W)
+    VV = np.zeros_like(V)
+
+    for j in range(m):
+        VV[int(np.argwhere(sort == j)), j] = 1
+
+    print (np.linalg.norm(VV-V))
+
+    return (m, VV, W)
 
 def sTDA_initial_guess (k, V, W):
     m = k
@@ -622,29 +635,28 @@ def Davidson (k, tol, i, p, Davidson_dic):
 
     if i == 'sTDA':
         initial_guess = sTDA_initial_guess
-        print ('Initial guess: sTDA')
     elif i == 'Adiag':
         initial_guess = A_diag_initial_guess
-        print ('Initial guess: Diagonal of Non-interacting A matrix')
+
 
     if p == 'sTDA':
         precondition = on_the_fly_sTDA_preconditioner
-        print ('Preconditioner: on-the-fly sTDA A matrix')
-
     elif p == 'Adiag':
         precondition = A_diag_preconditioner
-        print ('Preconditioner: Diagonal of Non-interacting A matrix')
-    start = time.time()
+
+    print ('Initial guess:  ', i)
+    print ('Preconditioner: ', p)
+
 
     n = occupied*virtual
-    max = 20
+    max = 50
     # Maximum number of iterations
 
     #################################################
     # generate initial guess
 
-    V = np.zeros((n, 21*k))
-    W = np.zeros((n, 21*k))
+    V = np.zeros((n, (max+1)*k))
+    W = np.zeros((n, (max+1)*k))
     # positions of hdiag with lowest values set as 1
     # hdiag is non-interacting A matrix
 
@@ -666,8 +678,6 @@ def Davidson (k, tol, i, p, Davidson_dic):
     for ii in range(0, max):
         print ('Davidson', ii)
 
-
-
         # sub_A is subspace A matrix
         sub_A = np.dot(V[:,:m].T, W[:,:m])
 
@@ -676,8 +686,9 @@ def Davidson (k, tol, i, p, Davidson_dic):
         sub_eigenvalue, sub_eigenket = np.linalg.eigh(sub_A)
         # Diagonalize the subspace Hamiltonian, and sorted.
         #sub_eigenvalue[:k] are smallest k eigenvalues
+        full_guess = np.dot(V[:,:m], sub_eigenket[:, :k])
 
-        residual = np.dot(W[:,:m], sub_eigenket[:,:k]) - np.dot(V[:,:m], sub_eigenket[:,:k] * sub_eigenvalue[:k])
+        residual = np.dot(W[:,:m], sub_eigenket[:,:k]) - full_guess * sub_eigenvalue[:k]
 
         Norms_of_r = np.linalg.norm (residual, axis=0, keepdims = True)
 
@@ -704,19 +715,24 @@ def Davidson (k, tol, i, p, Davidson_dic):
         iteration_list[ii] = current_dic
 
         Pcost += P_end - P_start
+
         # orthonormalize the new guesses against old guesses and put into V holder
         V, new_m = Gram_Schdmit_fill_holder (V, m, new_guess)
         W[:, m:new_m] = vind (V[:, m:new_m].T).T
-        print ('preconditioned guesses:', new_m-m)
+        print ('preconditioned guesses:', new_m - m)
         m = new_m
 
     ###########################################################################################
-
-    full_guess = np.dot(V[:,:m], sub_eigenket[:, :k])
-
-    print ('Total steps =', ii+1)
-    print ('Final subspace size = ', np.shape(sub_A))
-    print ('Preconditioning time:', round(Pcost,4), 'seconds')
+    if ii == (max -1):
+        print ('============ Davidson Failed Due to Iteration Limmit ==============')
+        print ('Davidson failed after ', ii, 'steps; ', round(Pcost, 4), 'seconds')
+        print ('current residual norms', Norms_of_r)
+        print ('max_norm = ', max_norm)
+    else:
+        print ('Davidson done after ', ii, 'steps; ', round(Pcost, 4), 'seconds')
+        print ('Total steps =', ii+1)
+        print ('Final subspace size = ', np.shape(sub_A))
+        print ('Preconditioning time:', round(Pcost, 4), 'seconds')
 
     return (sub_eigenvalue[:k]*27.21138624598853, full_guess)
 ################################################################################
@@ -752,6 +768,21 @@ def Davidson (k, tol, i, p, Davidson_dic):
 #
 # print ('|---------------   In-house Developed Davidson Done   -----------|')
 
+
+if args.compare == True:
+    print ('-----------------------------------------------------------------')
+    print ('|--------------------    PySCF TDA-TDDFT    ---------------------|')
+    td.nstates = args.nstates
+    td.conv_tol = 1e-10
+    td.verbose = 5
+    start = time.time()
+    td.kernel()
+    end = time.time()
+    pyscf_time = end-start
+    print ('Built-in Davidson time:', round(pyscf_time, 4), 'seconds')
+    print ('|---------------------------------------------------------------|')
+
+
 option = ['sTDA', 'Adiag']
 for i in option:
     for p in option:
@@ -778,17 +809,3 @@ for i in option:
             yaml.dump(Davidson_dic, f)
 
         print ('|---------------   In-house Developed Davidson Done   -----------|')
-
-
-if args.compare == True:
-    print ('-----------------------------------------------------------------')
-    print ('|-----------------    PySCF TDA-TDDFT codes   ------------------|')
-    td.nstates = args.nstates
-    td.conv_tol = 1e-10
-    td.verbose = 5
-    start = time.time()
-    td.kernel()
-    end = time.time()
-    pyscf_time = end-start
-    print ('Built-in Davidson time:', round(pyscf_time, 4), 'seconds')
-    print ('|---------------------------------------------------------------|')
