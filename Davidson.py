@@ -536,14 +536,7 @@ def A_diag_initial_guess (k, V, W):
         # V[int(np.argwhere(sort == j)), j] = 1
         V[sort[j], j] = 1.0
 
-    VV = np.zeros_like(V)
-
-    for j in range(m):
-        VV[int(np.argwhere(sort == j)), j] = 1
-
-    print (np.linalg.norm(VV-V))
-
-    return (m, VV, W)
+    return (m, V, W)
 
 def sTDA_initial_guess (k, V, W):
     m = k
