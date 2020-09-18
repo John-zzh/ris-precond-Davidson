@@ -527,23 +527,23 @@ def on_the_fly_sTDA_preconditioner (B, eigen_lambda, current_dic):
 # framework of Davidson's Algorithms
 ###############################################################################
 n = occupied*virtual
-def A_diag_initial_guess (k, V, W):
+
+def A_diag_initial_guess (k, V):
     # m is size of subspace A matrix, also is the amount of initial guesses
     # m = min([2*k, k+8, occupied*virtual])
     m = k
     sort = hdiag.argsort()
     for j in range(m):
-        # V[int(np.argwhere(sort == j)), j] = 1
         V[sort[j], j] = 1.0
 
-    return (m, V, W)
+    return (m, V)
 
-def sTDA_initial_guess (k, V, W):
+def sTDA_initial_guess (k, V):
     m = k
     #diagonalize sTDA_A amtrix
     V[:, :m] = Davidson0(m)
 
-    return (m, V, W)
+    return (m, V)
 ######################################################################################
 
 #####################################################
@@ -575,10 +575,8 @@ def Davidson0 (k):
     V = np.zeros((n, 30*k))
     W = np.zeros((n, 30*k))
     # positions of hdiag with lowest values set as 1
-    # hdiag is non-interacting A matrix
-    sort = hdiag.argsort()
-    for j in range(0,m):
-        V[int(np.argwhere(sort == j)), j] = 1
+
+    m, V = A_diag_initial_guess(k, V)
 
     W[:, :m] = sTDA_fly(V[:, :m])
     # create transformed guess vectors
@@ -642,6 +640,7 @@ def Davidson (k, tol, i, p, Davidson_dic):
 
 
     n = occupied*virtual
+    print ('A matrix size = ', n)
     max = 50
     # Maximum number of iterations
 
@@ -654,7 +653,7 @@ def Davidson (k, tol, i, p, Davidson_dic):
     # hdiag is non-interacting A matrix
 
     init_start = time.time ()
-    m, V, W = initial_guess(k, V, W)
+    m, V = initial_guess(k, V)
     init_end = time.time ()
     init_time = init_end - init_start
 

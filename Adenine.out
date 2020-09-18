@@ -1,0 +1,351 @@
+lib.num_threads() =  1
+Molecule built
+Calculating SCF Energy...
+converged SCF energy = -464.163259932574
+SCF Done after  12.9239 seconds
+Q-Gamma tensors building time = 0.0215
+-----------------------------------------------------------------
+|--------------------    PySCF TDA-TDDFT    ---------------------|
+
+
+******** <class 'pyscf.tdscf.rhf.TDA'> for <class 'pyscf.scf.hf.RHF'> ********
+nstates = 5 singlet
+wfnsym = None
+conv_tol = 1e-10
+eigh lindep = 1e-12
+eigh level_shift = 0
+eigh max_space = 50
+eigh max_cycle = 100
+chkfile = /var/folders/yv/2d0zlq3j1dq04l1tjz4qgg800000gn/T/tmptzdee1jv
+max_memory 1000 MB (current use 0 MB)
+
+
+davidson 0 5  |r|= 0.186  e= [0.25407152 0.26763975 0.33022279 0.34265829 0.34710784]  max|de|= 0.347  lindep=    1
+Old state -> New state
+    4     ->     2 
+    2     ->     4 
+davidson 1 10  |r|= 0.0536  e= [0.23729417 0.23838082 0.30874595 0.30902286 0.32214162]  max|de|= -0.0384  lindep= 0.95
+Old state -> New state
+    1     ->     0 
+    0     ->     1 
+davidson 2 15  |r|= 0.0274  e= [0.23288994 0.23570338 0.30305147 0.30407994 0.32020258]  max|de|= -0.00569  lindep= 0.881
+davidson 3 20  |r|= 0.031  e= [0.23181565 0.23555087 0.30061498 0.30342216 0.31975215]  max|de|= -0.00244  lindep= 0.885
+davidson 4 25  |r|= 0.0318  e= [0.23157225 0.23551201 0.29794857 0.3032796  0.31952558]  max|de|= -0.00267  lindep= 0.897
+Old state -> New state
+    2     ->     4 
+davidson 5 30  |r|= 0.0442  e= [0.2315445  0.23550253 0.29496888 0.30319415 0.31551073]  max|de|= 0.0176  lindep= 0.862
+Old state -> New state
+    3     ->     2 
+    2     ->     3 
+    3     ->     4 
+davidson 6 35  |r|= 0.161  e= [0.2315422  0.23550119 0.2818595  0.29324079 0.30336042]  max|de|= -0.0213  lindep= 0.829
+davidson 7 40  |r|= 0.0598  e= [0.23154203 0.23550099 0.26069597 0.29224669 0.30321211]  max|de|= -0.0212  lindep= 0.844
+Old state -> New state
+    4     ->     3 
+    3     ->     4 
+davidson 8 45  |r|= 0.0674  e= [0.23154202 0.23550097 0.25858319 0.28254799 0.29189697]  max|de|= -0.0207  lindep= 0.84
+davidson 9 50  |r|= 0.0352  e= [0.23154202 0.23550097 0.2580963  0.27624229 0.29181424]  max|de|= -0.00631  lindep= 0.85
+root 0 converged  |r|= 2.54e-06  e= 0.23154201641892028  max|de|= -9.19e-11
+davidson 10 55  |r|= 0.0162  e= [0.23154202 0.23550097 0.2578432  0.27443865 0.29180324]  max|de|= -0.0018  lindep= 0.849
+root 1 converged  |r|= 7.1e-07  e= 0.235500971806739  max|de|= -6.3e-12
+davidson 11 59  |r|= 0.00842  e= [0.23154202 0.23550097 0.2576882  0.27410158 0.29180201]  max|de|= -0.000337  lindep= 0.835
+davidson 12 5  |r|= 0.00842  e= [0.23154202 0.23550097 0.2576882  0.27410158 0.29180201]  max|de|= -1.44e-15  lindep= 0.999
+davidson 13 8  |r|= 0.00559  e= [0.23154202 0.23550097 0.25764438 0.27403848 0.2918019 ]  max|de|= -6.31e-05  lindep= 0.804
+davidson 14 11  |r|= 0.00417  e= [0.23154202 0.23550097 0.25762267 0.2740084  0.29180188]  max|de|= -3.01e-05  lindep= 0.825
+davidson 15 14  |r|= 0.00321  e= [0.23154202 0.23550097 0.25761248 0.2739905  0.29180188]  max|de|= -1.79e-05  lindep= 0.79
+davidson 16 17  |r|= 0.00295  e= [0.23154202 0.23550097 0.25760724 0.27397697 0.29180188]  max|de|= -1.35e-05  lindep= 0.805
+Old state -> New state
+    3     ->     4 
+davidson 17 20  |r|= 0.0551  e= [0.23154202 0.23550097 0.25760462 0.27396466 0.2892842 ]  max|de|= 0.0153  lindep= 0.827
+davidson 18 23  |r|= 0.0299  e= [0.23154202 0.23550097 0.25760403 0.27395978 0.28675843]  max|de|= -0.00253  lindep= 0.819
+davidson 19 26  |r|= 0.0232  e= [0.23154202 0.23550097 0.25760388 0.27395782 0.28578303]  max|de|= -0.000975  lindep= 0.819
+davidson 20 29  |r|= 0.0145  e= [0.23154202 0.23550097 0.25760384 0.27395702 0.28530542]  max|de|= -0.000478  lindep= 0.802
+davidson 21 32  |r|= 0.00844  e= [0.23154202 0.23550097 0.25760383 0.27395677 0.28512036]  max|de|= -0.000185  lindep= 0.786
+davidson 22 35  |r|= 0.00383  e= [0.23154202 0.23550097 0.25760383 0.27395671 0.28506543]  max|de|= -5.49e-05  lindep= 0.799
+davidson 23 38  |r|= 0.00144  e= [0.23154202 0.23550097 0.25760383 0.2739567  0.2850564 ]  max|de|= -9.04e-06  lindep= 0.825
+root 2 converged  |r|= 1.76e-06  e= 0.2576038302564483  max|de|= -1.3e-11
+davidson 24 41  |r|= 0.000579  e= [0.23154202 0.23550097 0.25760383 0.2739567  0.28505536]  max|de|= -1.03e-06  lindep= 0.715
+davidson 25 43  |r|= 0.000271  e= [0.23154202 0.23550097 0.25760383 0.2739567  0.28505512]  max|de|= -2.47e-07  lindep= 0.775
+root 3 converged  |r|= 3.81e-06  e= 0.2739567007460645  max|de|= -3.75e-11
+davidson 26 45  |r|= 0.000198  e= [0.23154202 0.23550097 0.25760383 0.2739567  0.28505504]  max|de|= -7.75e-08  lindep= 0.838
+davidson 27 46  |r|= 0.000129  e= [0.23154202 0.23550097 0.25760383 0.2739567  0.28505501]  max|de|= -3.35e-08  lindep= 0.767
+davidson 28 47  |r|= 9.19e-05  e= [0.23154202 0.23550097 0.25760383 0.2739567  0.28505499]  max|de|= -1.69e-08  lindep= 0.755
+davidson 29 48  |r|= 4.49e-05  e= [0.23154202 0.23550097 0.25760383 0.2739567  0.28505498]  max|de|= -6.05e-09  lindep= 0.776
+davidson 30 49  |r|= 1.41e-05  e= [0.23154202 0.23550097 0.25760383 0.2739567  0.28505498]  max|de|= -1.01e-09  lindep= 0.794
+davidson 31 50  |r|= 5.55e-06  e= [0.23154202 0.23550097 0.25760383 0.2739567  0.28505498]  max|de|= -1.16e-10  lindep= 0.795
+root 4 converged  |r|= 2.33e-06  e= 0.28505498281293257  max|de|= -1.91e-11
+converged 32 51  |r|= 2.33e-06  e= [0.23154202 0.23550097 0.25760383 0.2739567  0.28505498]  max|de|= -1.91e-11
+    CPU time for TDA    129.75 sec, wall time     65.03 sec
+Excited State energies (eV)
+[6.30057919 6.40830785 7.00975727 7.45474154 7.75674117]
+/Users/zehaozhou/opt/anaconda3/lib/python3.7/site-packages/pyscf/lib/misc.py:112: UserWarning: OpenMP is not available. Setting omp_threads to 1 has no effects.
+  'Setting omp_threads to %s has no effects.' % n)
+Built-in Davidson time: 65.0349 seconds
+|---------------------------------------------------------------|
+-------------------------------------------------------------------
+|---------------   In-house Developed Davidson Starts   -----------|
+Residual convergence threshold = 1e-05
+Number of excited states = 5
+Initial guess:   sTDA
+Preconditioner:  sTDA
+A matrix size =  4550
+sTDA A diagonalization: threshold = 0.01 ; in 7 steps  0.1359 seconds
+Intial guess time: 0.1419 seconds
+Davidson 0
+subspace size:  5
+sTDA Preconditioning Done after  12 steps;  0.0991 seconds
+preconditioned guesses: 5
+Davidson 1
+subspace size:  10
+sTDA Preconditioning Done after  7 steps;  0.0633 seconds
+preconditioned guesses: 5
+Davidson 2
+subspace size:  15
+sTDA Preconditioning Done after  6 steps;  0.0611 seconds
+preconditioned guesses: 5
+Davidson 3
+subspace size:  20
+sTDA Preconditioning Done after  6 steps;  0.065 seconds
+preconditioned guesses: 5
+Davidson 4
+subspace size:  25
+sTDA Preconditioning Done after  6 steps;  0.0594 seconds
+preconditioned guesses: 5
+Davidson 5
+subspace size:  30
+sTDA Preconditioning Done after  5 steps;  0.0572 seconds
+preconditioned guesses: 5
+Davidson 6
+subspace size:  35
+sTDA Preconditioning Done after  5 steps;  0.0492 seconds
+preconditioned guesses: 4
+Davidson 7
+subspace size:  39
+sTDA Preconditioning Done after  6 steps;  0.0313 seconds
+preconditioned guesses: 2
+Davidson 8
+subspace size:  41
+All guesses converged!
+Davidson done after  8 steps;  0.4955 seconds
+Total steps = 9
+Final subspace size =  (41, 41)
+Preconditioning time: 0.4955 seconds
+In-house Davidson time: 24.7233 seconds
+Excited State energies (eV) =
+[6.30057924 6.40830791 7.94033361 8.31698402 8.54268783]
+|---------------   In-house Developed Davidson Done   -----------|
+-------------------------------------------------------------------
+|---------------   In-house Developed Davidson Starts   -----------|
+Residual convergence threshold = 1e-05
+Number of excited states = 5
+Initial guess:   sTDA
+Preconditioner:  Adiag
+A matrix size =  4550
+sTDA A diagonalization: threshold = 0.01 ; in 7 steps  0.1295 seconds
+Intial guess time: 0.1309 seconds
+Davidson 0
+subspace size:  5
+preconditioned guesses: 5
+Davidson 1
+subspace size:  10
+preconditioned guesses: 5
+Davidson 2
+subspace size:  15
+preconditioned guesses: 5
+Davidson 3
+subspace size:  20
+preconditioned guesses: 5
+Davidson 4
+subspace size:  25
+preconditioned guesses: 5
+Davidson 5
+subspace size:  30
+preconditioned guesses: 5
+Davidson 6
+subspace size:  35
+preconditioned guesses: 5
+Davidson 7
+subspace size:  40
+preconditioned guesses: 5
+Davidson 8
+subspace size:  45
+preconditioned guesses: 3
+Davidson 9
+subspace size:  48
+preconditioned guesses: 2
+Davidson 10
+subspace size:  50
+All guesses converged!
+Davidson done after  10 steps;  0.0037 seconds
+Total steps = 11
+Final subspace size =  (50, 50)
+Preconditioning time: 0.0037 seconds
+In-house Davidson time: 29.5346 seconds
+Excited State energies (eV) =
+[6.30057924 6.40830791 7.94033361 8.31698402 8.54268783]
+|---------------   In-house Developed Davidson Done   -----------|
+-------------------------------------------------------------------
+|---------------   In-house Developed Davidson Starts   -----------|
+Residual convergence threshold = 1e-05
+Number of excited states = 5
+Initial guess:   Adiag
+Preconditioner:  sTDA
+A matrix size =  4550
+Intial guess time: 0.0002 seconds
+Davidson 0
+subspace size:  5
+sTDA Preconditioning Done after  17 steps;  0.2052 seconds
+preconditioned guesses: 5
+Davidson 1
+subspace size:  10
+sTDA Preconditioning Done after  13 steps;  0.1489 seconds
+preconditioned guesses: 5
+Davidson 2
+subspace size:  15
+sTDA Preconditioning Done after  13 steps;  0.1608 seconds
+preconditioned guesses: 5
+Davidson 3
+subspace size:  20
+sTDA Preconditioning Done after  13 steps;  0.1303 seconds
+preconditioned guesses: 5
+Davidson 4
+subspace size:  25
+sTDA Preconditioning Done after  9 steps;  0.08 seconds
+preconditioned guesses: 5
+Davidson 5
+subspace size:  30
+sTDA Preconditioning Done after  7 steps;  0.06 seconds
+preconditioned guesses: 5
+Davidson 6
+subspace size:  35
+sTDA Preconditioning Done after  6 steps;  0.0607 seconds
+preconditioned guesses: 5
+Davidson 7
+subspace size:  40
+sTDA Preconditioning Done after  5 steps;  0.0517 seconds
+preconditioned guesses: 5
+Davidson 8
+subspace size:  45
+sTDA Preconditioning Done after  8 steps;  0.0429 seconds
+preconditioned guesses: 3
+Davidson 9
+subspace size:  48
+sTDA Preconditioning Done after  6 steps;  0.0378 seconds
+preconditioned guesses: 3
+Davidson 10
+subspace size:  51
+sTDA Preconditioning Done after  5 steps;  0.0294 seconds
+preconditioned guesses: 3
+Davidson 11
+subspace size:  54
+sTDA Preconditioning Done after  5 steps;  0.0273 seconds
+preconditioned guesses: 3
+Davidson 12
+subspace size:  57
+sTDA Preconditioning Done after  4 steps;  0.0242 seconds
+preconditioned guesses: 3
+Davidson 13
+subspace size:  60
+sTDA Preconditioning Done after  4 steps;  0.022 seconds
+preconditioned guesses: 2
+Davidson 14
+subspace size:  62
+sTDA Preconditioning Done after  6 steps;  0.0151 seconds
+preconditioned guesses: 1
+Davidson 15
+subspace size:  63
+sTDA Preconditioning Done after  3 steps;  0.0083 seconds
+preconditioned guesses: 1
+Davidson 16
+subspace size:  64
+All guesses converged!
+Davidson done after  16 steps;  1.1214 seconds
+Total steps = 17
+Final subspace size =  (64, 64)
+Preconditioning time: 1.1214 seconds
+In-house Davidson time: 38.8228 seconds
+Excited State energies (eV) =
+[6.30057924 6.40830791 7.00975732 7.4547416  7.75674124]
+|---------------   In-house Developed Davidson Done   -----------|
+-------------------------------------------------------------------
+|---------------   In-house Developed Davidson Starts   -----------|
+Residual convergence threshold = 1e-05
+Number of excited states = 5
+Initial guess:   Adiag
+Preconditioner:  Adiag
+A matrix size =  4550
+Intial guess time: 0.0002 seconds
+Davidson 0
+subspace size:  5
+preconditioned guesses: 5
+Davidson 1
+subspace size:  10
+preconditioned guesses: 5
+Davidson 2
+subspace size:  15
+preconditioned guesses: 5
+Davidson 3
+subspace size:  20
+preconditioned guesses: 5
+Davidson 4
+subspace size:  25
+preconditioned guesses: 5
+Davidson 5
+subspace size:  30
+preconditioned guesses: 5
+Davidson 6
+subspace size:  35
+preconditioned guesses: 5
+Davidson 7
+subspace size:  40
+preconditioned guesses: 5
+Davidson 8
+subspace size:  45
+preconditioned guesses: 5
+Davidson 9
+subspace size:  50
+preconditioned guesses: 5
+Davidson 10
+subspace size:  55
+preconditioned guesses: 3
+Davidson 11
+subspace size:  58
+preconditioned guesses: 3
+Davidson 12
+subspace size:  61
+preconditioned guesses: 3
+Davidson 13
+subspace size:  64
+preconditioned guesses: 3
+Davidson 14
+subspace size:  67
+preconditioned guesses: 3
+Davidson 15
+subspace size:  70
+preconditioned guesses: 3
+Davidson 16
+subspace size:  73
+preconditioned guesses: 3
+Davidson 17
+subspace size:  76
+preconditioned guesses: 3
+Davidson 18
+subspace size:  79
+preconditioned guesses: 2
+Davidson 19
+subspace size:  81
+preconditioned guesses: 1
+Davidson 20
+subspace size:  82
+preconditioned guesses: 1
+Davidson 21
+subspace size:  83
+All guesses converged!
+Davidson done after  21 steps;  0.0066 seconds
+Total steps = 22
+Final subspace size =  (83, 83)
+Preconditioning time: 0.0066 seconds
+In-house Davidson time: 48.9544 seconds
+Excited State energies (eV) =
+[6.30057924 6.40830791 7.00975732 7.4547416  7.75674124]
+|---------------   In-house Developed Davidson Done   -----------|

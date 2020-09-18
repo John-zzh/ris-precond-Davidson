@@ -2,90 +2,89 @@ lib.num_threads() =  1
 Molecule built
 Calculating SCF Energy...
 converged SCF energy = -95.1409860496119
-/Users/zehaozhou/opt/anaconda3/lib/python3.7/site-packages/pyscf/lib/misc.py:112: UserWarning: OpenMP is not available. Setting omp_threads to 1 has no effects.
-  'Setting omp_threads to %s has no effects.' % n)
-SCF Done after  0.306 seconds
-Q-Gamma tensors building time = 0.0067
+SCF Done after  0.2437 seconds
+Q-Gamma tensors building time = 0.0025
 -------------------------------------------------------------------
 |---------------   In-house Developed Davidson Starts   -----------|
 Residual convergence threshold = 1e-05
 Number of excited states = 4
 Initial guess:   sTDA
 Preconditioner:  sTDA
-sTDA A diagonalization: threshold = 0.01 ; in 1 steps  0.0038 seconds
-Intial guess time: 0.0038 seconds
+A matrix size =  396
+sTDA A diagonalization: threshold = 0.01 ; in 1 steps  0.0023 seconds
+Intial guess time: 0.0024 seconds
 Davidson 0
 subspace size:  4
-sTDA Preconditioning Done after  8 steps;  0.0098 seconds
+sTDA Preconditioning Done after  8 steps;  0.0087 seconds
 preconditioned guesses: 4
 Davidson 1
 subspace size:  8
-sTDA Preconditioning Done after  10 steps;  0.011 seconds
+sTDA Preconditioning Done after  10 steps;  0.0109 seconds
 preconditioned guesses: 4
 Davidson 2
 subspace size:  12
-sTDA Preconditioning Done after  14 steps;  0.0143 seconds
+sTDA Preconditioning Done after  14 steps;  0.0131 seconds
 preconditioned guesses: 4
 Davidson 3
 subspace size:  16
-sTDA Preconditioning Done after  14 steps;  0.014 seconds
+sTDA Preconditioning Done after  14 steps;  0.0136 seconds
 preconditioned guesses: 4
 Davidson 4
 subspace size:  20
-sTDA Preconditioning Done after  16 steps;  0.0144 seconds
+sTDA Preconditioning Done after  16 steps;  0.0152 seconds
 preconditioned guesses: 4
 Davidson 5
 subspace size:  24
-sTDA Preconditioning Done after  15 steps;  0.0136 seconds
+sTDA Preconditioning Done after  15 steps;  0.0141 seconds
 preconditioned guesses: 4
 Davidson 6
 subspace size:  28
-sTDA Preconditioning Done after  12 steps;  0.0116 seconds
+sTDA Preconditioning Done after  12 steps;  0.0104 seconds
 preconditioned guesses: 2
 Davidson 7
 subspace size:  30
-sTDA Preconditioning Done after  18 steps;  0.015 seconds
+sTDA Preconditioning Done after  18 steps;  0.0134 seconds
 preconditioned guesses: 1
 Davidson 8
 subspace size:  31
-sTDA Preconditioning Done after  15 steps;  0.0131 seconds
+sTDA Preconditioning Done after  15 steps;  0.0124 seconds
 preconditioned guesses: 1
 Davidson 9
 subspace size:  32
-sTDA Preconditioning Done after  19 steps;  0.0157 seconds
+sTDA Preconditioning Done after  19 steps;  0.0145 seconds
 preconditioned guesses: 1
 Davidson 10
 subspace size:  33
-sTDA Preconditioning Done after  19 steps;  0.0155 seconds
+sTDA Preconditioning Done after  19 steps;  0.0151 seconds
 preconditioned guesses: 1
 Davidson 11
 subspace size:  34
-sTDA Preconditioning Done after  19 steps;  0.0151 seconds
+sTDA Preconditioning Done after  19 steps;  0.0146 seconds
 preconditioned guesses: 1
 Davidson 12
 subspace size:  35
-sTDA Preconditioning Done after  15 steps;  0.0122 seconds
+sTDA Preconditioning Done after  15 steps;  0.0111 seconds
 preconditioned guesses: 1
 Davidson 13
 subspace size:  36
-sTDA Preconditioning Done after  19 steps;  0.0149 seconds
+sTDA Preconditioning Done after  19 steps;  0.0141 seconds
 preconditioned guesses: 1
 Davidson 14
 subspace size:  37
-sTDA Preconditioning Done after  16 steps;  0.0127 seconds
+sTDA Preconditioning Done after  16 steps;  0.0117 seconds
 preconditioned guesses: 1
 Davidson 15
 subspace size:  38
-sTDA Preconditioning Done after  18 steps;  0.0141 seconds
+sTDA Preconditioning Done after  18 steps;  0.0135 seconds
 preconditioned guesses: 1
 Davidson 16
 subspace size:  39
 All guesses converged!
-Davidson done after  16 steps;  0.2178 seconds
+Davidson done after  16 steps;  0.2073 seconds
 Total steps = 17
 Final subspace size =  (39, 39)
-Preconditioning time: 0.2178 seconds
-In-house Davidson time: 0.5388 seconds
+Preconditioning time: 0.2073 seconds
+In-house Davidson time: 0.518 seconds
 Excited State energies (eV) =
 [ 7.86017327  9.30962928 10.41275764 11.55197531]
 |---------------   In-house Developed Davidson Done   -----------|
@@ -95,6 +94,7 @@ Residual convergence threshold = 1e-05
 Number of excited states = 4
 Initial guess:   sTDA
 Preconditioner:  Adiag
+A matrix size =  396
 sTDA A diagonalization: threshold = 0.01 ; in 1 steps  0.0023 seconds
 Intial guess time: 0.0023 seconds
 Davidson 0
@@ -148,11 +148,11 @@ preconditioned guesses: 1
 Davidson 16
 subspace size:  46
 All guesses converged!
-Davidson done after  16 steps;  0.0012 seconds
+Davidson done after  16 steps;  0.0009 seconds
 Total steps = 17
 Final subspace size =  (46, 46)
-Preconditioning time: 0.0012 seconds
-In-house Davidson time: 0.3782 seconds
+Preconditioning time: 0.0009 seconds
+In-house Davidson time: 0.3492 seconds
 Excited State energies (eV) =
 [ 7.86017327  9.30962928 10.41275764 11.55197531]
 |---------------   In-house Developed Davidson Done   -----------|
@@ -162,11 +162,151 @@ Residual convergence threshold = 1e-05
 Number of excited states = 4
 Initial guess:   Adiag
 Preconditioner:  sTDA
-Traceback (most recent call last):
-  File "Davidson.py", line 796, in <module>
-    Excitation_energies, kets = Davidson (args.nstates, args.tolerance, i, p, Davidson_dic)
-  File "Davidson.py", line 664, in Davidson
-    m, V, W = initial_guess(k, V, W)
-  File "Davidson.py", line 546, in A_diag_initial_guess
-    return (m, VV, W)
-NameError: name 'VV' is not defined
+A matrix size =  396
+Intial guess time: 0.0 seconds
+Davidson 0
+subspace size:  4
+sTDA Preconditioning Done after  8 steps;  0.0091 seconds
+preconditioned guesses: 4
+Davidson 1
+subspace size:  8
+sTDA Preconditioning Done after  8 steps;  0.0086 seconds
+preconditioned guesses: 4
+Davidson 2
+subspace size:  12
+sTDA Preconditioning Done after  9 steps;  0.011 seconds
+preconditioned guesses: 4
+Davidson 3
+subspace size:  16
+sTDA Preconditioning Done after  9 steps;  0.0095 seconds
+preconditioned guesses: 4
+Davidson 4
+subspace size:  20
+sTDA Preconditioning Done after  12 steps;  0.0118 seconds
+preconditioned guesses: 4
+Davidson 5
+subspace size:  24
+sTDA Preconditioning Done after  11 steps;  0.0107 seconds
+preconditioned guesses: 4
+Davidson 6
+subspace size:  28
+sTDA Preconditioning Done after  12 steps;  0.0112 seconds
+preconditioned guesses: 3
+Davidson 7
+subspace size:  31
+sTDA Preconditioning Done after  16 steps;  0.0117 seconds
+preconditioned guesses: 1
+Davidson 8
+subspace size:  32
+sTDA Preconditioning Done after  16 steps;  0.012 seconds
+preconditioned guesses: 1
+Davidson 9
+subspace size:  33
+sTDA Preconditioning Done after  16 steps;  0.0117 seconds
+preconditioned guesses: 1
+Davidson 10
+subspace size:  34
+sTDA Preconditioning Done after  16 steps;  0.0118 seconds
+preconditioned guesses: 1
+Davidson 11
+subspace size:  35
+sTDA Preconditioning Done after  19 steps;  0.0144 seconds
+preconditioned guesses: 1
+Davidson 12
+subspace size:  36
+sTDA Preconditioning Done after  18 steps;  0.014 seconds
+preconditioned guesses: 1
+Davidson 13
+subspace size:  37
+sTDA Preconditioning Done after  18 steps;  0.0132 seconds
+preconditioned guesses: 1
+Davidson 14
+subspace size:  38
+sTDA Preconditioning Done after  19 steps;  0.0143 seconds
+preconditioned guesses: 1
+Davidson 15
+subspace size:  39
+sTDA Preconditioning Done after  19 steps;  0.0147 seconds
+preconditioned guesses: 1
+Davidson 16
+subspace size:  40
+sTDA Preconditioning Done after  19 steps;  0.0159 seconds
+preconditioned guesses: 1
+Davidson 17
+subspace size:  41
+All guesses converged!
+Davidson done after  17 steps;  0.2063 seconds
+Total steps = 18
+Final subspace size =  (41, 41)
+Preconditioning time: 0.2063 seconds
+In-house Davidson time: 0.5243 seconds
+Excited State energies (eV) =
+[ 7.86017327  9.30962928 10.41275764 11.55197531]
+|---------------   In-house Developed Davidson Done   -----------|
+-------------------------------------------------------------------
+|---------------   In-house Developed Davidson Starts   -----------|
+Residual convergence threshold = 1e-05
+Number of excited states = 4
+Initial guess:   Adiag
+Preconditioner:  Adiag
+A matrix size =  396
+Intial guess time: 0.0 seconds
+Davidson 0
+subspace size:  4
+preconditioned guesses: 4
+Davidson 1
+subspace size:  8
+preconditioned guesses: 4
+Davidson 2
+subspace size:  12
+preconditioned guesses: 4
+Davidson 3
+subspace size:  16
+preconditioned guesses: 4
+Davidson 4
+subspace size:  20
+preconditioned guesses: 4
+Davidson 5
+subspace size:  24
+preconditioned guesses: 4
+Davidson 6
+subspace size:  28
+preconditioned guesses: 4
+Davidson 7
+subspace size:  32
+preconditioned guesses: 4
+Davidson 8
+subspace size:  36
+preconditioned guesses: 2
+Davidson 9
+subspace size:  38
+preconditioned guesses: 1
+Davidson 10
+subspace size:  39
+preconditioned guesses: 1
+Davidson 11
+subspace size:  40
+preconditioned guesses: 1
+Davidson 12
+subspace size:  41
+preconditioned guesses: 1
+Davidson 13
+subspace size:  42
+preconditioned guesses: 1
+Davidson 14
+subspace size:  43
+preconditioned guesses: 1
+Davidson 15
+subspace size:  44
+preconditioned guesses: 1
+Davidson 16
+subspace size:  45
+All guesses converged!
+Davidson done after  16 steps;  0.0009 seconds
+Total steps = 17
+Final subspace size =  (45, 45)
+Preconditioning time: 0.0009 seconds
+In-house Davidson time: 0.3416 seconds
+Excited State energies (eV) =
+[ 7.86017327  9.30962928 10.41275764 11.55197531]
+|---------------   In-house Developed Davidson Done   -----------|
