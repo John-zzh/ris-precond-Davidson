@@ -12,68 +12,69 @@ lib.num_threads(1)
 print ('lib.num_threads() = ', lib.num_threads())
 
 parser = argparse.ArgumentParser(description='Davidson')
-parser.add_argument('-c', '--filename',       type=str, default='*.xyz*', help='input filename')
-parser.add_argument('-M', '--molden',         type=bool,default= False, help='load molden file, rather than calcule MOs')
-parser.add_argument('-m', '--method',         type=str, default='RHF', help='RHF RKS UHF UKS')
-parser.add_argument('-f', '--functional',     type=str, default='b3lyp', help='xc functional')
-parser.add_argument('-b', '--basis_set',      type=str, default='def2-SVP', help='basis sets')
+parser.add_argument('-x', '--xyzfile',        type=str, default='NA', help='xyz filename (molecule.xyz)')
+parser.add_argument('-chk', '--checkfile',    type=str, default='NA', help='checkpoint filename (.chk)')
+parser.add_argument('-m', '--method',         type=str, default='NA', help='RHF RKS UHF UKS')
+parser.add_argument('-f', '--functional',     type=str, default='NA', help='xc functional')
+parser.add_argument('-b', '--basis_set',      type=str, default='NA', help='basis sets')
+parser.add_argument('-df', '--density_fit',   type=bool, default=False, help='density fitting turn on')
 parser.add_argument('-g', '--grid_level',     type=int, default='3', help='0-9, 9 is best')
-parser.add_argument('-i', '--initial_guess',  type=str, default='sTDA', help='initial_guess: Adiag or sTDA')
-parser.add_argument('-p', '--preconditioner', type=str, default='sTDA', help='preconditioner: diag_A or sTDA_A')
+parser.add_argument('-i', '--initial_guess',  type=str, default='sTDA', help='initial guess: Adiag or sTDA')
+parser.add_argument('-p', '--preconditioner', type=str, default='sTDA', help='preconditioner: Adiag or sTDA')
 parser.add_argument('-t', '--tolerance',      type=float, default= 1e-5, help='residual norm convergence threshold')
 parser.add_argument('-n', '--nstates',        type=int, default= 4, help='number of excited states')
 parser.add_argument('-C', '--compare',        type=bool, default = False , help='whether to compare with PySCF TDA-TDDFT')
 args = parser.parse_args()
 ################################################
 # read xyz file and delete its first two lines
-if args.molden == False:
-    f = open(args.filename)
-    atom_coordinates = f.readlines()
-    del atom_coordinates[:2]
-    ###########################################################################
-    # build geometry in PySCF
-    mol = gto.Mole()
-    mol.atom = atom_coordinates
-    mol.basis = args.basis_set
-    mol.max_memory = 1000
-    mol.build(parse_arg = False)
-    ###########################################################################
-    ###################################################
-    #DFT or UF?
-    if args.method == 'RKS':
-        mf = dft.RKS(mol)
-        mf.xc = args.functional
-        mf.grids.level = args.grid_level
-        # 0-9, big number for large mesh grids, default is 3
-    elif args.method == 'UKS':
-        mf = dft.UKS(mol)
-        mf.xc = args.functional
-        mf.grids.level = args.grid_level
+basename = args.xyzfile.split('.',1)[0]
 
-    elif args.method == 'RHF':
-        mf = scf.RHF(mol)
-    elif args.method == 'UHF':
-        mf = scf.UHF(mol)
+f = open(args.xyzfile)
+atom_coordinates = f.readlines()
+del atom_coordinates[:2]
+###########################################################################
+# build geometry in PySCF
+mol = gto.Mole()
+mol.atom = atom_coordinates
+mol.basis = args.basis_set
+mol.verbose = 5
+mol.build(parse_arg = False)
+###########################################################################
+###################################################
+#DFT or HF?
+if args.method == 'RKS':
+    mf = dft.RKS(mol)
+elif args.method == 'UKS':
+    mf = dft.UKS(mol)
+elif args.method == 'RHF':
+    mf = scf.RHF(mol)
+elif args.method == 'UHF':
+    mf = scf.UHF(mol)
 
-    mf.conv_tol = 1e-12
-    print ('Molecule built')
-    print ('Calculating SCF Energy...')
-    kernel_0 = time.time()
-    mf.kernel()
-    kernel_1 = time.time()
-    kernel = round (kernel_1 - kernel_0, 4)
-    print ('SCF Done after ', kernel, 'seconds')
-    # pyscf.tools.molden.from_mo(mol, molden, mo_coeff, spin=’Alpha’, symm=None, ene=None, occ=None, ignore_h=True)
-    #single point energy
-    ####################################################
-else:
-    pyscf.tools.molden.read('adpbo.molden', verbose=0)
-    print ('Molden file loaded')
-################################################
+if 'KS' in args.method:
+    mf.xc = args.functional
+    mf.grids.level = args.grid_level
+    # 0-9, big number for large mesh grids, default is 3
+
+if args.density_fit:
+    mf = mf.density_fit()
+
+if args.checkfile != 'NA':
+    mf.chkfile = args.checkfile
+    mf.init_guess = 'chkfile'
+
+mf.conv_tol = 1e-10
 
 
+print ('Molecule built')
+print ('Calculating SCF Energy...')
+kernel_0 = time.time()
+mf.kernel()
+kernel_1 = time.time()
+kernel = round (kernel_1 - kernel_0, 4)
+print ('SCF Done after ', kernel, 'seconds')
 
-
+mo_occ = mf.mo_occ
 
 
 
@@ -82,24 +83,26 @@ else:
 Qstart = time.time()
 # extract vind() function
 td = tddft.TDA(mf)
+
 vind, hdiag = td.gen_vind(mf)
 
+# vind (V) = A*V
+def matrix_vector(V):
+    return vind(V.T).T
 
 Natm = mol.natm
-MOe = mf.mo_energy
-#an array of MO energies, in Hartree
 
-occupied = len(np.where(mf.mo_occ > 0)[0])
+
+occupied = len(np.where(mo_occ > 0)[0])
 #mf.mo_occ is an array of occupance [2,2,2,2,2,0,0,0,0.....]
-virtual = len(np.where(mf.mo_occ == 0)[0])
+virtual = len(np.where(mo_occ == 0)[0])
 
-AO = [int(i.split(' ',1)[0]) for i in mol.ao_labels()]
-# .split(' ',1) is to split each element by space, split once.
-# mol.ao_labels() it is Labels of AO basis functions
-# AO is a list of corresponding atom_id
+# AO = [int(i.split(' ',1)[0]) for i in mol.ao_labels()]
+# # .split(' ',1) is to split each element by space, split once.
+# # mol.ao_labels() it is Labels of AO basis functions
+# # AO is a list of corresponding atom_id
 
-
-N_bf = len(AO)
+N_bf = len(mo_occ)
 R = pyscf.gto.mole.inter_distance(mol, coords=None)
 #Inter-particle distance array
 # unit == ’Bohr’, Its value is 5.29177210903(80)×10^(−11) m
@@ -244,6 +247,7 @@ def orthonormalize (C):
 
 C = mf.mo_coeff
 # mf.mo_coeff is the coefficient matrix
+
 C = orthonormalize (C)
 # C is orthonormalized coefficient matrix
 # np.dot(C.T,C) is a an identity matrix
@@ -253,19 +257,20 @@ Functionals = [
 'wb97',
 'wb97x',
 'wb97x-d3',
-'cam-b3lyp',
-'b3lyp']
+'cam-b3lyp']
 
 parameters = [
 [0.53, 8.00, 4.50],
 [0.61, 8.00, 4.41],
 [0.56, 8.00, 4.58],
 [0.51, 8.00, 4.51],
-[0.38, 1.86, 0.90],
-[0.56, 8.00, 4.58]]
+[0.38, 1.86, 0.90]]
 Functionals_parameters = dict(zip(Functionals, parameters))
 
-a_x, beta, alpha = Functionals_parameters[args.functional]
+if args.functional in Functionals:
+    a_x, beta, alpha = Functionals_parameters[args.functional]
+else:
+    a_x, beta, alpha = [0.56, 8.00, 4.58]
 
 # creat \eta matrix
 a = [Hardness (atom_id) for atom_id in range (Natm)]
@@ -287,10 +292,19 @@ def generateQ ():
         q[atom_id,:, :] = np.dot(C[atstart:atend, :].T, C[atstart:atend, :])
     return q
 
-q_tensors   = generateQ    ()
-q_tensor_ij = q_tensors [:, :occupied,:occupied]
-q_tensor_ab = q_tensors [:, occupied:,occupied:]
-q_tensor_ia = q_tensors [:, :occupied,occupied:]
+q_tensors = generateQ()
+
+
+
+q_tensor_ij = np.zeros((Natm, occupied, occupied))
+q_tensor_ij[:,:,:] = q_tensors[:, :occupied,:occupied]
+
+q_tensor_ab = np.zeros((Natm, virtual, virtual))
+q_tensor_ab[:,:,:] = q_tensors[:, occupied:,occupied:]
+
+q_tensor_ia = np.zeros((Natm, occupied, virtual))
+q_tensor_ia[:,:,:] = q_tensors[:, :occupied,occupied:]
+
 
 Q_K = einsum('Bjb, AB -> Ajb', q_tensor_ia, GammaK)
 Q_J = einsum('Bab, AB -> Aab', q_tensor_ab, GammaJ)
@@ -318,6 +332,7 @@ def iajb_fly (V):
 
 def ijab_fly (V):
     V = V.reshape(occupied, virtual, -1)
+    # (-1, occupied, virtual)
 #     ijab_v = einsum('Aij, Aab, jbm -> iam', q_tensor_ij, Q_J,  V)
 
     # contract smaller index first
@@ -326,8 +341,9 @@ def ijab_fly (V):
 
     # contract larger index first
     Aab_V = einsum('Aab, jbm -> jAam', Q_J, V)
+    #('Aab, mjb -> mjaA')
     ijab_V = einsum('Aij, jAam -> iam', q_tensor_ij, Aab_V).reshape(occupied*virtual, -1)
-
+    #('Aij, mjaA -> mia)
     return ijab_V
 
 delta_diag_A = hdiag.reshape(occupied, virtual)
@@ -340,6 +356,7 @@ def delta_fly (V):
     return delta_v
 
 def sTDA_fly (V):
+    # sTDA_A * V
     V = V.reshape(occupied*virtual,-1)
     # this feature can deal with multiple vectors
     sTDA_V =  delta_fly (V) + 2*iajb_fly (V) - ijab_fly (V)
@@ -412,6 +429,7 @@ def check_orthonormal (A):
 
 ########################################################################
 def solve_AX_Xla_B (sub_A, eigen_lambda, sub_B):
+    # AX - XB  = Q
     N_vectors = len(eigen_lambda)
     a, u = np.linalg.eigh(sub_A)
     ub = np.dot(u.T, sub_B)
@@ -619,10 +637,17 @@ def Davidson0 (k):
 ################################################################################
 # Real Davidson frame, where we can choose different initial guess and preconditioner
 def Davidson (k, tol, i, p, Davidson_dic):
+    D_start = time.time()
+
     Davidson_dic['nstate'] = k
+    Davidson_dic['molecule'] = basename
+    Davidson_dic['method'] = args.method
+    Davidson_dic['functional'] = args.functional
     Davidson_dic['threshold'] = tol
     Davidson_dic['iteration'] = []
     iteration_list = Davidson_dic['iteration']
+
+
 
     if i == 'sTDA':
         initial_guess = sTDA_initial_guess
@@ -640,7 +665,7 @@ def Davidson (k, tol, i, p, Davidson_dic):
 
 
     n = occupied*virtual
-    print ('A matrix size = ', n)
+    print ('A matrix size = ', n,'*', n)
     max = 50
     # Maximum number of iterations
 
@@ -662,7 +687,7 @@ def Davidson (k, tol, i, p, Davidson_dic):
     # m is size of subspace
 
     # W = Av, create transformed guess vectors
-    W[:, :m] = vind(V[:, :m].T).T
+    W[:, :m] = matrix_vector(V[:, :m])
 
     # time cost for preconditioning
     Pcost = 0
@@ -710,55 +735,30 @@ def Davidson (k, tol, i, p, Davidson_dic):
 
         # orthonormalize the new guesses against old guesses and put into V holder
         V, new_m = Gram_Schdmit_fill_holder (V, m, new_guess)
-        W[:, m:new_m] = vind (V[:, m:new_m].T).T
+        W[:, m:new_m] = matrix_vector (V[:, m:new_m])
         print ('preconditioned guesses:', new_m - m)
         m = new_m
 
+    D_end = time.time()
+    Dcost = D_end - D_start
+    Davidson_dic['total time'] = Dcost
+    Davidson_dic['precondition time'] = Pcost
+    Davidson_dic['iterations'] = ii+1
     ###########################################################################################
     if ii == (max -1):
         print ('============ Davidson Failed Due to Iteration Limmit ==============')
-        print ('Davidson failed after ', ii, 'steps; ', round(Pcost, 4), 'seconds')
+        print ('Davidson failed after ', round(Dcost, 4), 'seconds')
         print ('current residual norms', Norms_of_r)
         print ('max_norm = ', max_norm)
+
     else:
-        print ('Davidson done after ', ii, 'steps; ', round(Pcost, 4), 'seconds')
+        print ('Davidson done after ', round(Dcost, 4), 'seconds')
         print ('Total steps =', ii+1)
         print ('Final subspace size = ', np.shape(sub_A))
-        print ('Preconditioning time:', round(Pcost, 4), 'seconds')
 
+    print ('Preconditioning time:', round(Pcost, 4), 'seconds')
     return (sub_eigenvalue[:k]*27.21138624598853, full_guess)
 ################################################################################
-
-
-
-
-
-
-
-# print ('-------------------------------------------------------------------')
-# print ('|---------------   In-house Developed Davidson Starts   -----------|')
-# print ('Residual convergence threshold =', args.tolerance)
-# print ('Number of excited states =', args.nstates)
-
-# total_start = time.time()
-# Davidson_dic = {}
-# Excitation_energies, kets = Davidson (args.nstates, args.tolerance, args.initial_guess, args.preconditioner, Davidson_dic)
-# total_end = time.time()
-# total_time = total_end - total_start
-# if args.initial_guess == 'Adiag' and args.preconditioner == 'Adiag':
-#     print ('In-house Davidson time:', round(total_time - Q_time, 4), 'seconds')
-# else:
-#     print ('In-house Davidson time:', round(total_time, 4), 'seconds')
-# print ('Excited State energies (eV) =')
-# print (Excitation_energies)
-#
-# curpath = os.path.dirname(os.path.realpath(__file__))
-# yamlpath = os.path.join(curpath, 'i_'+str(args.initial_guess) + '_p_'+str(args.preconditioner)+ '.yaml')
-#
-# with open(yamlpath, "w", encoding="utf-8") as f:
-#     yaml.dump(Davidson_dic, f)
-#
-# print ('|---------------   In-house Developed Davidson Done   -----------|')
 
 
 if args.compare == True:
@@ -795,7 +795,7 @@ for i in option:
         print (Excitation_energies)
 
         curpath = os.path.dirname(os.path.realpath(__file__))
-        yamlpath = os.path.join(curpath, 'i_'+ i + '_p_'+ p + '.yaml')
+        yamlpath = os.path.join(curpath, basename + 'i_' + i + '_p_'+ p + '.yaml')
 
         with open(yamlpath, "w", encoding="utf-8") as f:
             yaml.dump(Davidson_dic, f)
