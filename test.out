@@ -1,3 +1,7 @@
+curpath /Users/zehaozhou/Desktop/project/davidson/davidson
+lib.num_threads() =  1
+mol.max_memory 4000
+#INFO: **** input file is /Users/zehaozhou/Desktop/project/davidson/davidson/Davidson_Jacobi.py ****
 import time
 import numpy as np
 from opt_einsum import contract as einsum
@@ -955,3 +959,471 @@ for option in args.options:
         yaml.dump(Davidson_dic, f)
 
     print ('|---------------   In-house Developed Davidson Done   -----------|')
+#INFO: ******************** input file end ********************
+
+
+System: uname_result(system='Darwin', node='Quantum', release='20.1.0', version='Darwin Kernel Version 20.1.0: Sat Oct 31 00:07:11 PDT 2020; root:xnu-7195.50.7~2/RELEASE_X86_64', machine='x86_64', processor='i386')  Threads 1
+Python 3.7.4 (default, Aug 13 2019, 15:17:50) 
+[Clang 4.0.1 (tags/RELEASE_401/final)]
+numpy 1.17.2  scipy 1.3.1
+Date: Sat Dec  5 11:12:31 2020
+PySCF version 1.7.3
+PySCF path  /Users/zehaozhou/opt/anaconda3/lib/python3.7/site-packages/pyscf
+
+[CONFIG] conf_file None
+[INPUT] verbose = 5
+[INPUT] max_memory = 4000 
+[INPUT] num. atoms = 6
+[INPUT] num. electrons = 18
+[INPUT] charge = 0
+[INPUT] spin (= nelec alpha-beta = 2S) = 0
+[INPUT] symmetry False subgroup None
+[INPUT] Mole.unit = angstrom
+[INPUT]  1 C     -4.891260000000   3.297700000000   0.000290000000 AA   -9.243141804040   6.231749840978   0.000548020576 Bohr
+[INPUT]  2 O     -3.493070000000   3.284290000000  -0.003280000000 AA   -6.600945633934   6.206408613648  -0.006198301689 Bohr
+[INPUT]  3 H     -5.282130000000   2.583740000000   0.757360000000 AA   -9.981779054349   4.882560977084   1.431202977701 Bohr
+[INPUT]  4 H     -5.282130000000   3.054940000000  -1.011610000000 AA   -9.981779054349   5.772999926979  -1.911665844871 Bohr
+[INPUT]  5 H     -5.239980000000   4.315400000000   0.271380000000 AA   -9.902127098198   8.154924117948   0.512833875684 Bohr
+[INPUT]  6 H     -3.229590000000   2.359810000000  -0.249530000000 AA   -6.103040594634   4.459394606010  -0.471543359863 Bohr
+[INPUT] ---------------- BASIS SET ---------------- 
+[INPUT] l, kappa, [nprim/nctr], expnt,             c_1 c_2 ...
+[INPUT] H
+[INPUT] 0    0    [3    /1   ]  13.010701         0.019682158
+                                1.9622572         0.13796524
+                                0.44453796        0.47831935
+[INPUT] 0    0    [1    /1   ]  0.12194962           1
+[INPUT] 1    0    [1    /1   ]  0.8                  1
+[INPUT] O
+[INPUT] 0    0    [5    /1   ]  2266.1767785      -0.0053431809926
+                                340.87010191      -0.03989003923
+                                77.363135167      -0.17853911985
+                                21.47964494       -0.46427684959
+                                6.6589433124      -0.44309745172
+[INPUT] 0    0    [1    /1   ]  0.80975975668        1
+[INPUT] 0    0    [1    /1   ]  0.25530772234        1
+[INPUT] 1    0    [3    /1   ]  17.721504317      0.043394573193
+                                3.863550544       0.23094120765
+                                1.0480920883      0.51375311064
+[INPUT] 1    0    [1    /1   ]  0.27641544411        1
+[INPUT] 2    0    [1    /1   ]  1.2                  1
+[INPUT] C
+[INPUT] 0    0    [5    /1   ]  1238.4016938      0.0054568832082
+                                186.29004992      0.040638409211
+                                42.251176346      0.18025593888
+                                11.676557932      0.46315121755
+                                3.5930506482      0.44087173314
+[INPUT] 0    0    [1    /1   ]  0.40245147363        1
+[INPUT] 0    0    [1    /1   ]  0.13090182668        1
+[INPUT] 1    0    [3    /1   ]  9.4680970621      0.038387871728
+                                2.0103545142      0.21117025112
+                                0.54771004707     0.51328172114
+[INPUT] 1    0    [1    /1   ]  0.15268613795        1
+[INPUT] 2    0    [1    /1   ]  0.8                  1
+
+nuclear repulsion = 40.3453758822416
+number of shells = 24
+number of NR pGTOs = 76
+number of NR cGTOs = 48
+basis = def2-svp
+ecp = {}
+CPU time:         0.88
+RKS
+Density fitting turned on
+Molecule built
+Calculating SCF Energy...
+
+
+******** <class 'pyscf.df.df_jk.density_fit.<locals>.DFHF'> ********
+method = DFHF-RKS-RHF
+initial guess = minao
+damping factor = 0
+level_shift factor = 0
+DIIS = <class 'pyscf.scf.diis.CDIIS'>
+diis_start_cycle = 1
+diis_space = 8
+SCF conv_tol = 1e-10
+SCF conv_tol_grad = None
+SCF max_cycles = 50
+direct_scf = True
+direct_scf_tol = 1e-13
+chkfile to save SCF result = /var/folders/yv/2d0zlq3j1dq04l1tjz4qgg800000gn/T/tmpudbowwbt
+max_memory 4000 MB (current use 0 MB)
+XC functionals = pbe0
+small_rho_cutoff = 1e-07
+radial grids: 
+    Treutler-Ahlrichs [JCP 102, 346 (1995); DOI:10.1063/1.469408] (M4) radial grids
+    
+becke partition: Becke, JCP 88, 2547 (1988); DOI:10.1063/1.454033
+pruning grids: <function nwchem_prune at 0x7fd381196b90>
+grids dens level: 3
+symmetrized grids: False
+atomic radii adjust function: <function treutler_atomic_radii_adjust at 0x7fd381196b00>
+Set gradient conv threshold to 1e-05
+atom C rad-grids = 75, ang-grids = [ 50  50  50  50  50  50  50  50  50  50  50  50  50  50  50  50  50  50
+  50  50  50  50  50  86  86  86  86  86  86  86  86  86  86 266 266 266
+ 266 266 266 266 302 302 302 302 302 302 302 302 302 302 302 302 302 302
+ 302 302 302 302 302 302 266 266 266 266 266 266 266 266 266 266 266 266
+ 266 266 266]
+atom O rad-grids = 75, ang-grids = [ 50  50  50  50  50  50  50  50  50  50  50  50  50  50  50  50  50  50
+  50  50  50  50  86  86  86  86  86  86  86  86  86 266 266 266 266 266
+ 266 266 302 302 302 302 302 302 302 302 302 302 302 302 302 302 302 302
+ 302 302 302 266 266 266 266 266 266 266 266 266 266 266 266 266 266 266
+ 266 266 266]
+atom H rad-grids = 50, ang-grids = [ 50  50  50  50  50  50  50  50  50  50  50  50  50  50  86  86  86  86
+ 266 266 266 266 302 302 302 302 302 302 302 302 302 302 302 302 302 266
+ 266 266 266 266 266 266 266 266 266 266 266 266 266 266]
+tot grids = 68260
+Drop grids 9722
+    CPU time for setting up grids      0.17 sec, wall time      0.09 sec
+nelec by numeric integration = 17.985590887207866
+    CPU time for vxc      0.27 sec, wall time      0.16 sec
+******** <class 'pyscf.df.df.DF'> ********
+auxbasis = None
+max_memory = 4000
+_cderi_to_save = /var/folders/yv/2d0zlq3j1dq04l1tjz4qgg800000gn/T/tmp05w1t1v2
+Default auxbasis def2-svp-jkfit is used for H def2-svp
+Default auxbasis def2-svp-jkfit is used for O def2-svp
+Default auxbasis def2-svp-jkfit is used for C def2-svp
+num shells = 74, num cGTOs = 224
+size of aux basis 224
+int3c2e [1/1], AO [0:24], nrow = 1176
+    CPU time for cholesky_eri      0.05 sec, wall time      0.03 sec
+    CPU time for df vj and vk      0.10 sec, wall time      0.06 sec
+E1 = -235.10091596237476  Ecoul = 94.4267379188928  Exc = -15.14574786064311
+init E= -115.474550021883
+cond(S) = 429.8774528320657
+    CPU time for initialize scf      0.62 sec, wall time      0.36 sec
+  HOMO = -0.356555815572062  LUMO = 0.0120414304697239
+  mo_energy =
+[-1.94204064e+01 -1.03170334e+01 -1.20856466e+00 -7.98860221e-01
+ -6.00878114e-01 -5.18926467e-01 -5.14770021e-01 -3.96484918e-01
+ -3.56555816e-01  1.20414305e-02  6.74481306e-02  1.04872383e-01
+  1.11399574e-01  1.23151251e-01  4.12948813e-01  4.32558764e-01
+  4.38516084e-01  5.40717228e-01  5.98257241e-01  6.16169320e-01
+  6.29533711e-01  6.64539657e-01  8.60149842e-01  8.64625643e-01
+  9.33856795e-01  1.16630678e+00  1.23570062e+00  1.38984089e+00
+  1.42792444e+00  1.47347041e+00  1.49736591e+00  1.65834182e+00
+  1.71037040e+00  1.76051370e+00  1.81319405e+00  1.93673813e+00
+  2.08342879e+00  2.13956552e+00  2.25767298e+00  2.29417058e+00
+  2.58577450e+00  2.71829966e+00  2.75459932e+00  2.81467848e+00
+  2.95106846e+00  3.05717907e+00  3.18010908e+00  3.61964232e+00]
+nelec by numeric integration = 18.000002225797928
+    CPU time for vxc      0.26 sec, wall time      0.13 sec
+    CPU time for df vj and vk      0.01 sec, wall time      0.01 sec
+E1 = -238.83527404158357  Ecoul = 98.63869753852998  Exc = -15.58173590691239
+cycle= 1 E= -115.432936527724  delta_E= 0.0416  |g|= 0.577  |ddm|= 2.13
+    CPU time for cycle= 1      0.28 sec, wall time      0.14 sec
+  HOMO = -0.144556131588931  LUMO = 0.0759686755318518
+  mo_energy =
+[-18.81267039 -10.24228705  -0.90368829  -0.64687226  -0.44414238
+  -0.42799443  -0.37577102  -0.21990039  -0.14455613   0.07596868
+   0.1227234    0.1517114    0.15876447   0.25361564   0.47863334
+   0.50272332   0.54632655   0.62520965   0.66466021   0.68069931
+   0.70613099   0.74358733   1.04403028   1.06696915   1.14182801
+   1.26971934   1.37513618   1.50073357   1.51077037   1.5224696
+   1.6160092    1.72181591   1.78290756   1.85657525   1.90962954
+   2.0008094    2.20138069   2.24876699   2.35648841   2.39591776
+   2.68073581   2.83974402   2.86401185   3.09189899   3.1892903
+   3.2943268    3.4499882    3.88108957]
+nelec by numeric integration = 18.000000310326847
+    CPU time for vxc      0.24 sec, wall time      0.12 sec
+    CPU time for df vj and vk      0.02 sec, wall time      0.01 sec
+E1 = -234.36612785496715  Ecoul = 93.69988808488172  Exc = -15.058474740854514
+cycle= 2 E= -115.379338628698  delta_E= 0.0536  |g|= 0.791  |ddm|= 1.04
+    CPU time for cycle= 2      0.27 sec, wall time      0.14 sec
+  HOMO = -0.276062987377848  LUMO = 0.059997051522333
+  mo_energy =
+[-19.20505589 -10.25852885  -1.03164131  -0.678589    -0.51305792
+  -0.44862371  -0.43217919  -0.33482687  -0.27606299   0.05999705
+   0.1085017    0.14964676   0.15045432   0.20943224   0.47237734
+   0.4907327    0.49997343   0.59107253   0.66305374   0.67539401
+   0.68690842   0.72520305   0.96825518   0.97173095   1.0327788
+   1.23345953   1.31470504   1.45856505   1.47325254   1.52672905
+   1.56232742   1.71857201   1.7737308    1.82980804   1.88902912
+   1.98830156   2.1476305    2.21336867   2.33436234   2.36929267
+   2.66309946   2.80997618   2.83718665   2.95499057   3.07601126
+   3.18072999   3.31684524   3.74481623]
+nelec by numeric integration = 18.00000182442066
+    CPU time for vxc      0.24 sec, wall time      0.12 sec
+    CPU time for df vj and vk      0.01 sec, wall time      0.01 sec
+E1 = -236.96589923680872  Ecoul = 96.47640842295378  Exc = -15.352496516858482
+cycle= 3 E= -115.496611448472  delta_E= -0.117  |g|= 0.035  |ddm|= 0.621
+    CPU time for cycle= 3      0.26 sec, wall time      0.13 sec
+  HOMO = -0.276273781883371  LUMO = 0.0612045136691656
+  mo_energy =
+[-19.19996803 -10.28095289  -1.02801006  -0.68415664  -0.51442964
+  -0.45387662  -0.43666312  -0.33828466  -0.27627378   0.06120451
+   0.10730404   0.14642528   0.14723804   0.20684263   0.46948494
+   0.48702029   0.49672185   0.5927407    0.65570103   0.66856335
+   0.68349036   0.7221216    0.96612521   0.97172599   1.03299347
+   1.23064143   1.31378289   1.45962338   1.4781729    1.52194729
+   1.5622777    1.71346181   1.76851274   1.82517438   1.88355633
+   1.98607719   2.15088652   2.20950487   2.32861368   2.36417539
+   2.65664682   2.80411316   2.83088732   2.95707669   3.07367141
+   3.18006392   3.31648231   3.74805717]
+nelec by numeric integration = 18.00000174082891
+    CPU time for vxc      0.26 sec, wall time      0.13 sec
+    CPU time for df vj and vk      0.02 sec, wall time      0.01 sec
+E1 = -237.01953634929708  Ecoul = 96.53419624773267  Exc = -15.35686398347006
+cycle= 4 E= -115.496828202793  delta_E= -0.000217  |g|= 0.014  |ddm|= 0.033
+    CPU time for cycle= 4      0.29 sec, wall time      0.15 sec
+  HOMO = -0.275438031645436  LUMO = 0.0617753888948689
+  mo_energy =
+[-19.19961033 -10.27085271  -1.02648016  -0.68146445  -0.51264837
+  -0.4514597   -0.43430189  -0.33690694  -0.27543803   0.06177539
+   0.10817917   0.14775597   0.14867534   0.20869514   0.47088556
+   0.48841604   0.49950033   0.59404109   0.65831481   0.67139822
+   0.68554591   0.72348577   0.96735015   0.97269852   1.0334684
+   1.23233828   1.31504722   1.46081078   1.47845453   1.52335604
+   1.5634405    1.71512126   1.77053962   1.82751476   1.88608566
+   1.98798428   2.15194034   2.21163333   2.33123414   2.36660813
+   2.65942572   2.80692429   2.8341275    2.95813436   3.07569828
+   3.18189362   3.3182625    3.7490089 ]
+nelec by numeric integration = 18.000001764875766
+    CPU time for vxc      0.23 sec, wall time      0.11 sec
+    CPU time for df vj and vk      0.01 sec, wall time      0.01 sec
+E1 = -236.9736008057559  Ecoul = 96.48440861976071  Exc = -15.353058254963372
+cycle= 5 E= -115.496874558717  delta_E= -4.64e-05  |g|= 0.00336  |ddm|= 0.0137
+    CPU time for cycle= 5      0.25 sec, wall time      0.13 sec
+  HOMO = -0.275849564670619  LUMO = 0.0615480733024131
+  mo_energy =
+[-19.19994046 -10.27249498  -1.02713675  -0.68191987  -0.513148
+  -0.45199093  -0.43476771  -0.33721223  -0.27584956   0.06154807
+   0.10803363   0.14751629   0.14843656   0.20840399   0.4706443
+   0.48817859   0.49887208   0.59363618   0.6580324    0.67089434
+   0.68510983   0.72331483   0.96710349   0.97237381   1.03332233
+   1.23194649   1.31476576   1.46042673   1.47814292   1.5231682
+   1.56310766   1.71490552   1.77023065   1.82714304   1.88557986
+   1.98753477   2.15157473   2.2112369    2.33076862   2.3661324
+   2.65897106   2.80634373   2.83353552   2.95773895   3.07523111
+   3.18141625   3.31782836   3.74865807]
+nelec by numeric integration = 18.000001764571905
+    CPU time for vxc      0.28 sec, wall time      0.14 sec
+    CPU time for df vj and vk      0.01 sec, wall time      0.01 sec
+E1 = -236.98322587824345  Ecoul = 96.49482000401862  Exc = -15.353847077382456
+cycle= 6 E= -115.496877069366  delta_E= -2.51e-06  |g|= 0.000247  |ddm|= 0.00259
+    CPU time for cycle= 6      0.30 sec, wall time      0.15 sec
+  HOMO = -0.275816169923013  LUMO = 0.0615666105146201
+  mo_energy =
+[-19.19981669 -10.27241984  -1.02709613  -0.68189934  -0.51311395
+  -0.45195378  -0.43476131  -0.33719256  -0.27581617   0.06156661
+   0.10803377   0.1475338    0.14844034   0.2084162    0.47064977
+   0.4881854    0.49890265   0.59365792   0.65802734   0.67092291
+   0.68513694   0.72331674   0.96712517   0.97239815   1.03334265
+   1.23197203   1.31477412   1.46043978   1.47816692   1.5231753
+   1.56312655   1.71490845   1.77023526   1.8271376    1.88561505
+   1.98755744   2.15159708   2.2112553    2.33077363   2.36615998
+   2.65898795   2.80638423   2.83354576   2.95777325   3.07525741
+   3.18144926   3.317857     3.74868343]
+nelec by numeric integration = 18.00000176493413
+    CPU time for vxc      0.26 sec, wall time      0.12 sec
+    CPU time for df vj and vk      0.02 sec, wall time      0.01 sec
+E1 = -236.98236291115927  Ecoul = 96.49386318561075  Exc = -15.353753240766249
+cycle= 7 E= -115.496877084073  delta_E= -1.47e-08  |g|= 3.62e-05  |ddm|= 0.000249
+    CPU time for cycle= 7      0.29 sec, wall time      0.14 sec
+  HOMO = -0.275821290580143  LUMO = 0.0615615836506675
+  mo_energy =
+[-19.19981916 -10.27243255  -1.02710088  -0.68190345  -0.513119
+  -0.45195931  -0.43476129  -0.33719516  -0.27582129   0.06156158
+   0.10803253   0.14753054   0.14843973   0.20841328   0.47064809
+   0.48818387   0.49889734   0.59365172   0.65802627   0.67091905
+   0.68513217   0.72331535   0.9671219    0.97239459   1.03333848
+   1.23196581   1.31477102   1.46043671   1.47815952   1.52317276
+   1.56312251   1.71490665   1.77023385   1.82713815   1.88560918
+   1.9875523    2.1515898    2.21124951   2.33077307   2.36615425
+   2.65898524   2.80637784   2.83354483   2.95776877   3.07525217
+   3.1814441    3.31785112   3.74867766]
+nelec by numeric integration = 18.000001764994245
+    CPU time for vxc      0.25 sec, wall time      0.11 sec
+    CPU time for df vj and vk      0.02 sec, wall time      0.01 sec
+E1 = -236.9824026639236  Ecoul = 96.49390727473521  Exc = -15.353757577518287
+cycle= 8 E= -115.496877084465  delta_E= -3.92e-10  |g|= 4.52e-06  |ddm|= 4.64e-05
+    CPU time for cycle= 8      0.27 sec, wall time      0.13 sec
+  HOMO = -0.275821004981209  LUMO = 0.0615618908237308
+  mo_energy =
+[-19.19981837 -10.27243244  -1.0271004   -0.68190304  -0.51311862
+  -0.4519592   -0.43476111  -0.33719501  -0.275821     0.06156189
+   0.10803264   0.14753052   0.14843965   0.20841341   0.47064798
+   0.48818368   0.49889723   0.59365222   0.65802644   0.67091898
+   0.68513232   0.72331533   0.96712194   0.97239479   1.03333904
+   1.23196605   1.31477115   1.46043705   1.47816033   1.52317257
+   1.56312268   1.71490658   1.77023377   1.82713802   1.88560909
+   1.98755243   2.15159049   2.21124989   2.33077298   2.36615433
+   2.65898513   2.80637782   2.83354476   2.95776929   3.07525241
+   3.18144449   3.31785132   3.74867806]
+nelec by numeric integration = 18.000001765007223
+    CPU time for vxc      0.30 sec, wall time      0.14 sec
+    CPU time for df vj and vk      0.01 sec, wall time      0.01 sec
+E1 = -236.9823987390509  Ecoul = 96.493902586423  Exc = -15.353756814084216
+cycle= 9 E= -115.49687708447  delta_E= -5.43e-12  |g|= 7.5e-07  |ddm|= 6.27e-06
+    CPU time for cycle= 9      0.33 sec, wall time      0.16 sec
+  HOMO = -0.275821063635891  LUMO = 0.0615618308640243
+  mo_energy =
+[-19.19981875 -10.27243263  -1.02710044  -0.68190316  -0.51311863
+  -0.45195919  -0.43476119  -0.33719505  -0.27582106   0.06156183
+   0.10803259   0.14753054   0.14843965   0.20841338   0.47064795
+   0.48818368   0.49889722   0.59365211   0.65802633   0.67091899
+   0.68513227   0.72331531   0.96712195   0.97239473   1.03333894
+   1.231966     1.31477114   1.46043698   1.47816021   1.52317254
+   1.56312267   1.71490654   1.77023372   1.82713796   1.88560911
+   1.98755238   2.15159035   2.21124981   2.33077292   2.36615431
+   2.65898509   2.80637783   2.8335447    2.95776929   3.07525237
+   3.18144446   3.31785127   3.74867803]
+nelec by numeric integration = 18.000001765011667
+    CPU time for vxc      0.26 sec, wall time      0.12 sec
+    CPU time for df vj and vk      0.02 sec, wall time      0.01 sec
+E1 = -236.98240053300955  Ecoul = 96.49390464517208  Exc = -15.353757078874292
+Extra cycle  E= -115.49687708447  delta_E= 3.41e-13  |g|= 3.31e-07  |ddm|= 1.34e-06
+    CPU time for scf_cycle      3.45 sec, wall time      1.78 sec
+    CPU time for SCF      3.45 sec, wall time      1.78 sec
+converged SCF energy = -115.49687708447
+SCF Done after  1.7769 seconds
+Converting <class 'pyscf.df.df_jk.density_fit.<locals>.DFHF'> to RHF
+Q-Gamma tensors building time = 0.1543
+-------------------------------------------------------------------
+|---------------   In-house Developed Davidson Starts   -----------|
+Residual convergence threshold = 1e-05
+Number of excited states = 5
+Initial guess:   sTDA
+Preconditioner:  sTDA
+A matrix size =  351 * 351
+sTDA A diagonalization: threshold = 0.0001 ; in 4 steps  0.0227 seconds
+Intial guess time: 0.0228 seconds
+    CPU time for df vj and vk      0.10 sec, wall time      0.06 sec
+Davidson 0
+subspace size:  10
+sTDA Preconditioning Done after  3 steps;  0.0048 seconds
+    CPU time for df vj and vk      0.05 sec, wall time      0.03 sec
+preconditioned guesses: 5
+Davidson 1
+subspace size:  15
+sTDA Preconditioning Done after  5 steps;  0.006 seconds
+    CPU time for df vj and vk      0.05 sec, wall time      0.03 sec
+preconditioned guesses: 5
+Davidson 2
+subspace size:  20
+sTDA Preconditioning Done after  6 steps;  0.0086 seconds
+    CPU time for df vj and vk      0.05 sec, wall time      0.03 sec
+preconditioned guesses: 5
+Davidson 3
+subspace size:  25
+sTDA Preconditioning Done after  5 steps;  0.0084 seconds
+    CPU time for df vj and vk      0.03 sec, wall time      0.02 sec
+preconditioned guesses: 3
+Davidson 4
+subspace size:  28
+sTDA Preconditioning Done after  4 steps;  0.0047 seconds
+    CPU time for df vj and vk      0.02 sec, wall time      0.02 sec
+preconditioned guesses: 2
+Davidson 5
+subspace size:  30
+All guesses converged!
+Davidson done after  2.1931 seconds
+Total steps = 6
+Final subspace shape =  (30, 30)
+Preconditioning time: 0.0353 seconds
+In-house Davidson time: 2.1933 seconds
+Excited State energies (eV) =
+[ 7.28752676  8.93645153  9.18027037  9.92055034 10.16937434]
+|---------------   In-house Developed Davidson Done   -----------|
+-------------------------------------------------------------------
+|---------------   In-house Developed Davidson Starts   -----------|
+Residual convergence threshold = 1e-05
+Number of excited states = 5
+Initial guess:   sTDA
+Preconditioner:  Jacobi
+A matrix size =  351 * 351
+sTDA A diagonalization: threshold = 0.0001 ; in 4 steps  0.0091 seconds
+Intial guess time: 0.0093 seconds
+    CPU time for df vj and vk      0.11 sec, wall time      0.06 sec
+Davidson 0
+subspace size:  10
+K inverse Done after  3 steps;  0.0044 seconds
+K inverse Done after  6 steps;  0.0106 seconds
+    CPU time for df vj and vk      0.07 sec, wall time      0.04 sec
+preconditioned guesses: 5
+Davidson 1
+subspace size:  15
+K inverse Done after  5 steps;  0.0064 seconds
+K inverse Done after  6 steps;  0.0081 seconds
+    CPU time for df vj and vk      0.06 sec, wall time      0.03 sec
+preconditioned guesses: 5
+Davidson 2
+subspace size:  20
+K inverse Done after  6 steps;  0.0075 seconds
+K inverse Done after  6 steps;  0.0098 seconds
+    CPU time for df vj and vk      0.06 sec, wall time      0.03 sec
+preconditioned guesses: 5
+Davidson 3
+subspace size:  25
+K inverse Done after  5 steps;  0.0055 seconds
+K inverse Done after  7 steps;  0.0069 seconds
+    CPU time for df vj and vk      0.04 sec, wall time      0.03 sec
+preconditioned guesses: 3
+Davidson 4
+subspace size:  28
+K inverse Done after  4 steps;  0.0042 seconds
+K inverse Done after  7 steps;  0.0077 seconds
+    CPU time for df vj and vk      0.03 sec, wall time      0.02 sec
+preconditioned guesses: 2
+Davidson 5
+subspace size:  30
+All guesses converged!
+Davidson done after  2.3643 seconds
+Total steps = 6
+Final subspace shape =  (30, 30)
+Preconditioning time: 0.0735 seconds
+In-house Davidson time: 2.3644 seconds
+Excited State energies (eV) =
+[ 7.28752676  8.93645153  9.18027037  9.92055034 10.16937434]
+|---------------   In-house Developed Davidson Done   -----------|
+-------------------------------------------------------------------
+|---------------   In-house Developed Davidson Starts   -----------|
+Residual convergence threshold = 1e-05
+Number of excited states = 5
+Initial guess:   Adiag
+Preconditioner:  Jacobi
+A matrix size =  351 * 351
+Intial guess time: 0.0 seconds
+    CPU time for df vj and vk      0.10 sec, wall time      0.06 sec
+Davidson 0
+subspace size:  10
+K inverse Done after  8 steps;  0.0101 seconds
+K inverse Done after  7 steps;  0.0122 seconds
+    CPU time for df vj and vk      0.06 sec, wall time      0.03 sec
+preconditioned guesses: 5
+Davidson 1
+subspace size:  15
+K inverse Done after  8 steps;  0.0105 seconds
+K inverse Done after  6 steps;  0.0097 seconds
+    CPU time for df vj and vk      0.06 sec, wall time      0.03 sec
+preconditioned guesses: 5
+Davidson 2
+subspace size:  20
+K inverse Done after  7 steps;  0.0097 seconds
+K inverse Done after  6 steps;  0.0098 seconds
+    CPU time for df vj and vk      0.06 sec, wall time      0.03 sec
+preconditioned guesses: 5
+Davidson 3
+subspace size:  25
+K inverse Done after  7 steps;  0.0081 seconds
+K inverse Done after  6 steps;  0.0063 seconds
+    CPU time for df vj and vk      0.05 sec, wall time      0.03 sec
+preconditioned guesses: 4
+Davidson 4
+subspace size:  29
+K inverse Done after  4 steps;  0.005 seconds
+K inverse Done after  7 steps;  0.0103 seconds
+    CPU time for df vj and vk      0.02 sec, wall time      0.02 sec
+preconditioned guesses: 2
+Davidson 5
+subspace size:  31
+All guesses converged!
+Davidson done after  2.4563 seconds
+Total steps = 6
+Final subspace shape =  (31, 31)
+Preconditioning time: 0.1022 seconds
+In-house Davidson time: 2.4564 seconds
+Excited State energies (eV) =
+[ 7.28752676  8.93645153  9.18027037  9.92055034 10.16937434]
+|---------------   In-house Developed Davidson Done   -----------|

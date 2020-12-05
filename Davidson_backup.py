@@ -17,7 +17,7 @@ parser.add_argument('-x', '--xyzfile',        type=str, default='NA', help='xyz 
 # parser.add_argument('-chk', '--checkfile',    type=str, default='NA', help='checkpoint filename (.chk)')
 parser.add_argument('-m', '--method',         type=str, default='NA', help='RHF RKS UHF UKS')
 parser.add_argument('-f', '--functional',     type=str, default='NA', help='xc functional')
-parser.add_argument('-b', '--basis_set',      type=str, default='NA', help='basis set')
+parser.add_argument('-b', '--basis_set',      type=str, default='NA', help='basis sets')
 parser.add_argument('-df', '--density_fit',   type=bool, default=True, help='density fitting turn on')
 parser.add_argument('-g', '--grid_level',     type=int, default='3', help='0-9, 9 is best')
 # parser.add_argument('-i', '--initial_guess',  type=str, default='sTDA', help='initial guess: Adiag or sTDA')
@@ -26,10 +26,10 @@ parser.add_argument('-t', '--tolerance',      type=float, default= 1e-5, help='r
 parser.add_argument('-n', '--nstates',        type=int, default= 4, help='number of excited states')
 parser.add_argument('-C', '--compare',        type=bool, default = False , help='whether to compare with PySCF TDA-TDDFT')
 parser.add_argument('-o', '--options',        type=int, default ='NA', nargs='+', help='isis=0, iAiA=1, iAis=2, isiA=3')
-parser.add_argument('-it', '--initialTOL',    type=float, default= 1e-4, help='convergence threshold for sTDA inital guess')
-parser.add_argument('-pt', '--precondTOL',    type=float, default= 1e-2, help='convergence threshold for sTDA preconditioner')
+parser.add_argument('-it', '--initialTOL',    type=float, default='NA', help='convergence threshold for sTDA inital guess')
+parser.add_argument('-pt', '--precondTOL',    type=float, default='NA', help='convergence threshold for sTDA preconditioner')
 parser.add_argument('-M',  '--memory',        type=int, default= 4000, help='max_memory')
-parser.add_argument('-ei', '--extrainitial',  type=int, default= 8, help='number of extral initial guess vectors, [0, 8]')
+parser.add_argument('-ei', '--extrainitial',  type=int, default= 'NA', help='number of extral initial guess vectors, [0, 8]')
 args = parser.parse_args()
 ################################################
 # read xyz file and delete its first two lines
@@ -43,7 +43,7 @@ del atom_coordinates[:2]
 mol = gto.Mole()
 mol.atom = atom_coordinates
 mol.basis = args.basis_set
-mol.verbose = 5
+mol.verbose = 4
 mol.max_memory = args.memory
 print('mol.max_memory', mol.max_memory)
 mol.build(parse_arg = False)
@@ -64,8 +64,7 @@ if 'KS' in args.method:
     mf.xc = args.functional
     mf.grids.level = args.grid_level
     # 0-9, big number for large mesh grids, default is 3
-else:
-    print('HF')
+
 
 if args.density_fit:
     mf = mf.density_fit()
@@ -284,9 +283,8 @@ hybride_F = [
 'm05-2x',
 'pbe0',
 'm06',
-'m06-2x',
-'NA']# NA is for Hartree-Fork
-hybride_paramt = [0.2, 0.1, 0.56, 0.25, 0.27, 0.54, 1]
+'m06-2x']
+hybride_paramt = [0.2, 0.1, 0.56, 0.25, 0.27, 0.54]
 DF_ax = dict(zip(hybride_F, hybride_paramt))
 #Zhao, Y. and Truhlar, D.G., 2006. Density functional for spectroscopy: no long-range self-interaction error, good performance for Rydberg and charge-transfer states, and better performance on average than B3LYP for ground states. The Journal of Physical Chemistry A, 110(49), pp.13126-13130.
 
@@ -302,8 +300,6 @@ elif args.functional in hybride_F:
     a_x = DF_ax[args.functional]
     beta = beta1 + beta2 * a_x
     alpha = alpha1 + alpha2 * a_x
-
-
 # creat \eta matrix
 a = [Hardness (atom_id) for atom_id in range (Natm)]
 a = np.asarray(a).reshape(1,-1)
@@ -325,6 +321,7 @@ def generateQ ():
     return q
 
 q_tensors = generateQ()
+
 
 
 q_tensor_ij = np.zeros((Natm, occupied, occupied))
@@ -473,9 +470,9 @@ def solve_AX_Xla_B (sub_A, eigen_lambda, sub_B):
 
 ########################################################################
 # sTDA preconditioner
-def on_the_fly_sTDA_preconditioner (B, eigen_lambda, current_dic, current_guess=None):
-    # (sTDA_A - λ*I)^-1 B = X
-    # AX - Xλ = B
+def on_the_fly_sTDA_preconditioner (B, eigen_lambda, current_dic):
+    # (sTDA_A - eigen_lambda*I)^-1 B = X
+    # AX - X\lambda = B
     # columns in B are residuals (in Davidson's loop) to be preconditioned,
     precondition_start = time.time()
 
@@ -503,7 +500,7 @@ def on_the_fly_sTDA_preconditioner (B, eigen_lambda, current_dic, current_guess=
     # in each iteration, V and W will be filled/updated with new guess vectors
 
     ###########################################
-    #initial guess: (diag(A) - λ)^-1 B.
+    #initial guess: (diag(A) - \lambda)^-1 B.
     # D is preconditioner for each state
     t = 1e-10
     D = np.repeat(hdiag.reshape(-1,1), N_vectors, axis=1) - eigen_lambda
@@ -568,112 +565,6 @@ def on_the_fly_sTDA_preconditioner (B, eigen_lambda, current_dic, current_guess=
     return (full_guess*bnorm, current_dic)
 ###########################################################################################
 
-########################################################################
-# K_inv # exacty the same function with sTDA_preconditioner, just no dic
-def K_inv (B, eigen_lambda):
-    # to solve K^(-1)y and K^(-1)u
-    # K = A-λ*I
-    # (sTDA_A - eigen_lambda*I)^-1 B = X
-    # AX - Xλ = B
-    # columns in B are residuals or current guess
-    precondition_start = time.time()
-
-    N_rows = np.shape(B)[0]
-    B = B.reshape(N_rows, -1)
-    N_vectors = np.shape(B)[1]
-
-    #number of vectors to be preconditioned
-    bnorm = np.linalg.norm(B, axis=0, keepdims = True)
-    #norm of each vectors in B, shape (1,-1)
-    B = B/bnorm
-
-    start = time.time()
-    tol = 1e-2    # Convergence tolerance
-    max = 30   # Maximum number of iterations
-
-    V = np.zeros((N_rows, (max+1)*N_vectors))
-    W = np.zeros((N_rows, (max+1)*N_vectors))
-    count = 0
-
-    # now V and W are empty holders, 0 vectors
-    # W = sTDA_fly(V)
-    # count is the amount of vectors that already sit in the holder
-    # in each iteration, V and W will be filled/updated with new guess vectors
-
-    ###########################################
-    #initial guess: (diag(A) - λ)^-1 B.
-    # D is preconditioner for each state
-    t = 1e-10
-    D = np.repeat(hdiag.reshape(-1,1), N_vectors, axis=1) - eigen_lambda
-    D= np.where( abs(D) < t, np.sign(D)*t, D) # <t: returns np.sign(D)*t; else: D
-    inv_D = 1/D
-
-    # generate initial guess
-    init = B*inv_D
-    V, new_count = Gram_Schdmit_fill_holder (V, count, init)
-    W[:, count:new_count] = sTDA_fly(V[:, count:new_count])
-    count = new_count
-    ####################################################################################
-    for i in range (0, max):
-        sub_B = np.dot(V[:,:count].T, B)
-        sub_A = np.dot(V[:,:count].T, W[:,:count])
-        #project sTDA_A matrix and vector B into subspace
-        # size of subspace
-        m = np.shape(sub_A)[0]
-        sub_guess = solve_AX_Xla_B(sub_A, eigen_lambda, sub_B)
-        full_guess = np.dot(V[:,:count], sub_guess)
-        residual = np.dot(W[:,:count], sub_guess) - full_guess*eigen_lambda - B
-        Norms_of_r = np.linalg.norm (residual, axis=0, keepdims = False)
-        max_norm = np.max(Norms_of_r)
-
-        if max_norm < tol:
-            break
-
-        # index for unconverged residuals
-        index = [i for i in range(len(Norms_of_r)) if Norms_of_r[i] > tol]
-
-        # preconditioning step
-        # only generate new guess from unconverged residuals
-        new_guess = residual[:,index]*inv_D[:,index]
-
-        V, new_count = Gram_Schdmit_fill_holder (V, count, new_guess)
-        W[:, count:new_count] = sTDA_fly(V[:, count:new_count])
-        count = new_count
-
-    precondition_end = time.time()
-    precondition_time = precondition_end - precondition_start
-    if i == (max -1):
-        print ('_________________ K inverse Failed Due to Iteration Limit _________________')
-        print ('K inverse  failed after ', i, 'steps; ', round(precondition_time, 4), 'seconds')
-        print ('current residual norms', Norms_of_r)
-        print ('max_norm = ', max_norm)
-        print ('orthonormality of V', check_orthonormal(V[:,:count]))
-    else:
-        print ('K inverse Done after ', i, 'steps; ', round(precondition_time, 4), 'seconds')
-    return (full_guess*bnorm)
-###########################################################################################
-
-
-
-###########################
-def Jacobi_preconditioner(B, eigen_lambda, current_dic, current_guess):
-    # (1-uu*)(A-λ*I)(1-uu*)t = -B
-    # B is residual, we want to solve "t"
-    # z approximates t
-    # z = (A-λ*I)^(-1)*(-B) + α(A-λ*I)^(-1) * u
-    # where α = [u*(A-λ*I)^(-1)y]/[u*(A-λ*I)^(-1)u]
-    # first is to solve (A-λ*I)^(-1)y and (A-λ*I)^(-1)u
-    u = current_guess
-    K_inv_y = K_inv(-B, eigen_lambda)
-    K_inv_u = K_inv(current_guess, eigen_lambda)
-    n = np.multiply(u, K_inv_y).sum(axis=0)
-    d = np.multiply(u, K_inv_u).sum(axis=0)
-    Alpha = n/d
-
-    z = K_inv_y -  Alpha*K_inv_u
-    return (z, current_dic)
-############################
-
 
 
 #############################################
@@ -700,7 +591,7 @@ def sTDA_initial_guess (k, V):
 ######################################################################################
 
 #####################################################
-def A_diag_preconditioner (residual, sub_eigenvalue, current_dic, current_guess=None):
+def A_diag_preconditioner (residual, sub_eigenvalue, current_dic):
     # preconditioners for each corresponding residual
     k = np.shape(residual)[1]
 
@@ -773,8 +664,7 @@ def Davidson0 (k):
 # Real Davidson frame, where we can choose different initial guess and preconditioner
 def Davidson (k, tol, i, p, Davidson_dic):
     D_start = time.time()
-    Davidson_dic['initial guess'] = i
-    Davidson_dic['preconditioner'] = p
+
     Davidson_dic['nstate'] = k
     Davidson_dic['molecule'] = basename
     Davidson_dic['method'] = args.method
@@ -793,10 +683,6 @@ def Davidson (k, tol, i, p, Davidson_dic):
         precondition = on_the_fly_sTDA_preconditioner
     elif p == 'Adiag':
         precondition = A_diag_preconditioner
-    elif p == 'Jacobi':
-        precondition = Jacobi_preconditioner
-
-
 
     print ('Initial guess:  ', i)
     print ('Preconditioner: ', p)
@@ -873,7 +759,7 @@ def Davidson (k, tol, i, p, Davidson_dic):
         # preconditioning step
         # only generate new guess from unconverged residuals
         P_start = time.time()
-        new_guess, current_dic = precondition (residual[:,index], sub_eigenvalue[:k][index], current_dic, full_guess[:,index])
+        new_guess, current_dic = precondition (residual[:,index], sub_eigenvalue[:k][index], current_dic)
         P_end = time.time()
 
         iteration_list[ii] = current_dic
@@ -929,7 +815,7 @@ if args.compare == True:
     print ('|---------------------------------------------------------------|')
 
 
-combo = [['sTDA','sTDA'],['Adiag','Adiag'],['Adiag','sTDA'], ['sTDA','Adiag'], ['sTDA','Jacobi'],['Adiag','Jacobi']]
+combo = [['sTDA','sTDA'],['Adiag','Adiag'],['Adiag','sTDA'], ['sTDA','Adiag']]
 for option in args.options:
     i,p = combo[option]
     print ('-------------------------------------------------------------------')
