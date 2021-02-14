@@ -1,0 +1,116 @@
+A matrix size: 351
+Davidson time: 0.8625903129577637
+Initial guess time: 0.007508993148803711
+New guess generating time: 0.04862380027770996
+SCF time: 1.7302589416503906
+excitation energy(eV):
+- 7.60464763886448
+final subspace size: 7
+functional: wb97x
+initial guess: sTDA
+iteration:
+- Davidosn residual norms:
+  - 0.059752292685622085
+  preconditioning:
+  - precondition residual norms:
+    - 0.20399228935130362
+  - precondition residual norms:
+    - 0.05856261490161337
+  - precondition residual norms:
+    - 0.02922895360746516
+  - precondition residual norms:
+    - 0.014794962381124953
+  - precondition residual norms:
+    - 0.03580521889814126
+  - precondition residual norms:
+    - 0.023721707302766053
+  - precondition residual norms:
+    - 0.0045810461216823205
+- Davidosn residual norms:
+  - 0.004639206552306072
+  preconditioning:
+  - precondition residual norms:
+    - 0.2490069509775431
+  - precondition residual norms:
+    - 0.06848619380749528
+  - precondition residual norms:
+    - 0.029194976976583523
+  - precondition residual norms:
+    - 0.011300997229973285
+  - precondition residual norms:
+    - 0.278301090214599
+  - precondition residual norms:
+    - 0.010920814636093519
+  - precondition residual norms:
+    - 0.0035187118103768575
+- Davidosn residual norms:
+  - 0.0006091326358983666
+  preconditioning:
+  - precondition residual norms:
+    - 0.2774210258905525
+  - precondition residual norms:
+    - 0.12051901676582764
+  - precondition residual norms:
+    - 0.029512632099378974
+  - precondition residual norms:
+    - 0.022660094224173106
+  - precondition residual norms:
+    - 0.02187285558850899
+  - precondition residual norms:
+    - 0.03761622204931951
+  - precondition residual norms:
+    - 0.01000299234511799
+  - precondition residual norms:
+    - 0.0038642016443092017
+- Davidosn residual norms:
+  - 8.334242241476474e-05
+  preconditioning:
+  - precondition residual norms:
+    - 0.42647729997775835
+  - precondition residual norms:
+    - 0.196013042159273
+  - precondition residual norms:
+    - 0.06316168283111562
+  - precondition residual norms:
+    - 0.03518361882677393
+  - precondition residual norms:
+    - 0.026769081218313007
+  - precondition residual norms:
+    - 0.0790825247917586
+  - precondition residual norms:
+    - 0.012755260727288897
+  - precondition residual norms:
+    - 0.006148036807566813
+- Davidosn residual norms:
+  - 1.4030579101795229e-05
+  preconditioning:
+  - precondition residual norms:
+    - 0.45332329436355273
+  - precondition residual norms:
+    - 0.3076087309391256
+  - precondition residual norms:
+    - 0.0737102194004707
+  - precondition residual norms:
+    - 0.0494534540558466
+  - precondition residual norms:
+    - 0.08869510874389788
+  - precondition residual norms:
+    - 0.10827479557684483
+  - precondition residual norms:
+    - 0.04678753265415197
+  - precondition residual norms:
+    - 0.03604949399279901
+  - precondition residual norms:
+    - 0.01139734628551593
+  - precondition residual norms:
+    - 0.002521848692627183
+- Davidosn residual norms:
+  - 4.286868647054373e-06
+iterations: 6
+method: RKS
+molecule: methanol
+nstate: 1
+preconditioner: sTDA
+sTDA initial guess threshold: 0.0001
+sTDA preconditioner threshold: 0.01
+threshold: 1.0e-05
