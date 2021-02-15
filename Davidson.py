@@ -6,10 +6,12 @@ from pyscf import gto, scf, dft, tddft, data, lib
 import argparse
 import os
 import psutil
-import gc
+# import gc
+# import objgraph
 import yaml
 from pyscf.tools import molden
 from pyscf.dft import xcfun
+
 
 print('curpath', os.getcwd())
 print('lib.num_threads() = ', lib.num_threads())
@@ -146,13 +148,13 @@ def TDA_matrix_vector(V):
 
 #return AX + BY and AY + BX
 def TDDFT_matrix_vector(X, Y):
-    A_size = X.shape[0]
+
     XY = np.vstack((X,Y)).T
     U = TDDFT_vind(XY)
 #     print('U.shape',U.shape)
     U1 = U[:,:A_size].T
     U2 = -U[:,A_size:].T
-    return U1[:,:], U2[:,:]
+    return U1, U2
 #################################################
 
 
@@ -289,6 +291,10 @@ q_tensor_ia = np.zeros((Natm, n_occ, n_vir))
 q_tensor_ia[:,:,:] = q_tensors[:, :n_occ,n_occ:]
 
 
+# del q_tensors
+# gc.collect()
+# print('q_tensors deleted')
+
 Q_K = einsum('Bjb, AB -> Ajb', q_tensor_ia, GammaK)
 Q_J = einsum('Bab, AB -> Aab', q_tensor_ab, GammaJ)
 # pre-calculate and store the Q-Gamma rank 3 tensor
@@ -359,7 +365,7 @@ def sTDDFT_matrix_vector(X, Y):
     U1 = AX + BY
     U2 = AY + BX
 
-    return U1[:,:], U2[:,:]
+    return U1, U2
 ###################################################################################################
 
 
@@ -374,9 +380,13 @@ def Gram_Schdmit_bvec(A, bvec):
     bvec = bvec - np.dot(A, projections_coeff)
     return bvec
 
-def VW_Gram_Schdmit(x, y, VV_p_WW, VW_p_WV):
-    x_new = x - np.dot(VV_p_WW,x) - np.dot(VW_p_WV, y)
-    y_new = y - np.dot(VV_p_WW,y) - np.dot(VW_p_WV, x)
+def VW_Gram_Schdmit(x, y, V, W):
+
+    m = np.dot(V.T,x) + np.dot(W.T,y)
+    n = np.dot(W.T,x) + np.dot(V.T,y)
+
+    x_new = x - np.dot(V,m) - np.dot(W,n)
+    y_new = y - np.dot(W,m) - np.dot(V,n)
 
     return x_new,y_new
 
@@ -435,17 +445,13 @@ def VW_Gram_Schdmit_fill_holder(V_holder, W_holder, m, X_new, Y_new):
         V = V_holder[:,:m]
         W = W_holder[:,:m]
 
-        VV_p_WW = np.dot(V, V.T) +  np.dot(W, W.T)
-        # VV_p_WW = VV+WW
-        VW = np.dot(V, W.T)
-        VW_p_WV = VW + VW.T
-        # VW_p_WV = VW+WV
+
 
         x_tmp = X_new[:,j].reshape(-1,1)
         y_tmp = Y_new[:,j].reshape(-1,1)
 
-        x_tmp,y_tmp = VW_Gram_Schdmit(x_tmp, y_tmp, VV_p_WW, VW_p_WV)
-        x_tmp,y_tmp = VW_Gram_Schdmit(x_tmp, y_tmp, VV_p_WW, VW_p_WV)
+        x_tmp,y_tmp = VW_Gram_Schdmit(x_tmp, y_tmp, V, W)
+        x_tmp,y_tmp = VW_Gram_Schdmit(x_tmp, y_tmp, V, W)
 
         x_tmp,y_tmp = S_symmetry_orthogonal(x_tmp,y_tmp)
 
@@ -843,7 +849,7 @@ def TDDFT_A_diag_preconditioner(R_x, R_y, omega):
     X_new = R_x/D_x
     Y_new = R_y/D_y
 
-    return X_new[:,:], Y_new[:,:]
+    return X_new, Y_new
 #######################################################
 
 
@@ -1176,21 +1182,24 @@ def sTDDFT_eigen_solver(k):
         # compute the residual
         # R_x = U1x + U2y - (Vx + Wy)omega
         # R_y = U2x + U1y + (Wx + Vy)omega
-        U1x = np.dot(U1,x)
-        U2x = np.dot(U2,x)
-        Vx = np.dot(V,x)
-        Wx = np.dot(W,x)
+        # U1x = np.dot(U1,x)
+        # U2x = np.dot(U2,x)
+        # Vx = np.dot(V,x)
+        # Wx = np.dot(W,x)
+        #
+        # U1y = np.dot(U1,y)
+        # U2y = np.dot(U2,y)
+        # Vy = np.dot(V,y)
+        # Wy = np.dot(W,y)
+        #
+        # X_full = Vx + Wy
+        # Y_full = Wx + Vy
+        #
+        # R_x = U1x + U2y - X_full*omega
+        # R_y = U2x + U1y + Y_full*omega
 
-        U1y = np.dot(U1,y)
-        U2y = np.dot(U2,y)
-        Vy = np.dot(V,y)
-        Wy = np.dot(W,y)
-
-        X_full = Vx + Wy
-        Y_full = Wx + Vy
-
-        R_x = U1x + U2y - X_full*omega
-        R_y = U2x + U1y + Y_full*omega
+        R_x = np.dot(U1,x) + np.dot(U2,y) - (np.dot(V,x) + np.dot(W,y))*omega
+        R_y = np.dot(U2,x) + np.dot(U1,y) + (np.dot(W,x) + np.dot(V,y))*omega
 
         residual = np.vstack((R_x, R_y))
         r_norms = np.linalg.norm(residual, axis=0).tolist()
@@ -1231,8 +1240,10 @@ def sTDDFT_eigen_solver(k):
     else:
         print('sTDDFT Converged after ', ii+1, 'iterations  ', round(sTDDFT_cost, 4), 'seconds')
 
+    X_full = np.dot(V,x) + np.dot(W,y)
+    Y_full = np.dot(W,x) + np.dot(V,y)
 
-    return omega*27.211386031943245, X_full[:,:], Y_full[:,:]
+    return omega*27.211386031943245, X_full, Y_full
 ##############################################################################
 
 energies, X_new_backup, Y_new_backup = sTDDFT_eigen_solver(min([args.nstates+args.extrainitial, 2*args.nstates, A_size]))
@@ -1289,12 +1300,13 @@ def sTDDFT_preconditioner(P, Q, omega):
     m = 0
 #     new_m = min([k+8, 2*k, n])
 
+    show_memory_info('preconditioner before holder')
     V_holder = np.zeros((A_size, (max+1)*k))
     W_holder = np.zeros_like(V_holder)
 
     U1_holder = np.zeros_like(V_holder)
     U2_holder = np.zeros_like(V_holder)
-
+    show_memory_info('preconditioner after holder')
 
 
     ##############################
@@ -1335,6 +1347,7 @@ def sTDDFT_preconditioner(P, Q, omega):
 #         print('sigma.shape', sigma.shape)
         ###############################################################
 
+
         ###############################################################
 #         solve the x & y in the subspace
         x, y = sTDDFT_preconditioner_subspace_eigen_solver(a, b, sigma, pi, p, q, omega)
@@ -1344,22 +1357,25 @@ def sTDDFT_preconditioner(P, Q, omega):
         # compute the residual
         # R_x = U1x + U2y - (Vx + Wy)omega
         # R_y = U2x + U1y + (Wx + Vy)omega
-        U1x = np.dot(U1,x)
-        U2x = np.dot(U2,x)
-        Vx = np.dot(V,x)
-        Wx = np.dot(W,x)
+        # U1x = np.dot(U1,x)
+        # U2x = np.dot(U2,x)
+        # Vx = np.dot(V,x)
+        # Wx = np.dot(W,x)
+        #
+        # U1y = np.dot(U1,y)
+        # U2y = np.dot(U2,y)
+        # Vy = np.dot(V,y)
+        # Wy = np.dot(W,y)
+        #
+        # X_full = Vx + Wy
+        # Y_full = Wx + Vy
+        #
+        # R_x = U1x + U2y - X_full*omega - P
+        # R_y = U2x + U1y + Y_full*omega - Q
 
-        U1y = np.dot(U1,y)
-        U2y = np.dot(U2,y)
-        Vy = np.dot(V,y)
-        Wy = np.dot(W,y)
-
-        X_full = Vx + Wy
-        Y_full = Wx + Vy
-
-        R_x = U1x + U2y - X_full*omega - P
-        R_y = U2x + U1y + Y_full*omega - Q
-
+        R_x = np.dot(U1,x) + np.dot(U2,y) - (np.dot(V,x) + np.dot(W,y))*omega - P
+        R_y = np.dot(U2,x) + np.dot(U1,y) + (np.dot(W,x) + np.dot(V,y))*omega - Q
+        show_memory_info('preconditioner after residual')
         residual = np.vstack((R_x, R_y))
 #         print('residual.shape', residual.shape)
         r_norms = np.linalg.norm(residual, axis=0).tolist()
@@ -1398,6 +1414,10 @@ def sTDDFT_preconditioner(P, Q, omega):
     else:
         print('sTDDFT_precond Converged after ', ii+1, 'iterations  ', round(sTDDFT_precond_cost, 4), 'seconds')
 
+
+    X_full = np.dot(V,x) + np.dot(W,y)
+    Y_full = np.dot(W,x) + np.dot(V,y)
+    show_memory_info('preconditioner at end')
     return X_full, Y_full
 ##########################################################################
 
@@ -1464,7 +1484,7 @@ def TDDFT_eigen_solver(i, p, k=args.nstates, tol=args.tolerance):
 
     for ii in range(max):
         print('||||____________________Iteration', ii, '_________')
-        show_memory_info('step '+str(ii))
+        show_memory_info('beginning of step '+ str(ii))
         ###############################################################
         # creating the subspace
         V = V_holder[:,:new_m]
@@ -1494,21 +1514,27 @@ def TDDFT_eigen_solver(i, p, k=args.nstates, tol=args.tolerance):
         # compute the residual
         # R_x = U1x + U2y - (Vx + Wy)omega
         # R_y = U2x + U1y + (Wx + Vy)omega
-        U1x = np.dot(U1,x)
-        U2x = np.dot(U2,x)
-        Vx = np.dot(V,x)
-        Wx = np.dot(W,x)
 
-        U1y = np.dot(U1,y)
-        U2y = np.dot(U2,y)
-        Vy = np.dot(V,y)
-        Wy = np.dot(W,y)
+        # U1x = np.dot(U1,x)
+        # U2x = np.dot(U2,x)
+        # Vx = np.dot(V,x)
+        # Wx = np.dot(W,x)
+        #
+        # U1y = np.dot(U1,y)
+        # U2y = np.dot(U2,y)
+        # Vy = np.dot(V,y)
+        # Wy = np.dot(W,y)
+        #
+        # X_full = Vx + Wy
+        # Y_full = Wx + Vy
+        #
+        # R_x = U1x + U2y - X_full*omega
+        # R_y = U2x + U1y + Y_full*omega
 
-        X_full = Vx + Wy
-        Y_full = Wx + Vy
+        R_x = np.dot(U1,x) + np.dot(U2,y) - (np.dot(V,x) + np.dot(W,y))*omega
+        R_y = np.dot(U2,x) + np.dot(U1,y) + (np.dot(W,x) + np.dot(V,y))*omega
 
-        R_x = U1x + U2y - X_full*omega
-        R_y = U2x + U1y + Y_full*omega
+        show_memory_info('after computing residual step '+ str(ii))
 
         residual = np.vstack((R_x, R_y))
 
@@ -1575,6 +1601,10 @@ def TDDFT_eigen_solver(i, p, k=args.nstates, tol=args.tolerance):
         print('current residual norms', r_norms)
         print('max_norm = ', np.max(r_norms))
 
+    # objgraph.show_refs([V_holder])
+
+    X_full = np.dot(V,x) + np.dot(W,y)
+    Y_full = np.dot(W,x) + np.dot(V,y)
     show_memory_info('Total TDDFT')
     return omega*27.211386245988, X_full, Y_full, TDDFT_dic
 # end of RPA module
