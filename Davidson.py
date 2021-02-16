@@ -75,7 +75,7 @@ del atom_coordinates[:2]
 mol = gto.Mole()
 mol.atom = atom_coordinates
 mol.basis = args.basis_set
-mol.verbose = 5
+mol.verbose = 3
 mol.max_memory = args.memory
 print('mol.max_memory', mol.max_memory)
 mol.build(parse_arg = False)
@@ -388,7 +388,7 @@ def VW_Gram_Schdmit(x, y, V, W):
     x_new = x - np.dot(V,m) - np.dot(W,n)
     y_new = y - np.dot(W,m) - np.dot(V,n)
 
-    return x_new,y_new
+    return x_new, y_new
 
 def Gram_Schdmit_fill_holder(V, count, vecs):
     # V is a vectors holder
@@ -414,22 +414,38 @@ def Gram_Schdmit_fill_holder(V, count, vecs):
 def S_symmetry_orthogonal(x,y):
     # V.T V =S
     # S^-1/2 V.T VS^-1/2 =I
-    # V:= VS^-1/2
-    l = x.shape[0]
+    # V:= V S^-1/2
+    # l = x.shape[0]
 #     print('l =',l)
-    xy = np.vstack((x,y))
-    yx = np.vstack((y,x))
+    # xy = np.vstack((x,y))
+    # yx = np.vstack((y,x))
+    #
+    # V = np.hstack((xy,yx))
+    #
+    # S = np.dot(V.T,V)
+    # ss = matrix_power(S, -0.5)
+    # # x = S^-1/2
+    # V = np.dot(V, ss)
+    #
+    # x = V[:l,0].reshape(-1,1)
+    # y = V[l:,0].reshape(-1,1)
 
-    V = np.hstack((xy,yx))
-    S = np.dot(V.T,V)
+    S = np.zeros((2,2))
+    S[0,0] = np.dot(x.T,x) + np.dot(y.T,y)
+    S[0,1] = np.dot(x.T,y) + np.dot(y.T,x)
+    S[1,0] = S[0,1]
+    S[1,1] = S[0,0]
+
     ss = matrix_power(S, -0.5)
+    a = ss[0,0]
+    b = ss[0,1]
     # x = S^-1/2
-    V = np.dot(V, ss)
 
-    x = V[:l,0].reshape(-1,1)
-    y = V[l:,0].reshape(-1,1)
 
-    return x, y
+    x_new = x*a + y*b
+    y_new = y*a + x*b
+
+    return x_new, y_new
 
 def VW_Gram_Schdmit_fill_holder(V_holder, W_holder, m, X_new, Y_new):
     # put X_new into V, and Y_new into W
@@ -437,15 +453,12 @@ def VW_Gram_Schdmit_fill_holder(V_holder, W_holder, m, X_new, Y_new):
 
     nvec = np.shape(X_new)[1]
     # amount of new vectors intended to fill in the V_holder and W_holder
-
     for j in range(0, nvec):
         #x:=x−(VV+WW)x−(VW+WV)y
         #y:=y−(VV+WW)y−(VW+WV)x
 
         V = V_holder[:,:m]
         W = W_holder[:,:m]
-
-
 
         x_tmp = X_new[:,j].reshape(-1,1)
         y_tmp = Y_new[:,j].reshape(-1,1)
@@ -836,18 +849,22 @@ def TDDFT_A_diag_preconditioner(R_x, R_y, omega):
 #     print('omega.shape',omega.shape)
     t = 1e-14
 
-    d = np.repeat(delta_diag_A.reshape(-1,1), k, axis=1)
+    d = np.repeat(hdiag.reshape(-1,1), k, axis=1)
 
     D_x = d - omega
     D_x = np.where( abs(D_x) < t, np.sign(D_x)*t, D_x)
+    D_x_inv = D_x**-1
+
 
     D_y = d + omega
-    D_y = np.where( abs(D_y) < t, np.sign(D_y)*t, D_y)
+    # D_y = np.where( abs(D_y) < t, np.sign(D_y)*t, D_y)
     # force all values not in domain (-t, t)
+    D_y_inv = D_y**-1
+
 
 #     print('R_x.shape, D_x.shape',R_x.shape, D_x.shape)
-    X_new = R_x/D_x
-    Y_new = R_y/D_y
+    X_new = R_x*D_x_inv
+    Y_new = R_y*D_y_inv
 
     return X_new, Y_new
 #######################################################
@@ -1273,7 +1290,6 @@ def sTDDFT_preconditioner_subspace_eigen_solver(a, b, sigma, pi, p, q, omega):
 
     # T = (a+b)^1/2(σ−π)^−T[(p-q)w + (a-b)(σ−π)^−1(p+q)]
 
-
     # MZ - Zw^2 = T
     Z = solve_AX_Xla_B(M, omega**2, T)
 
@@ -1293,30 +1309,34 @@ def sTDDFT_preconditioner_subspace_eigen_solver(a, b, sigma, pi, p, q, omega):
 def sTDDFT_preconditioner(P, Q, omega):
 
     tol = args.precondTOL
-
     max = 30
     sTDDFT_start = time.time()
     k = len(omega)
     m = 0
-#     new_m = min([k+8, 2*k, n])
 
-    show_memory_info('preconditioner before holder')
+
+    initial_start = time.time()
     V_holder = np.zeros((A_size, (max+1)*k))
     W_holder = np.zeros_like(V_holder)
 
     U1_holder = np.zeros_like(V_holder)
     U2_holder = np.zeros_like(V_holder)
-    show_memory_info('preconditioner after holder')
-
 
     ##############################
     # setting up initial guess
+
     X_new, Y_new  = TDDFT_A_diag_preconditioner(P, Q, omega)
     V_holder, W_holder, new_m = VW_Gram_Schdmit_fill_holder(V_holder, W_holder, 0,  X_new, Y_new)
+    initial_end = time.time()
+    initial_cost = initial_end - initial_start
 #     print('new_m =', new_m)
 #     print('initial guess done')
     ##############################
-
+    subcost = 0
+    Pcost = 0
+    MVcost = 0
+    GScost = 0
+    subgencost = 0
     for ii in range(max):
 #         print('||||____________________Iteration', ii, '_________')
 
@@ -1328,11 +1348,17 @@ def sTDDFT_preconditioner(P, Q, omega):
         # U1 = AV + BW
         # U2 = AW + BV
 
+        MV_start = time.time()
         U1_holder[:, m:new_m], U2_holder[:, m:new_m] = sTDDFT_matrix_vector(V[:, m:new_m], W[:, m:new_m])
+        MV_end = time.time()
+        MVcost += MV_end - MV_start
 
         U1 = U1_holder[:,:new_m]
         U2 = U2_holder[:,:new_m]
 
+
+
+        subgenstart = time.time()
         a = np.dot(V.T, U1) + np.dot(W.T, U2)
         b = np.dot(V.T, U2) + np.dot(W.T, U1)
 
@@ -1343,14 +1369,17 @@ def sTDDFT_preconditioner(P, Q, omega):
         # q = WP + VQ
         p = np.dot(V.T, P) + np.dot(W.T, Q)
         q = np.dot(W.T, P) + np.dot(V.T, Q)
-
+        subgenend = time.time()
+        subgencost += subgenend - subgenstart
 #         print('sigma.shape', sigma.shape)
         ###############################################################
 
-
         ###############################################################
 #         solve the x & y in the subspace
+        subcost_start = time.time()
         x, y = sTDDFT_preconditioner_subspace_eigen_solver(a, b, sigma, pi, p, q, omega)
+        subcost_end = time.time()
+        subcost += subcost_end - subcost_start
         ###############################################################
 
         ###############################################################
@@ -1375,8 +1404,8 @@ def sTDDFT_preconditioner(P, Q, omega):
 
         R_x = np.dot(U1,x) + np.dot(U2,y) - (np.dot(V,x) + np.dot(W,y))*omega - P
         R_y = np.dot(U2,x) + np.dot(U1,y) + (np.dot(W,x) + np.dot(V,y))*omega - Q
-        show_memory_info('preconditioner after residual')
-        residual = np.vstack((R_x, R_y))
+
+        residual = np.vstack((R_x,R_y))
 #         print('residual.shape', residual.shape)
         r_norms = np.linalg.norm(residual, axis=0).tolist()
 #         print('r_norms', r_norms)
@@ -1389,13 +1418,19 @@ def sTDDFT_preconditioner(P, Q, omega):
 
         #####################################################################################
         # preconditioning step
+        Pstart = time.time()
         X_new, Y_new = TDDFT_A_diag_preconditioner((R_x+P)[:,index], (R_y+Q)[:,index], omega[index])
+        Pend = time.time()
+        Pcost += Pend - Pstart
         #####################################################################################
 
         ###############################################################
         # GS and symmetric orthonormalization
         m = new_m
+        GS_start = time.time()
         V_holder, W_holder, new_m = VW_Gram_Schdmit_fill_holder(V_holder, W_holder, m, X_new, Y_new)
+        GS_end = time.time()
+        GScost += GS_end - GS_start
 #         print('m & new_m', m, new_m)
         if new_m == m:
             print('All new guesses kicked out during GS orthonormalization')
@@ -1413,6 +1448,12 @@ def sTDDFT_preconditioner(P, Q, omega):
         print('max_norm = ', np.max(r_norms))
     else:
         print('sTDDFT_precond Converged after ', ii+1, 'iterations  ', round(sTDDFT_precond_cost, 4), 'seconds')
+        print('initial_cost', round(initial_cost,4), round(initial_cost/sTDDFT_precond_cost * 100,2),'%')
+        print('Pcost', round(Pcost,4), round(Pcost/sTDDFT_precond_cost * 100,2),'%')
+        print('MVcost', round(MVcost,4), round(MVcost/sTDDFT_precond_cost * 100,2),'%')
+        print('GScost', round(GScost,4), round(GScost/sTDDFT_precond_cost * 100,2),'%')
+        print('subcost', round(subcost,4), round(subcost/sTDDFT_precond_cost * 100,2),'%')
+        print('subgencost', round(subgencost,4), round(subgencost/sTDDFT_precond_cost * 100,2),'%')
 
 
     X_full = np.dot(V,x) + np.dot(W,y)
@@ -1462,28 +1503,29 @@ def TDDFT_eigen_solver(i, p, k=args.nstates, tol=args.tolerance):
     initial_guess = TDDFT_i_lib[i]
     new_guess_generator = TDDFT_p_lib[p]
 
-    show_memory_info('before holder')
+
     V_holder = np.zeros((A_size, (max+1)*k))
     W_holder = np.zeros_like(V_holder)
 
     U1_holder = np.zeros_like(V_holder)
     U2_holder = np.zeros_like(V_holder)
     # set up initial guess VW, transformed vectors U1&U2
-    show_memory_info('before intial guess')
+
     ##############################
     # setting up initial guess
     init_start = time.time()
     V_holder, W_holder, new_m = initial_guess(V_holder, W_holder, new_m)
     init_end = time.time()
     init_time = init_end - init_start
-    show_memory_info('after intial guess')
+
 
     print('new_m =', new_m)
     print('initial guess done')
     ##############################
-
+    Pcost = 0
+    VWGScost = 0
     for ii in range(max):
-        print('||||____________________Iteration', ii, '_________')
+        print('||||____________________Iteration', ii, '____________________||||')
         show_memory_info('beginning of step '+ str(ii))
         ###############################################################
         # creating the subspace
@@ -1534,7 +1576,7 @@ def TDDFT_eigen_solver(i, p, k=args.nstates, tol=args.tolerance):
         R_x = np.dot(U1,x) + np.dot(U2,y) - (np.dot(V,x) + np.dot(W,y))*omega
         R_y = np.dot(U2,x) + np.dot(U1,y) + (np.dot(W,x) + np.dot(V,y))*omega
 
-        show_memory_info('after computing residual step '+ str(ii))
+
 
         residual = np.vstack((R_x, R_y))
 
@@ -1551,7 +1593,7 @@ def TDDFT_eigen_solver(i, p, k=args.nstates, tol=args.tolerance):
             break
         # index for unconverged residuals
         index = [r_norms.index(i) for i in r_norms if i > tol]
-        print('index', index)
+        print('unconverged states', len(index))
         ###############################################################
 
         #####################################################################################
@@ -1559,13 +1601,16 @@ def TDDFT_eigen_solver(i, p, k=args.nstates, tol=args.tolerance):
         P_start = time.time()
         X_new, Y_new = new_guess_generator(R_x[:,index], R_y[:,index], omega[index])
         P_end = time.time()
-        Pcost = P_end - P_start
+        Pcost += P_end - P_start
         #####################################################################################
 
         ###############################################################
         # GS and symmetric orthonormalization
         m = new_m
+        VWGScost_start = time.time()
         V_holder, W_holder, new_m = VW_Gram_Schdmit_fill_holder(V_holder, W_holder, m, X_new, Y_new)
+        VWGScost_end = time.time()
+        VWGScost += VWGScost_end - VWGScost_start
         print('m & new_m', m, new_m)
         if new_m == m:
             print('All new guesses kicked out during GS orthonormalization')
@@ -1596,9 +1641,12 @@ def TDDFT_eigen_solver(i, p, k=args.nstates, tol=args.tolerance):
     else:
         print('================================== RPA-TDDFT Calculation Done ==================================')
         print('RPA-TDDFT Converged after ', ii+1, 'iterations  ', round(TDDFT_cost, 4), 'seconds')
-        print(' Initial guess',i)
-        print(' preconditioner', p)
-        print('current residual norms', r_norms)
+        print('Initial guess',i)
+        print('preconditioner', p)
+        print('Final subspace ', sigma.shape)
+        print('preconditioning cost', round(Pcost,4))
+        print('VWGScost',round(VWGScost,4))
+        # print('current residual norms', r_norms)
         print('max_norm = ', np.max(r_norms))
 
     # objgraph.show_refs([V_holder])
