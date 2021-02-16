@@ -374,13 +374,13 @@ def sTDDFT_matrix_vector(X, Y):
 
 ##############################################################################################
 # orthonormalization of guess_vectors
-def Gram_Schdmit_bvec(A, bvec):
+def Gram_Schmidt_bvec(A, bvec):
     # suppose A is orthonormalized
     projections_coeff = np.dot(A.T, bvec)
     bvec = bvec - np.dot(A, projections_coeff)
     return bvec
 
-def VW_Gram_Schdmit(x, y, V, W):
+def VW_Gram_Schmidt(x, y, V, W):
 
     m = np.dot(V.T,x) + np.dot(W.T,y)
     n = np.dot(W.T,x) + np.dot(V.T,y)
@@ -390,7 +390,7 @@ def VW_Gram_Schdmit(x, y, V, W):
 
     return x_new, y_new
 
-def Gram_Schdmit_fill_holder(V, count, vecs):
+def Gram_Schmidt_fill_holder(V, count, vecs):
     # V is a vectors holder
     # count is the amount of vectors that already sit in the holder
     nvec = np.shape(vecs)[1]
@@ -398,8 +398,8 @@ def Gram_Schdmit_fill_holder(V, count, vecs):
     # count will be final amount of vectors in V
     for j in range(nvec):
         vec = vecs[:, j]
-        vec = Gram_Schdmit_bvec(V[:, :count], vec)   #single orthonormalize
-        vec = Gram_Schdmit_bvec(V[:, :count], vec) #double orthonormalize
+        vec = Gram_Schmidt_bvec(V[:, :count], vec)   #single orthonormalize
+        vec = Gram_Schmidt_bvec(V[:, :count], vec) #double orthonormalize
 
         norm = np.linalg.norm(vec)
         if  norm > 1e-14:
@@ -447,7 +447,7 @@ def S_symmetry_orthogonal(x,y):
 
     return x_new, y_new
 
-def VW_Gram_Schdmit_fill_holder(V_holder, W_holder, m, X_new, Y_new):
+def VW_Gram_Schmidt_fill_holder(V_holder, W_holder, m, X_new, Y_new):
     # put X_new into V, and Y_new into W
     # m is the amount of vectors that already on V or W
 
@@ -463,8 +463,8 @@ def VW_Gram_Schdmit_fill_holder(V_holder, W_holder, m, X_new, Y_new):
         x_tmp = X_new[:,j].reshape(-1,1)
         y_tmp = Y_new[:,j].reshape(-1,1)
 
-        x_tmp,y_tmp = VW_Gram_Schdmit(x_tmp, y_tmp, V, W)
-        x_tmp,y_tmp = VW_Gram_Schdmit(x_tmp, y_tmp, V, W)
+        x_tmp,y_tmp = VW_Gram_Schmidt(x_tmp, y_tmp, V, W)
+        x_tmp,y_tmp = VW_Gram_Schmidt(x_tmp, y_tmp, V, W)
 
         x_tmp,y_tmp = S_symmetry_orthogonal(x_tmp,y_tmp)
 
@@ -567,7 +567,7 @@ def sTDA_preconditioner(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8):
 
     # generate initial guess
     init = B*inv_D
-    V, new_count = Gram_Schdmit_fill_holder(V, count, init)
+    V, new_count = Gram_Schmidt_fill_holder(V, count, init)
     W[:, count:new_count] = sTDA_matrix_vector(V[:, count:new_count])
     count = new_count
 
@@ -602,7 +602,7 @@ def sTDA_preconditioner(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8):
         # only generate new guess from unconverged residuals
         new_guess = residual[:,index]*inv_D[:,index]
 
-        V, new_count = Gram_Schdmit_fill_holder(V, count, new_guess)
+        V, new_count = Gram_Schmidt_fill_holder(V, count, new_guess)
         W[:, count:new_count] = sTDA_matrix_vector(V[:, count:new_count])
         count = new_count
 
@@ -665,7 +665,7 @@ def K_inv(B, eigen_lambda):
 
     # generate initial guess
     init = B*inv_D
-    V, new_count = Gram_Schdmit_fill_holder(V, count, init)
+    V, new_count = Gram_Schmidt_fill_holder(V, count, init)
     W[:, count:new_count] = sTDA_matrix_vector(V[:, count:new_count])
     count = new_count
     ####################################################################################
@@ -691,7 +691,7 @@ def K_inv(B, eigen_lambda):
         # only generate new guess from unconverged residuals
         new_guess = residual[:,index]*inv_D[:,index]
 
-        V, new_count = Gram_Schdmit_fill_holder(V, count, new_guess)
+        V, new_count = Gram_Schmidt_fill_holder(V, count, new_guess)
         W[:, count:new_count] = sTDA_matrix_vector(V[:, count:new_count])
         count = new_count
 
@@ -780,7 +780,7 @@ def Davidson0(k):
 
         new_guess, Y = TDA_A_diag_preconditioner(residual[:,index], sub_eigenvalue[:k][index])
         # orthonormalize the new guesses against old guesses and put into V holder
-        V, new_m = Gram_Schdmit_fill_holder(V, m, new_guess)
+        V, new_m = Gram_Schmidt_fill_holder(V, m, new_guess)
         W[:, m:new_m] = sTDA_matrix_vector(V[:, m:new_m])
         m = new_m
     ###########################################################################################
@@ -987,7 +987,7 @@ def new_ES(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8):
         # Y doesn't matter
 
         # orthonormalize the new guesses against old guesses and put into V holder
-        V, new_m = Gram_Schdmit_fill_holder(V, m, new_guess)
+        V, new_m = Gram_Schmidt_fill_holder(V, m, new_guess)
 #             print(check_orthonormal(V[:,:new_m]))
         W[:, m:new_m] = on_the_fly_Hx(W_H, V_H, sub_A_H, V[:, m:new_m])
         m = new_m
@@ -1114,7 +1114,7 @@ def Davidson(k, tol, i, p):
         Pcost += P_end - P_start
 
         # orthonormalize the new guesses against old guesses and put into V holder
-        V, new_m = Gram_Schdmit_fill_holder(V, m, new_guess)
+        V, new_m = Gram_Schmidt_fill_holder(V, m, new_guess)
         W[:, m:new_m] = TDA_matrix_vector(V[:, m:new_m])
         print('new generated guesses:', new_m - m)
         m = new_m
@@ -1237,8 +1237,8 @@ def sTDDFT_eigen_solver(k):
         ###############################################################
         # GS and symmetric orthonormalization
         m = new_m
-#         VW_holder, WV_holder, new_m = VW_Gram_Schdmit_fill_holder(VW_holder, WV_holder, m, X_new, Y_new)
-        V_holder, W_holder, new_m = VW_Gram_Schdmit_fill_holder(V_holder, W_holder, m, X_new, Y_new)
+#         VW_holder, WV_holder, new_m = VW_Gram_Schmidt_fill_holder(VW_holder, WV_holder, m, X_new, Y_new)
+        V_holder, W_holder, new_m = VW_Gram_Schmidt_fill_holder(V_holder, W_holder, m, X_new, Y_new)
 #         print('m & new_m', m, new_m)
         if new_m == m:
             print('All new guesses kicked out during GS orthonormalization')
@@ -1266,7 +1266,7 @@ def sTDDFT_eigen_solver(k):
 energies, X_new_backup, Y_new_backup = sTDDFT_eigen_solver(min([args.nstates+args.extrainitial, 2*args.nstates, A_size]))
 def sTDDFT_initial_guess(V_holder, W_holder, new_m):
     # energies, X_new, Y_new = sTDDFT_eigen_solver(new_m)
-    V_holder, W_holder, new_m = VW_Gram_Schdmit_fill_holder(V_holder, W_holder, 0,  X_new_backup, Y_new_backup)
+    V_holder, W_holder, new_m = VW_Gram_Schmidt_fill_holder(V_holder, W_holder, 0,  X_new_backup, Y_new_backup)
     return V_holder, W_holder, new_m
 
 ##########################################################################
@@ -1326,7 +1326,7 @@ def sTDDFT_preconditioner(P, Q, omega):
     # setting up initial guess
 
     X_new, Y_new  = TDDFT_A_diag_preconditioner(P, Q, omega)
-    V_holder, W_holder, new_m = VW_Gram_Schdmit_fill_holder(V_holder, W_holder, 0,  X_new, Y_new)
+    V_holder, W_holder, new_m = VW_Gram_Schmidt_fill_holder(V_holder, W_holder, 0,  X_new, Y_new)
     initial_end = time.time()
     initial_cost = initial_end - initial_start
 #     print('new_m =', new_m)
@@ -1428,7 +1428,7 @@ def sTDDFT_preconditioner(P, Q, omega):
         # GS and symmetric orthonormalization
         m = new_m
         GS_start = time.time()
-        V_holder, W_holder, new_m = VW_Gram_Schdmit_fill_holder(V_holder, W_holder, m, X_new, Y_new)
+        V_holder, W_holder, new_m = VW_Gram_Schmidt_fill_holder(V_holder, W_holder, m, X_new, Y_new)
         GS_end = time.time()
         GScost += GS_end - GS_start
 #         print('m & new_m', m, new_m)
@@ -1608,7 +1608,7 @@ def TDDFT_eigen_solver(i, p, k=args.nstates, tol=args.tolerance):
         # GS and symmetric orthonormalization
         m = new_m
         VWGScost_start = time.time()
-        V_holder, W_holder, new_m = VW_Gram_Schdmit_fill_holder(V_holder, W_holder, m, X_new, Y_new)
+        V_holder, W_holder, new_m = VW_Gram_Schmidt_fill_holder(V_holder, W_holder, m, X_new, Y_new)
         VWGScost_end = time.time()
         VWGScost += VWGScost_end - VWGScost_start
         print('m & new_m', m, new_m)
