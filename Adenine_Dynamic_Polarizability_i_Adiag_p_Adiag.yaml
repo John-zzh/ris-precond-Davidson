@@ -1,0 +1,82 @@
+A matrix size: 4550
+Dynamic polarizability initial guess threshold: 0.0001
+Dynamic polarizability preconditioner threshold: 1.0e-05
+Dynamic polarizability tensor alpha:
+- -57.547483407739165
+- -4.465729568892122
+- -1.2403277922574188e-12
+- -4.465729568900448
+- -50.94760623323142
+- -1.6464251152504926e-12
+- -4.29906450777021e-15
+- -2.0709333613934927e-13
+- -18.584385383259466
+Dynamic polarizability time: 54.887953758239746
+Initial guess time: 0.005447864532470703
+New guess generating time: 0.009439468383789062
+SCF time: 36.324673891067505
+final subspace size: 39
+functional: wb97x
+initial guess: Adiag
+iteration:
+- dynamic polarizability residual norms:
+  - 3.3326882431800873
+  - 3.6700966474271546
+  - 1.3766981990510494
+- dynamic polarizability residual norms:
+  - 1.1197003720857668
+  - 1.060452009689004
+  - 0.22095730018245685
+- dynamic polarizability residual norms:
+  - 0.5389742326744427
+  - 0.47226126701129323
+  - 0.0788312178438162
+- dynamic polarizability residual norms:
+  - 0.24484758540812582
+  - 0.225026390708401
+  - 0.024261006848665646
+- dynamic polarizability residual norms:
+  - 0.09624281714115308
+  - 0.07370138762529649
+  - 0.006651206117858012
+- dynamic polarizability residual norms:
+  - 0.03139242297023442
+  - 0.028853858800575043
+  - 0.0023417466323521962
+- dynamic polarizability residual norms:
+  - 0.012671799801489183
+  - 0.010237746158372975
+  - 0.000791948418404886
+- dynamic polarizability residual norms:
+  - 0.004968685866308977
+  - 0.004059365273276578
+  - 0.0003157878161762135
+- dynamic polarizability residual norms:
+  - 0.0019084605998452983
+  - 0.001819985196165259
+  - 8.487784653873212e-05
+- dynamic polarizability residual norms:
+  - 0.0006116399031916572
+  - 0.0006180376847041835
+  - 3.1899030923705146e-05
+- dynamic polarizability residual norms:
+  - 0.00021505535242390787
+  - 0.00020782602923664502
+  - 9.047060847335081e-06
+- dynamic polarizability residual norms:
+  - 7.625794027835547e-05
+  - 5.672050926975369e-05
+  - 9.047060236549533e-06
+- dynamic polarizability residual norms:
+  - 2.0553736147649082e-05
+  - 1.3992189043496107e-05
+  - 9.047060829663953e-06
+- dynamic polarizability residual norms:
+  - 5.47223262758869e-06
+  - 4.238742498538955e-06
+  - 9.047060938084677e-06
+iterations: 14
+method: RKS
+molecule: Adenine
+preconditioner: Adiag
+threshold: 1.0e-05

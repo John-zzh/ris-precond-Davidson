@@ -1,7 +1,7 @@
 A matrix size: 4550
-Initial guess time: 0.022594213485717773
-New guess generating time: 0.11411094665527344
-SCF time: 27.488878965377808
+Initial guess time: 0.0169830322265625
+New guess generating time: 7.832447528839111
+SCF time: 26.552819967269897
 TDDFT excitation energy(eV):
 - 4.996558861400546
 - 5.161940000023742
@@ -13,7 +13,7 @@ TDDFT excitation energy(eV):
 - 6.6469154971491795
 - 6.765181765971578
 - 6.920550280519947
-TDDFT time: 78.68708419799805
+TDDFT time: 72.37898015975952
 final subspace size: 69
 functional: pbe0
 initial guess: sTDDFT

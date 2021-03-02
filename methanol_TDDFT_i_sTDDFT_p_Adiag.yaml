@@ -1,53 +1,33 @@
 A matrix size: 351
-Initial guess time: 0.0061681270599365234
-New guess generating time: 6.604194641113281e-05
-SCF time: 1.7286138534545898
+Initial guess time: 0.015588998794555664
+New guess generating time: 0.0005521774291992188
+SCF time: 1.7009756565093994
 TDDFT excitation energy(eV):
-- 7.576055774424012
-- 9.635813245399255
-TDDFT time: 2.3846521377563477
-final subspace size: 20
-functional: wb97x
+- 7.265444381284571
+TDDFT time: 0.7833590507507324
+final subspace size: 7
+functional: pbe0
 initial guess: sTDDFT
 iteration:
 - TDDFT residual norms:
-  - 0.0804315476579153
-  - 0.061556208412049195
+  - 0.07156068530403832
 - TDDFT residual norms:
-  - 0.013648465522402153
-  - 0.016949046576434215
+  - 0.0071642445675251555
 - TDDFT residual norms:
-  - 0.002938857293342692
-  - 0.007595922924494228
+  - 0.0013843577499914408
 - TDDFT residual norms:
-  - 0.001198178716073013
-  - 0.002994445344319052
+  - 0.00021435166388993084
 - TDDFT residual norms:
-  - 0.00033520737211246895
-  - 0.0016544683192390589
+  - 6.990714377597591e-05
 - TDDFT residual norms:
-  - 9.706261140847187e-05
-  - 0.0009858942028526327
+  - 1.4210451284807229e-05
 - TDDFT residual norms:
-  - 4.581631927408906e-05
-  - 0.0003634207198418564
-- TDDFT residual norms:
-  - 1.13769705479801e-05
-  - 0.00014307349636034453
-- TDDFT residual norms:
-  - 2.8314964335021334e-06
-  - 4.4057937866057095e-05
-- TDDFT residual norms:
-  - 2.1018077026259164e-06
-  - 1.0143231908135063e-05
-- TDDFT residual norms:
-  - 1.8017464414063059e-06
-  - 5.4683133449466855e-06
-iterations: 11
+  - 2.2584476055606025e-06
+iterations: 7
 method: RKS
 molecule: methanol
-nstate: 2
+nstate: 1
 preconditioner: Adiag
 sTDDFT initial guess threshold: 1.0e-05
-sTDDFT preconditioner threshold: 1.0e-06
+sTDDFT preconditioner threshold: 1.0e-05
 threshold: 1.0e-05
