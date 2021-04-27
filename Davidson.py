@@ -14,47 +14,53 @@ print('curpath', os.getcwd())
 print('lib.num_threads() = ', lib.num_threads())
 
 parser = argparse.ArgumentParser(description='Davidson')
-parser.add_argument('-x', '--xyzfile',                      type=str,  default='NA', help='xyz filename (molecule.xyz)')
-# parser.add_argument('-chk', '--checkfile',    type=str, default='NA', help='checkpoint filename (.chk)')
-parser.add_argument('-m', '--method',                       type=str,  default='RKS', help='RHF RKS UHF UKS')
-parser.add_argument('-f', '--functional',                   type=str,  default='NA',  help='xc functional')
-parser.add_argument('-b', '--basis_set',                    type=str,  default='NA',  help='basis set')
-parser.add_argument('-df', '--density_fit',                 type=bool, default=True, help='density fitting turn on')
-parser.add_argument('-g', '--grid_level',                   type=int,  default='3',   help='0-9, 9 is best')
+parser.add_argument('-x', '--xyzfile',                      type=str,   default='NA', help='xyz filename (molecule.xyz)')
+parser.add_argument('-chk', '--checkfile',                  type=bool,  default=False, help='checkpoint filename (.chk)')
+parser.add_argument('-m', '--method',                       type=str,   default='RKS', help='RHF RKS UHF UKS')
+parser.add_argument('-f', '--functional',                   type=str,   default='NA',  help='xc functional')
+parser.add_argument('-b', '--basis_set',                    type=str,   default='NA',  help='basis set')
+parser.add_argument('-df', '--density_fit',                 type=bool,  default=True, help='density fitting turn on')
+parser.add_argument('-g', '--grid_level',                   type=int,   default='3',   help='0-9, 9 is best')
 
-parser.add_argument('-n',  '--nstates',                     type=int,  default= 4,        help='number of excited states')
-parser.add_argument('-C',  '--compare',                     type=bool, default = False , help='whether to compare with PySCF TDA-TDDFT')
+parser.add_argument('-n',  '--nstates',                     type=int,   default = 4,        help='number of excited states')
+parser.add_argument('-C',  '--compare',                     type=bool,  default = False , help='whether to compare with PySCF TDA-TDDFT')
 
-parser.add_argument('-TDA','--TDA',                         type=bool, default = False, help='perform TDA')
-parser.add_argument('-TDDFT','--TDDFT',                     type=bool, default = False, help='perform TDDFT')
-parser.add_argument('-dynpol','--dynpol',                   type=bool, default = False, help='perform dynamic polarizability')
-parser.add_argument('-omega','--dynpol_omega',              type=float,default = [], nargs='+', help='dynamic polarizability with perurbation omega, a list')
-parser.add_argument('-stapol','--stapol',                   type=bool, default = False, help='perform static polarizability')
+parser.add_argument('-TDA','--TDA',                         type=bool,  default = False, help='perform TDA')
+parser.add_argument('-TDDFT','--TDDFT',                     type=bool,  default = False, help='perform TDDFT')
+parser.add_argument('-dynpol','--dynpol',                   type=bool,  default = False, help='perform dynamic polarizability')
+parser.add_argument('-omega','--dynpol_omega',              type=float, default = [], nargs='+', help='dynamic polarizability with perurbation omega, a list')
+parser.add_argument('-stapol','--stapol',                   type=bool,  default = False, help='perform static polarizability')
 
-parser.add_argument('-o1', '--TDA_options',                 type=int, default = [0], nargs='+', help='0-7')
-parser.add_argument('-o2', '--TDDFT_options',               type=int, default = [0], nargs='+', help='0-3')
-parser.add_argument('-o3', '--dynpol_options',              type=int, default = [0], nargs='+', help='0-3')
-parser.add_argument('-o4', '--stapol_options',              type=int, default = [0], nargs='+', help='0-3')
+parser.add_argument('-o1', '--TDA_options',                 type=int,   default = [0], nargs='+', help='0-7')
+parser.add_argument('-o2', '--TDDFT_options',               type=int,   default = [0], nargs='+', help='0-3')
+parser.add_argument('-o3', '--dynpol_options',              type=int,   default = [0], nargs='+', help='0-3')
+parser.add_argument('-o4', '--stapol_options',              type=int,   default = [0], nargs='+', help='0-3')
 
 parser.add_argument('-t1',  '--TDA_tolerance',              type=float, default= 1e-5, help='residual norm conv for TDA')
 parser.add_argument('-t2',  '--TDDFT_tolerance',            type=float, default= 1e-5, help='residual norm conv for TDDFT')
 parser.add_argument('-t3',  '--dynpol_tolerance',           type=float, default= 1e-5, help='residual norm conv for dynamic polarizability')
 parser.add_argument('-t4',  '--stapol_tolerance',           type=float, default= 1e-5, help='residual norm conv for static polarizability')
 
+parser.add_argument('-max',  '--max',                       type=int,   default= 40, help='max iterations')
+
 parser.add_argument('-it1', '--TDA_initialTOL',             type=float, default= 1e-4, help='conv for TDA inital guess')
-parser.add_argument('-it2', '--TDDFT_initialTOL',           type=float, default= 1e-4, help='conv for TDDFT inital guess')
-parser.add_argument('-it3', '--dynpol_initprecTOL',         type=float, default= 1e-4, help='conv for dynamic polarizability inital guess and precond')
-parser.add_argument('-it4', '--stapol_initprecTOL',         type=float, default= 1e-4, help='conv for static polarizability inital guess and precond')
+parser.add_argument('-it2', '--TDDFT_initialTOL',           type=float, default= 1e-5, help='conv for TDDFT inital guess')
+parser.add_argument('-it3', '--dynpol_initprecTOL',         type=float, default= 1e-6, help='conv for dynamic polarizability inital guess and precond')
+parser.add_argument('-it4', '--stapol_initprecTOL',         type=float, default= 1e-6, help='conv for static polarizability inital guess and precond')
 
 parser.add_argument('-pt1', '--TDA_precondTOL',             type=float, default= 1e-2, help='conv for TDA preconditioner')
 parser.add_argument('-pt2', '--TDDFT_precondTOL',           type=float, default= 1e-5, help='conv for TDDFT preconditioner')
 
-parser.add_argument('-ei1', '--TDA_extrainitial',           type=int,   default= 8, help='number of extral TDA initial guess vectors, 0-8')
-parser.add_argument('-ei2', '--TDDFT_extrainitial',         type=int,   default= 0, help='number of extral TDDFT initial guess vectors, 0-8')
+parser.add_argument('-ei1', '--TDA_extrainitial',           type=int,   default= 8,    help='number of extral TDA initial guess vectors, 0-8')
+parser.add_argument('-ei2', '--TDDFT_extrainitial',         type=int,   default= 0,    help='number of extral TDDFT initial guess vectors, 0-8')
 
 parser.add_argument('-et', '--eigensolver_tol',             type=float, default= 1e-5, help='conv for new guess generator in new_ES')
-parser.add_argument('-M',  '--memory',                      type=int, default= 4000,   help='max_memory')
-parser.add_argument('-v',  '--verbose',                     type=int, default= 3,      help='mol.verbose = 3,4,5')
+parser.add_argument('-M',  '--memory',                      type=int,   default= 4000, help='max_memory')
+parser.add_argument('-v',  '--verbose',                     type=int,   default= 5,    help='mol.verbose = 3,4,5')
+
+parser.add_argument('-be', '--beta',                        type=float, default= [],    nargs='+', help='beta = 0.83')
+parser.add_argument('-al', '--alpha',                       type=float, default= [],    nargs='+', help='alpha = 0.83')
+
 args = parser.parse_args()
 ################################################
 
@@ -113,9 +119,11 @@ if args.density_fit:
     mf = mf.density_fit()
     print('Density fitting turned on')
 
-# if args.checkfile != 'NA':
-#     mf.chkfile = args.checkfile
-#     mf.init_guess = 'chkfile'
+if args.checkfile == True:
+    mf.chkfile = basename + '_' + args.functional + '.chk'
+    mf.init_guess = 'chkfile'
+    # to use the chk file as scf input
+
 
 mf.conv_tol = 1e-10
 
@@ -245,6 +253,18 @@ elif args.functional in hybride_F:
     a_x = DF_ax[args.functional]
     beta = beta1 + beta2 * a_x
     alpha = alpha1 + alpha2 * a_x
+
+
+if args.beta != []:
+    beta = args.beta[0]
+
+if args.alpha != []:
+    alpha = args.alpha[0]
+
+print('a_x =', a_x)
+print('beta =', beta)
+print('alpha =', alpha)
+
 
 # creat \eta matrix
 Natm = mol.natm
@@ -556,7 +576,7 @@ def sTDA_preconditioner(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8):
         current_dic['preconditioning'].append({'precondition residual norms': r_norms.tolist()})
 
         max_norm = np.max(r_norms)
-        if max_norm < tol:
+        if max_norm < tol or i == (max-1):
             break
 
         # index for unconverged residuals
@@ -642,7 +662,7 @@ def K_inv(B, eigen_lambda):
         r_norms = np.linalg.norm(residual, axis=0).tolist()
         max_norm = np.max(r_norms)
 
-        if max_norm < tol:
+        if max_norm < tol or i == (max-1):
             break
 
         # index for unconverged residuals
@@ -714,7 +734,7 @@ def Davidson0(k):
 
     #generate initial guess and put in holders V and W
     ############################################################################
-    for i in range(0, max):
+    for i in range(max):
         sub_A = np.dot(V[:,:m].T, W[:,:m])
         sub_eigenvalue, sub_eigenket = np.linalg.eigh(sub_A)
         # Diagonalize the subspace Hamiltonian, and sorted.
@@ -723,7 +743,7 @@ def Davidson0(k):
 
         r_norms = np.linalg.norm(residual, axis=0).tolist()
         max_norm = np.max(r_norms)
-        if max_norm < tol:
+        if max_norm < tol or i == (max-1):
             break
         # index for unconverged residuals
         index = [r_norms.index(i) for i in r_norms if i > tol]
@@ -741,6 +761,8 @@ def Davidson0(k):
     sTDA_D_end = time.time()
     sTDA_D = sTDA_D_end - sTDA_D_start
     print('sTDA A diagonalization:','threshold =', tol, '; in', i, 'steps ', round(sTDA_D, 4), 'seconds' )
+    print('sTDA excitation energies:')
+    print(sub_eigenvalue[:k])
     return full_guess
 ################################################################################
 
@@ -798,7 +820,7 @@ def TDDFT_A_diag_preconditioner(R_x, R_y, omega):
     D_x_inv = D_x**-1
 
     D_y = d + omega
-    # D_y = np.where( abs(D_y) < t, np.sign(D_y)*t, D_y)
+    D_y = np.where( abs(D_y) < t, np.sign(D_y)*t, D_y)
     # force all values not in domain (-t, t)
     D_y_inv = D_y**-1
 
@@ -914,7 +936,7 @@ def new_ES(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8):
 #             print(r_norms)
         # largest residual norm
         max_norm = np.max(r_norms)
-        if max_norm < tol:
+        if max_norm < tol or i == (max-1):
             break
         # index for unconverged residuals
         index = [r_norms.index(i) for i in r_norms if i > tol]
@@ -967,7 +989,7 @@ def Davidson(k, tol, init,prec):
     print('Initial guess:  ', i)
     print('Preconditioner: ', p)
     print('A matrix size = ', A_size,'*', A_size)
-    max = 30
+    max = args.max
     # Maximum number of iterations
 
     m = min([k + args.TDA_extrainitial, 2*k, A_size])
@@ -993,7 +1015,7 @@ def Davidson(k, tol, init,prec):
     # time cost for preconditioning
     Pcost = 0
     ###########################################################################################
-    for ii in range(0, max):
+    for ii in range(max):
         print('Davidson', ii)
 
         # sub_A is subspace A matrix
@@ -1002,6 +1024,7 @@ def Davidson(k, tol, init,prec):
         print('subspace size: ', np.shape(sub_A)[0])
 
         sub_eigenvalue, sub_eigenket = np.linalg.eigh(sub_A)
+        print(sub_eigenvalue[:k])
         # Diagonalize the subspace Hamiltonian, and sorted.
         #sub_eigenvalue[:k] are smallest k eigenvalues
         full_guess = np.dot(V[:,:m], sub_eigenket[:, :k])
@@ -1018,8 +1041,8 @@ def Davidson(k, tol, init,prec):
         current_dic['residual norms'] = r_norms[0,:].tolist()
 
         print('checking the residual norm')
-        if max_norm < tol:
-            print('All guesses converged!')
+        if max_norm < tol or ii == (max-1):
+            print('Davidson precedure aborted')
             break
 
         # index for unconverged residuals
@@ -1068,6 +1091,9 @@ def Davidson(k, tol, init,prec):
     Davidson_dic['A matrix size'] = A_size
     Davidson_dic['final subspace size'] = np.shape(sub_A)[0]
     Davidson_dic['excitation energy(eV)'] = (sub_eigenvalue[:k]*27.211386245988).tolist()
+    Davidson_dic['ax'] = a_x
+    Davidson_dic['alpha'] = alpha
+    Davidson_dic['beta'] = beta
     ###########################################################################################
     if ii == max-1:
         print('============ Davidson Failed Due to Iteration Limit ==============')
@@ -1128,7 +1154,6 @@ def sTDDFT_eigen_solver(k):
         ###############################################################
 #         solve the eigenvalue omega in the subspace
         omega, x, y = TDDFT_subspace_eigen_solver(a, b, sigma, pi, k)
-
         ###############################################################
         # compute the residual
         # R_x = U1x + U2y - (Vx + Wy)omega
@@ -1157,7 +1182,7 @@ def sTDDFT_eigen_solver(k):
         r_norms = np.linalg.norm(residual, axis=0).tolist()
 #         print('r_norms', r_norms)
 
-        if np.max(r_norms) < tol:
+        if np.max(r_norms) < tol or ii == (max -1):
             break
         # index for unconverged residuals
         index = [r_norms.index(i) for i in r_norms if i > tol]
@@ -1195,6 +1220,8 @@ def sTDDFT_eigen_solver(k):
     X_full = np.dot(V,x) + np.dot(W,y)
     Y_full = np.dot(W,x) + np.dot(V,y)
 
+    print('sTDDFT excitation energy:')
+    print(omega*27.211386031943245)
     return omega*27.211386031943245, X_full, Y_full
 ################################################################################
 
@@ -1342,7 +1369,7 @@ def sTDDFT_preconditioner(P, Q, omega):
 #         print('residual.shape', residual.shape)
         r_norms = np.linalg.norm(residual, axis=0).tolist()
 #         print('r_norms', r_norms)
-        if np.max(r_norms) < tol:
+        if np.max(r_norms) < tol or ii == (max -1):
             break
         # index for unconverged residuals
         index = [r_norms.index(i) for i in r_norms if i > tol]
@@ -1417,7 +1444,7 @@ def TDDFT_eigen_solver(init, prec, k=args.nstates, tol=args.TDDFT_tolerance):
     print('A matrix size = ', A_size,'*', A_size)
 
     TDDFT_start = time.time()
-    max = 30
+    max = args.max
     m = 0
     new_m = min([k + args.TDDFT_extrainitial, 2*k, A_size])
     # new_m = k
@@ -1504,7 +1531,7 @@ def TDDFT_eigen_solver(init, prec, k=args.nstates, tol=args.TDDFT_tolerance):
 
         print('Maximum residual norm: ', np.max(r_norms))
         # print('r_norms', r_norms)
-        if np.max(r_norms) < tol:
+        if np.max(r_norms) < tol or ii == (max -1):
             break
         # index for unconverged residuals
         index = [r_norms.index(i) for i in r_norms if i > tol]
@@ -1551,7 +1578,9 @@ def TDDFT_eigen_solver(init, prec, k=args.nstates, tol=args.TDDFT_tolerance):
     TDDFT_dic['A matrix size'] = A_size
     TDDFT_dic['final subspace size'] = np.shape(sigma)[0]
     TDDFT_dic['TDDFT excitation energy(eV)'] = (omega*27.211386245988).tolist()
-
+    TDDFT_dic['ax'] = a_x
+    TDDFT_dic['alpha'] = alpha
+    TDDFT_dic['beta'] = beta
     if ii == (max -1):
         print('============================ RPA-TDDFT Failed Due to Iteration Limit============================')
         print('RPA-TDDFT failed after ', ii+1, 'iterations  ', round(TDDFT_cost, 4), 'seconds')
@@ -1560,8 +1589,8 @@ def TDDFT_eigen_solver(init, prec, k=args.nstates, tol=args.TDDFT_tolerance):
     else:
         print('================================== RPA-TDDFT Calculation Done ==================================')
         print('RPA-TDDFT Converged after ', ii+1, 'iterations  ', round(TDDFT_cost, 4), 'seconds')
-        print('Initial guess',i)
-        print('preconditioner', p)
+        print('Initial guess',init)
+        print('preconditioner', prec)
         print('Final subspace ', sigma.shape)
         print('preconditioning cost', round(Pcost,4))
         print('VWGScost',round(VWGScost,4))
@@ -1584,6 +1613,10 @@ dynpol_p_key = ['sTDDFT', 'Adiag']
 dynpol_p_func = [sTDDFT_preconditioner, TDDFT_A_diag_preconditioner]
 dynpol_p_lib = dict(zip(dynpol_p_key, dynpol_p_func))
 ################################################################################
+
+
+
+
 
 ################################################################################
 def dynamic_polarizability(init, prec):
@@ -1621,7 +1654,7 @@ def dynamic_polarizability(init, prec):
     Q = P
     #P, Q, omega
 
-    max = 30
+    max = args.max
     tol = args.dynpol_tolerance
 
     m = 0
@@ -1634,10 +1667,22 @@ def dynamic_polarizability(init, prec):
     ##############################
     # setting up initial guess
     init_start = time.time()
-    X_new, Y_new = initial_guess(-P, -Q, omega)
+    X_ig, Y_ig = initial_guess(-P, -Q, omega)
+
+    alpha_omega_ig = []
+    X_p_Y = X_ig + Y_ig
+    for jj in range(k):
+        X_p_Y_tmp = X_p_Y[:,3*jj:3*(jj+1)]
+        # *-1 from the definition of dipole moment. *2 for double occupancy
+        alpha_omega_ig.append(np.dot(P[:,:3].T, X_p_Y_tmp)*-2)
+    print('initial guess of tensor alpha')
+    for i in range(len(args.dynpol_omega)):
+        print(args.dynpol_omega[i],'nm')
+        print(alpha_omega_ig[i])
 
 
-    V_holder, W_holder, new_m = VW_Gram_Schmidt_fill_holder(V_holder, W_holder, 0,  X_new, Y_new)
+
+    V_holder, W_holder, new_m = VW_Gram_Schmidt_fill_holder(V_holder, W_holder, 0, X_ig, Y_ig)
     init_end = time.time()
 #     print('initial guess done')
     initial_cost = init_end - init_start
@@ -1721,7 +1766,7 @@ def dynamic_polarizability(init, prec):
         current_dic['residual norms'] = r_norms
         iteration_list[ii] = current_dic
 
-        if np.max(r_norms) < tol:
+        if np.max(r_norms) < tol or ii == (max -1):
             break
         # index for unconverged residuals
         index = [r_norms.index(i) for i in r_norms if i > tol]
@@ -1768,8 +1813,7 @@ def dynamic_polarizability(init, prec):
 
     print('Wavelength we look at', args.dynpol_omega)
     alpha_omega = []
-    #alpha_omega = np.dot(-P[:,:3].T,X) + np.dot(-P[:,:3].T,Y)
-    # = np.dot(-P[:,:3].T, X+Y)
+
     X_p_Y = X_full + Y_full
     for jj in range(k):
         X_p_Y_tmp = X_p_Y[:,3*jj:3*(jj+1)]
@@ -1794,7 +1838,9 @@ def dynamic_polarizability(init, prec):
     dynpol_dic['final subspace size'] = np.shape(sigma)[0]
     dynpol_dic['Dynamic polarizability wavelength'] = args.dynpol_omega
     dynpol_dic['Dynamic polarizability tensor alpha'] = [i.tolist() for i in alpha_omega]
-
+    dynpol_dic['ax'] = a_x
+    dynpol_dic['alpha'] = alpha
+    dynpol_dic['beta'] = beta
     show_memory_info('Total Dynamic polarizability')
 
     return alpha_omega, dynpol_dic
@@ -1818,7 +1864,7 @@ def stapol_sTDDFT_initprec(P):
     tol = args.stapol_initprecTOL
     m = 0
     npvec = P.shape[1]
-    print('vectors to be preconditioned', npvec)
+    # print('vectors to be preconditioned', npvec)
     V_holder = np.zeros((A_size, (max+1)*npvec))
     U_holder = np.zeros_like(V_holder)
 
@@ -1826,9 +1872,9 @@ def stapol_sTDDFT_initprec(P):
     # setting up initial guess
     init_start = time.time()
 
-    X_new = stapol_A_diag_initprec(P)
+    X_ig = stapol_A_diag_initprec(P)
 
-    V_holder, new_m = Gram_Schmidt_fill_holder(V_holder, m, X_new)
+    V_holder, new_m = Gram_Schmidt_fill_holder(V_holder, m, X_ig)
     # V_holder[:,0] = X_new[:,0]/np.linalg.norm(X_new[:,0])
     # if npvec >= 2:
     #     V_holder, new_m = Gram_Schmidt_fill_holder(V_holder, 1, X_new[:, 1:])
@@ -1881,7 +1927,7 @@ def stapol_sTDDFT_initprec(P):
         # index for unconverged residuals
         index = [r_norms.index(i) for i in r_norms if i > tol]
         ###############################################################
-        if np.max(r_norms) < tol:
+        if np.max(r_norms) < tol or ii == (max -1):
             break
 
         ########################################################################
@@ -1969,7 +2015,7 @@ def static_polarizability(init, prec):
     initial_guess = stapol_i_lib[init]
     new_guess_generator = stapol_p_lib[prec]
 
-    max = 30
+    max = args.max
     tol = args.stapol_tolerance
     m = 0
 
@@ -1981,13 +2027,12 @@ def static_polarizability(init, prec):
     init_start = time.time()
 
 #     X_new = -P/d3
-    X_new = initial_guess(P)
-    alpha_init = np.dot(X_new.T, P)*-4
+    X_ig = initial_guess(P)
+    alpha_init = np.dot(X_ig.T, P)*-4
+    print('alpha tensor of initial guess:')
     print(alpha_init)
-    # X_new = X_new/np.linalg.norm(X_new, axis=0)
-    # V_holder[:,0] = X_new[:,0]/np.linalg.norm(X_new[:,0])
-    # V_holder, new_m = Gram_Schmidt_fill_holder(V_holder, 1, X_new[:, 1:])
-    V_holder, new_m = Gram_Schmidt_fill_holder(V_holder, 0, X_new)
+
+    V_holder, new_m = Gram_Schmidt_fill_holder(V_holder, 0, X_ig)
     print('new_m =', new_m)
     init_end = time.time()
 #     print('initial guess done')
@@ -2020,14 +2065,14 @@ def static_polarizability(init, prec):
         subgenend = time.time()
         subgencost += subgenend - subgenstart
 
-        print('a_p_b.shape', a_p_b.shape)
+        # print('a_p_b.shape', a_p_b.shape)
         ########################################################################
 
         ########################################################################
 #         solve the x in the subspace
         subcost_start = time.time()
         x = np.linalg.solve(a_p_b, -p)
-        print('x.shape', x.shape)
+        # print('x.shape', x.shape)
         subcost_end = time.time()
         subcost += subcost_end - subcost_start
         ########################################################################
@@ -2050,7 +2095,7 @@ def static_polarizability(init, prec):
         index = [r_norms.index(i) for i in r_norms if i > tol]
 #         print('index', index)
         ########################################################################
-        if np.max(r_norms) < tol:
+        if np.max(r_norms) < tol or ii == (max -1):
             break
 
         ########################################################################
@@ -2077,7 +2122,7 @@ def static_polarizability(init, prec):
         ###############################################################
     print('V.shape', V.shape)
     X_full = np.dot(V,x)
-    alpha = np.dot(X_full.T, P)*-4
+    tensor_alpha = np.dot(X_full.T, P)*-4
     sp_end = time.time()
     sp_cost = sp_end - sp_start
 
@@ -2112,8 +2157,10 @@ def static_polarizability(init, prec):
     stapol_dic['iterations'] = ii+1
     stapol_dic['A matrix size'] = A_size
     stapol_dic['final subspace size'] = np.shape(a_p_b)[0]
-
-    return alpha, stapol_dic
+    stapol_dic['ax'] = a_x
+    stapol_dic['alpha'] = alpha
+    stapol_dic['beta'] = beta
+    return tensor_alpha, stapol_dic
 ################################################################################
 
 TDA_combo = [            # option
@@ -2233,13 +2280,13 @@ if args.stapol == True:
         print('Residual conv =', args.stapol_tolerance)
 
         total_start = time.time()
-        alpha, stapol_dic = static_polarizability(init,prec)
+        tensor_alpha, stapol_dic = static_polarizability(init,prec)
         total_end = time.time()
         total_time = total_end - total_start
 
         print('In-house Static Polarizability time:', round(total_time, 4), 'seconds')
         print('Static polarizability tensor alpha')
-        print(alpha)
+        print(tensor_alpha)
 
         curpath = os.getcwd()
         yamlpath = os.path.join(curpath, basename + '_Static_Polarizability_i_' + init + '_p_'+ prec + '.yaml')
