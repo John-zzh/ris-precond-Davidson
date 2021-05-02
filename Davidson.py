@@ -7,6 +7,7 @@ import argparse
 import os
 import psutil
 import yaml
+
 from pyscf.tools import molden
 from pyscf.dft import xcfun
 
@@ -31,6 +32,13 @@ parser.add_argument('-dynpol','--dynpol',                   type=bool,  default 
 parser.add_argument('-omega','--dynpol_omega',              type=float, default = [], nargs='+', help='dynamic polarizability with perurbation omega, a list')
 parser.add_argument('-stapol','--stapol',                   type=bool,  default = False, help='perform static polarizability')
 
+
+parser.add_argument('-sTDA','--sTDA',                       type=bool,  default = False, help='perform sTDA calculation')
+parser.add_argument('-sTDDFT','--sTDDFT',                   type=bool,  default = False, help='perform sTDDFT calculation')
+
+
+
+
 parser.add_argument('-o1', '--TDA_options',                 type=int,   default = [0], nargs='+', help='0-7')
 parser.add_argument('-o2', '--TDDFT_options',               type=int,   default = [0], nargs='+', help='0-3')
 parser.add_argument('-o3', '--dynpol_options',              type=int,   default = [0], nargs='+', help='0-3')
@@ -52,7 +60,7 @@ parser.add_argument('-pt1', '--TDA_precondTOL',             type=float, default=
 parser.add_argument('-pt2', '--TDDFT_precondTOL',           type=float, default= 1e-5, help='conv for TDDFT preconditioner')
 
 parser.add_argument('-ei1', '--TDA_extrainitial',           type=int,   default= 8,    help='number of extral TDA initial guess vectors, 0-8')
-parser.add_argument('-ei2', '--TDDFT_extrainitial',         type=int,   default= 0,    help='number of extral TDDFT initial guess vectors, 0-8')
+parser.add_argument('-ei2', '--TDDFT_extrainitial',         type=int,   default= 8,    help='number of extral TDDFT initial guess vectors, 0-8')
 
 parser.add_argument('-et', '--eigensolver_tol',             type=float, default= 1e-5, help='conv for new guess generator in new_ES')
 parser.add_argument('-M',  '--memory',                      type=int,   default= 4000, help='max_memory')
@@ -191,7 +199,7 @@ def matrix_power(S,a):
     s,ket = np.linalg.eigh(S)
     s = s**a
     X = np.linalg.multi_dot([ket,np.diag(s),ket.T])
-    #X == S^1/2
+    #X == S^a
     return X
 
 def matrix_power2(S):
@@ -833,7 +841,8 @@ def TDDFT_A_diag_preconditioner(R_x, R_y, omega):
 
 ################################################################################
 def TDDFT_subspace_eigen_solver(a, b, sigma, pi, k):
-
+    ''' [ a b ] x - [ σ   π] x  w = 0'''
+    ''' [ b a ] y   [-π  -σ] y    = 0'''
     a_p_b = a+b
     a_p_b_sqrt, a_p_b_mhf = matrix_power2(a_p_b)
     # a_p_b_sqrt, a_p_b_mhf = (a+b)^0.5, (a+b)^-0.5
@@ -869,6 +878,48 @@ def TDDFT_subspace_eigen_solver(a, b, sigma, pi, k):
 
     return omega, x, y
 ################################################################################
+
+# def TDDFT_subspace_eigen_solver(a, b, sigma, pi, k):
+#     l = sigma.shape[0]
+#
+#     H1 = np.zeros((2*l, 2*l))
+#     H2 = np.zeros_like(H1)
+#
+#     H1[:l,:l] = a[:,:]
+#     H1[l:,l:] = a[:,:]
+#     H1[:l,l:] = b[:,:]
+#     H1[l:,:l] = b[:,:]
+#
+#     H2[:l,:l] = sigma[:,:]
+#     H2[l:,l:] = -sigma[:,:]
+#     H2[:l,l:] = pi[:,:]
+#     H2[l:,:l] = -pi[:,:]
+#
+#     H2_inv = matrix_power(H2, -1)
+#
+# #     eee,xx = np.linalg.eigh(H2)
+#
+#     M = np.dot(H2_inv, H1)
+#
+#     omega, xy = np.linalg.eig(M)
+# #     print('omega1', omega)
+# #     print('xy norm1111', np.linalg.norm(xy, axis=0))
+#     index = np.argsort(omega)
+#     omega = omega[index][l:l+k]
+#
+#
+#     x = xy[:l,index][:,l:l+k]
+#     y = xy[l:,index][:,l:l+k]
+#
+# #     print('norm check')
+# #     norms = np.dot((x - y).T, np.dot(sigma,x)+np.dot(pi,y))
+# #     check = np.linalg.norm(norms - np.eye(k))
+# #     print(check)
+#
+#     return omega, x, y
+
+
+
 
 ################################################################################
 def Qx(V, x):
@@ -1111,6 +1162,8 @@ def Davidson(k, tol, init,prec):
 
 ################################################################################
 def sTDDFT_eigen_solver(k):
+    ''' [ A' B' ] x - [ σ   π] x  w = 0'''
+    ''' [ B' A' ] y   [-π  -σ] y    = 0'''
     tol=args.TDDFT_initialTOL
     max = 30
     sTDDFT_start = time.time()
@@ -1235,6 +1288,20 @@ def sTDDFT_initial_guess(V_holder, W_holder, new_m):
 
 ################################################################################
 def sTDDFT_preconditioner_subspace_eigen_solver(a, b, sigma, pi, p, q, omega):
+    ''' [ a b ] x - [ σ   π] x  w = p'''
+    ''' [ b a ] y   [-π  -σ] y    = q'''
+    ##############################
+    '''normalize the RHS'''
+    # p_origin = p
+    # q_origin = q
+    pq = np.vstack((p,q))
+    pqnorm = np.linalg.norm(pq, axis=0, keepdims = True)
+
+    # print('pqnorm', pqnorm)
+    p /= pqnorm
+    q /= pqnorm
+    ##############################
+
     a_p_b = a+b
     a_p_b_sqrt, a_p_b_mhf = matrix_power2(a_p_b)
     # a_p_b_sqrt, a_p_b_mhf = (a+b)^0.5, (a+b)^-0.5
@@ -1264,12 +1331,16 @@ def sTDDFT_preconditioner_subspace_eigen_solver(a, b, sigma, pi, p, q, omega):
     x = (x_p_y + x_m_y)/2
     y = x_p_y - x
 
+    x *= pqnorm
+    y *= pqnorm
+
     return x, y
 ################################################################################
 
 ################################################################################
 def sTDDFT_preconditioner(P, Q, omega):
-
+    ''' [ A B ] - [1  0]X  w = P'''
+    ''' [ B A ]   [0 -1]Y    = Q'''
     tol = args.TDDFT_precondTOL
     print('sTDDFT_preconditioner conv', tol)
     max = 30
@@ -1284,9 +1355,28 @@ def sTDDFT_preconditioner(P, Q, omega):
     U1_holder = np.zeros_like(V_holder)
     U2_holder = np.zeros_like(V_holder)
 
+
+
+    ##############################
+    '''normalzie the RHS'''
+    # P_origin = np.zeros_like(P)
+    # Q_origin = np.zeros_like(Q)
+    #
+    # P_origin[:,:] = P[:,:]
+    # Q_origin[:,:] = Q[:,:]
+
+    PQ = np.vstack((P,Q))
+    pqnorm = np.linalg.norm(PQ, axis=0, keepdims = True)
+
+    print('pqnorm', pqnorm)
+    P /= pqnorm
+    Q /= pqnorm
+    ##############################
+
+
+
     ##############################
     # setting up initial guess
-
     X_new, Y_new  = TDDFT_A_diag_preconditioner(P, Q, omega)
     V_holder, W_holder, new_m = VW_Gram_Schmidt_fill_holder(V_holder, W_holder, 0,  X_new, Y_new)
     initial_end = time.time()
@@ -1408,16 +1498,17 @@ def sTDDFT_preconditioner(P, Q, omega):
         print('max_norm = ', np.max(r_norms))
     else:
         print('sTDDFT_precond Converged after ', ii+1, 'iterations  ', round(sTDDFT_precond_cost, 4), 'seconds')
-        print('initial_cost', round(initial_cost,4), round(initial_cost/sTDDFT_precond_cost * 100,2),'%')
-        print('Pcost', round(Pcost,4), round(Pcost/sTDDFT_precond_cost * 100,2),'%')
+        # print('initial_cost', round(initial_cost,4), round(initial_cost/sTDDFT_precond_cost * 100,2),'%')
+        # print('Pcost', round(Pcost,4), round(Pcost/sTDDFT_precond_cost * 100,2),'%')
         # print('MVcost', round(MVcost,4), round(MVcost/sTDDFT_precond_cost * 100,2),'%')
         # print('GScost', round(GScost,4), round(GScost/sTDDFT_precond_cost * 100,2),'%')
         # print('subcost', round(subcost,4), round(subcost/sTDDFT_precond_cost * 100,2),'%')
         # print('subgencost', round(subgencost,4), round(subgencost/sTDDFT_precond_cost * 100,2),'%')
 
-    X_full = np.dot(V,x) + np.dot(W,y)
-    Y_full = np.dot(W,x) + np.dot(V,y)
     show_memory_info('preconditioner at end')
+    X_full *=  pqnorm
+    Y_full *=  pqnorm
+
     return X_full, Y_full
 ################################################################################
 
@@ -1616,7 +1707,15 @@ dynpol_p_lib = dict(zip(dynpol_p_key, dynpol_p_func))
 
 
 
-
+def gen_P():
+    mo_coeff = mf.mo_coeff
+    mo_occ = mf.mo_occ
+    occidx = mo_occ > 0
+    orbo = mo_coeff[:, occidx]
+    orbv = mo_coeff[:,~occidx]
+    int_r= mol.intor_symmetric('int1e_r')
+    P = lib.einsum('xpq,pi,qa->iax', int_r, orbo, orbv.conj())
+    return P
 
 ################################################################################
 def dynamic_polarizability(init, prec):
@@ -1641,14 +1740,17 @@ def dynamic_polarizability(init, prec):
         omega[3*jj:3*(jj+1)] = 45.56337117/args.dynpol_omega[jj]
         # convert nm to Hartree
 
-    mo_coeff = mf.mo_coeff
-    mo_occ = mf.mo_occ
-    occidx = mo_occ > 0
-    orbo = mo_coeff[:, occidx]
-    orbv = mo_coeff[:,~occidx]
-    int_r= mol.intor_symmetric('int1e_r')
-    P = lib.einsum('xpq,pi,qa->iax', int_r, orbo, orbv.conj())
+    P = gen_P()
     P = P.reshape(-1,3)
+
+    P_origin = np.zeros_like(P)
+    P_origin[:,:] = P[:,:]
+
+
+    pnorm = np.linalg.norm(P, axis=0, keepdims = True)
+    pqnorm = pnorm * (2**0.5)
+    print('pqnorm', pqnorm)
+    P /= pqnorm
 
     P = np.tile(P,k)
     Q = P
@@ -1671,15 +1773,15 @@ def dynamic_polarizability(init, prec):
 
     alpha_omega_ig = []
     X_p_Y = X_ig + Y_ig
+    X_p_Y *= np.tile(pqnorm,k)
     for jj in range(k):
         X_p_Y_tmp = X_p_Y[:,3*jj:3*(jj+1)]
         # *-1 from the definition of dipole moment. *2 for double occupancy
-        alpha_omega_ig.append(np.dot(P[:,:3].T, X_p_Y_tmp)*-2)
+        alpha_omega_ig.append(np.dot(P_origin.T, X_p_Y_tmp)*-2)
     print('initial guess of tensor alpha')
     for i in range(len(args.dynpol_omega)):
         print(args.dynpol_omega[i],'nm')
         print(alpha_omega_ig[i])
-
 
 
     V_holder, W_holder, new_m = VW_Gram_Schmidt_fill_holder(V_holder, W_holder, 0, X_ig, Y_ig)
@@ -1760,6 +1862,7 @@ def dynamic_polarizability(init, prec):
 #         print('residual.shape', residual.shape)
         r_norms = np.linalg.norm(residual, axis=0).tolist()
         print('r_norms', r_norms)
+        print('maximum residual norm: ', np.max(r_norms))
 
         iteration_list.append({})
         current_dic = iteration_list[ii]
@@ -1815,10 +1918,13 @@ def dynamic_polarizability(init, prec):
     alpha_omega = []
 
     X_p_Y = X_full + Y_full
+
+    X_p_Y *= np.tile(pqnorm,k)
+
     for jj in range(k):
         X_p_Y_tmp = X_p_Y[:,3*jj:3*(jj+1)]
         # *-1 from the definition of dipole moment. *2 for double occupancy
-        alpha_omega.append(np.dot(P[:,:3].T, X_p_Y_tmp)*-2)
+        alpha_omega.append(np.dot(P_origin.T, X_p_Y_tmp)*-2)
 
      # np.dot(-P.T, X_full) + np.dot(-P.T, Y_full)
     dynpol_dic['initial guess'] = init
@@ -1864,6 +1970,13 @@ def stapol_sTDDFT_initprec(P):
     tol = args.stapol_initprecTOL
     m = 0
     npvec = P.shape[1]
+
+    P_origin = np.zeros_like(P)
+    P_origin[:,:] = P[:,:]
+    pnorm = np.linalg.norm(P_origin, axis=0, keepdims = True)
+    # print('pnorm', pnorm)
+    P /= pnorm
+
     # print('vectors to be preconditioned', npvec)
     V_holder = np.zeros((A_size, (max+1)*npvec))
     U_holder = np.zeros_like(V_holder)
@@ -1972,6 +2085,7 @@ def stapol_sTDDFT_initprec(P):
         # print('subcost', round(subcost,4), round(subcost/ssp_cost * 100,2),'%')
         # print('subgencost', round(subgencost,4), round(subgencost/ssp_cost * 100,2),'%')
 
+    X_full *= pnorm
     return X_full
 ################################################################################
 
@@ -1998,15 +2112,17 @@ def static_polarizability(init, prec):
     print('preconditioner', prec)
     sp_start = time.time()
 
-    mo_coeff = mf.mo_coeff
-    mo_occ = mf.mo_occ
-    occidx = mo_occ > 0
-    orbo = mo_coeff[:, occidx]
-    orbv = mo_coeff[:,~occidx]
-    int_r= mol.intor_symmetric('int1e_r')
-
-    P = lib.einsum('xpq,pi,qa->iax', int_r, orbo, orbv.conj())
+    P = gen_P()
     P = P.reshape(-1,3)
+
+    P_origin = np.zeros_like(P)
+    P_origin[:,:] = P[:,:]
+
+    pnorm = np.linalg.norm(P, axis=0, keepdims = True)
+    # pnorm is constant
+    print('pnorm', pnorm)
+
+    P /= pnorm
 
     stapol_dic = {}
     stapol_dic['iteration'] = []
@@ -2028,7 +2144,8 @@ def static_polarizability(init, prec):
 
 #     X_new = -P/d3
     X_ig = initial_guess(P)
-    alpha_init = np.dot(X_ig.T, P)*-4
+
+    alpha_init = np.dot((X_ig*pnorm).T, P_origin)*-4
     print('alpha tensor of initial guess:')
     print(alpha_init)
 
@@ -2054,7 +2171,7 @@ def static_polarizability(init, prec):
         MVcost += MV_end - MV_start
 
         V = V_holder[:,:new_m]
-        print('check_orthonormal(V)',check_orthonormal(V))
+        # print('check_orthonormal(V)',check_orthonormal(V))
         # U = AX + BX = (A+B)X
 #         print(check_orthonormal(V))
         U = U_holder[:,:new_m]
@@ -2122,7 +2239,9 @@ def static_polarizability(init, prec):
         ###############################################################
     print('V.shape', V.shape)
     X_full = np.dot(V,x)
-    tensor_alpha = np.dot(X_full.T, P)*-4
+    X_full *= pnorm
+
+    tensor_alpha = np.dot(X_full.T, P_origin)*-4
     sp_end = time.time()
     sp_cost = sp_end - sp_start
 
