@@ -205,7 +205,7 @@ def Hardness(atom_id):
 def matrix_power(S,a):
     s,ket = np.linalg.eigh(S)
     s = s**a
-    X = np.linalg.multi_dot([ket,np.diag(s),ket.T])
+    X = np.dot(ket*s,ket.T)
     #X == S^a
     return X
 
@@ -510,13 +510,19 @@ def Gram_Schmidt_bvec(A, bvec):
     return bvec
 
 def VW_Gram_Schmidt(x, y, V, W):
-    m = np.dot(V.T,x) + np.dot(W.T,y)
-    n = np.dot(W.T,x) + np.dot(V.T,y)
+    m = np.dot(V.T,x)
+    m += np.dot(W.T,y)
 
-    x_new = x - np.dot(V,m) - np.dot(W,n)
-    y_new = y - np.dot(W,m) - np.dot(V,n)
+    n = np.dot(W.T,x)
+    n += np.dot(V.T,y)
 
-    return x_new, y_new
+    x -= np.dot(V,m)
+    x -= np.dot(W,n)
+
+    y -= np.dot(W,m)
+    y -= np.dot(V,n)
+
+    return x, y
 
 def Gram_Schmidt_fill_holder(V, count, vecs):
     # V is a vectors holder
@@ -538,20 +544,25 @@ def Gram_Schmidt_fill_holder(V, count, vecs):
 
     return V, new_count
 
-def S_symmetry_orthogonal(x,y):
-    S = np.zeros((2,2))
-    S[0,0] = np.dot(x.T,x) + np.dot(y.T,y)
-    S[0,1] = np.dot(x.T,y) + np.dot(y.T,x)
-    S[1,0] = S[0,1]
-    S[1,1] = S[0,0]
 
-    ss = matrix_power(S, -0.5)
-    a = ss[0,0]
-    b = ss[0,1]
-    # x = S^-1/2
-    x_new = x*a + y*b
-    y_new = y*a + x*b
-    return x_new, y_new
+def S_symmetry_orthogonal(x,y):
+
+    x_p_y = x + y
+    x_p_y_norm = np.linalg.norm(x_p_y)
+
+    x_m_y = x - y
+    x_m_y_norm = np.linalg.norm(x_m_y)
+
+    a = x_p_y_norm/x_m_y_norm
+
+    x_p_y /= 2
+    x_m_y *= a/2
+
+    new_x = x_p_y + x_m_y
+    new_y = x_p_y - x_m_y
+
+    # print('x.Ty', np.dot(new_x.T,new_y))
+    return new_x, new_y
 
 def symmetrize(A):
     A = (A + A.T)/2
@@ -575,8 +586,12 @@ def check_orthonormal(A):
 def VW_Gram_Schmidt_fill_holder(V_holder, W_holder, m, X_new, Y_new):
     # put X_new into V, and Y_new into W
     # m is the amount of vectors that already on V or W
+    VWGSstart = time.time()
     nvec = np.shape(X_new)[1]
     # amount of new vectors intended to fill in the V_holder and W_holder
+    GScost = 0
+    normcost = 0
+    symmetrycost = 0
     for j in range(0, nvec):
 
         V = V_holder[:,:m]
@@ -585,15 +600,21 @@ def VW_Gram_Schmidt_fill_holder(V_holder, W_holder, m, X_new, Y_new):
         x_tmp = X_new[:,j].reshape(-1,1)
         y_tmp = Y_new[:,j].reshape(-1,1)
 
+        GSstart = time.time()
         x_tmp,y_tmp = VW_Gram_Schmidt(x_tmp, y_tmp, V, W)
         x_tmp,y_tmp = VW_Gram_Schmidt(x_tmp, y_tmp, V, W)
+        GSend = time.time()
+        GScost += GSend - GSstart
 
+        symmetrystart = time.time()
         x_tmp,y_tmp = S_symmetry_orthogonal(x_tmp,y_tmp)
+        symmetryend = time.time()
+        symmetrycost += symmetryend - symmetrystart
         # x_tmp,y_tmp = S_symmetry_orthogonal(x_tmp,y_tmp)
 
         # x_tmp,y_tmp = VW_Gram_Schmidt(x_tmp, y_tmp, V, W)
-
-        xy_norm = (np.dot(x_tmp.T, x_tmp) +  np.dot(y_tmp.T, y_tmp))**0.5
+        normstart = time.time()
+        xy_norm = (np.dot(x_tmp.T, x_tmp)+np.dot(y_tmp.T, y_tmp))**0.5
 
         if  xy_norm > 1e-14:
             x_tmp = x_tmp/xy_norm
@@ -601,17 +622,22 @@ def VW_Gram_Schmidt_fill_holder(V_holder, W_holder, m, X_new, Y_new):
 
             V_holder[:,m] = x_tmp[:,0]
             W_holder[:,m] = y_tmp[:,0]
-
             m += 1
         else:
             print('vector kicked out during GS orthonormalization')
+        normend = time.time()
+        normcost += normend - normstart
 
+    VWGSend = time.time()
+    VWGScost = VWGSend - VWGSstart
+    # print('GScost',round(GScost/VWGScost *100, 2),'%')
+    # print('normcost',round(normcost/VWGScost *100, 2),'%')
+    # print('symmetrycost', round(symmetrycost/VWGScost *100, 2),'%')
     # print('check VW orthonormalization')
-    # VW = np.vstack((V_holder[:,:m], W_holder[:,:m]))
-    # WV = np.vstack((W_holder[:,:m], V_holder[:,:m]))
-    # VWWV = np.hstack((VW,WV))
-    # print('check_orthonormal VWWV:',check_orthonormal(VWWV))
-
+    VW = np.vstack((V_holder[:,:m], W_holder[:,:m]))
+    WV = np.vstack((W_holder[:,:m], V_holder[:,:m]))
+    VWWV = np.hstack((VW,WV))
+    print('check_orthonormal VWWV:',check_orthonormal(VWWV))
     return V_holder, W_holder, m
 ################################################################################
 
@@ -730,10 +756,16 @@ def sTDA_preconditioner(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8):
     count = new_count
 
     current_dic['preconditioning'] = []
+    mvcost = 0
+    GScost = 0
+    subgencost = 0
     ####################################################################################
     for i in range(max):
+        substart = time.time()
         sub_B = np.dot(V[:,:count].T, B)
         sub_A = np.dot(V[:,:count].T, W[:,:count])
+        subend = time.time()
+        subgencost += subend - substart
         #project sTDA_A matrix and vector B into subspace
         sub_A = symmetrize(sub_A)
         # size of subspace
@@ -757,8 +789,17 @@ def sTDA_preconditioner(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8):
         # only generate new guess from unconverged residuals
         new_guess = residual[:,index]*inv_D[:,index]
 
+        GSstart = time.time()
         V, new_count = Gram_Schmidt_fill_holder(V, count, new_guess)
+        GSend = time.time()
+        GScost += GSend - GSstart
+
+
+        mvstart = time.time()
         W[:, count:new_count] = sTDA_mv(V[:, count:new_count])
+        mvend = time.time()
+        mvcost += mvend - mvstart
+
         count = new_count
 
     precondition_end = time.time()
@@ -772,6 +813,9 @@ def sTDA_preconditioner(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8):
     else:
         print('sTDA Preconditioning Done after ', i, 'steps; ', \
                 round(precondition_time, 4), 'seconds')
+        print('subgencost',round(subgencost,4),round(subgencost/precondition_time *100, 2),"%")
+        print('mvcost',round(mvcost,4),round(mvcost/precondition_time *100, 2),"%")
+        print('GScost', round(GScost,4), round(GScost/precondition_time *100, 2),"%")
 
     full_guess *= bnorm
 
@@ -1592,6 +1636,7 @@ def sTDDFT_preconditioner(Rx, Ry, omega):
     MVcost = 0
     GScost = 0
     subgencost = 0
+    symmetrycost = 0
     for ii in range(max):
 #         print('||||____________________Iteration', ii, '_________')
         ###############################################################
@@ -1612,28 +1657,41 @@ def sTDDFT_preconditioner(Rx, Ry, omega):
         U2 = U2_holder[:,:new_m]
 
         subgenstart = time.time()
-        a = np.dot(V.T, U1) + np.dot(W.T, U2)
-        b = np.dot(V.T, U2) + np.dot(W.T, U1)
-        sigma = np.dot(V.T, V) - np.dot(W.T, W)
-        pi = np.dot(V.T, W) - np.dot(W.T, V)
+        a = np.dot(V.T, U1)
+        a += np.dot(W.T, U2)
 
+        b = np.dot(V.T, U2)
+        b += np.dot(W.T, U1)
+
+        sigma = np.dot(V.T, V)
+        sigma -= np.dot(W.T, W)
+
+        pi = np.dot(V.T, W)
+        pi -= np.dot(W.T, V)
+
+        # p = VP + WQ
+        # q = WP + VQ
+        p = np.dot(V.T, P)
+        p += np.dot(W.T, Q)
+
+        q = np.dot(W.T, P)
+        q += np.dot(V.T, Q)
+
+        subgenend = time.time()
+        subgencost += subgenend - subgenstart
+
+        symmetrystart = time.time()
         a = symmetrize(a)
         b = symmetrize(b)
         sigma = symmetrize(sigma)
         pi = anti_symmetrize(pi)
-
-        # p = VP + WQ
-        # q = WP + VQ
-        p = np.dot(V.T, P) + np.dot(W.T, Q)
-        q = np.dot(W.T, P) + np.dot(V.T, Q)
-
-        subgenend = time.time()
-        subgencost += subgenend - subgenstart
-#         print('sigma.shape', sigma.shape)
+        symmetryend = time.time()
+        symmetrycost += symmetryend - symmetrystart
+        # print('sigma.shape', sigma.shape)
         ###############################################################
 
         ###############################################################
-#         solve the x & y in the subspace
+        # solve the x & y in the subspace
         subcost_start = time.time()
         x, y = sTDDFT_preconditioner_subspace_eigen_solver(\
                                                   a, b, sigma, pi, p, q, omega)
@@ -1648,21 +1706,37 @@ def sTDDFT_preconditioner(Rx, Ry, omega):
         # R_x = np.dot(U1,x) + np.dot(U2,y) - (np.dot(V,x) + np.dot(W,y))*omega - P
         # R_y = np.dot(U2,x) + np.dot(U1,y) + (np.dot(W,x) + np.dot(V,y))*omega - Q
 
-        U1x = np.dot(U1,x)
-        U2x = np.dot(U2,x)
-        Vx = np.dot(V,x)
-        Wx = np.dot(W,x)
+        # U1x = np.dot(U1,x)
+        # U2x = np.dot(U2,x)
+        # Vx = np.dot(V,x)
+        # Wx = np.dot(W,x)
+        #
+        # U1y = np.dot(U1,y)
+        # U2y = np.dot(U2,y)
+        # Vy = np.dot(V,y)
+        # Wy = np.dot(W,y)
+        #
+        # X_full = Vx + Wy
+        # Y_full = Wx + Vy
+        #
+        # R_x = U1x + U2y - X_full*omega - P
+        # R_y = U2x + U1y + Y_full*omega - Q
 
-        U1y = np.dot(U1,y)
-        U2y = np.dot(U2,y)
-        Vy = np.dot(V,y)
-        Wy = np.dot(W,y)
+        X_full = np.dot(V,x)
+        X_full += np.dot(W,y)
 
-        X_full = Vx + Wy
-        Y_full = Wx + Vy
+        Y_full = np.dot(W,x)
+        Y_full += np.dot(V,y)
 
-        R_x = U1x + U2y - X_full*omega - P
-        R_y = U2x + U1y + Y_full*omega - Q
+        R_x = np.dot(U1,x)
+        R_x += np.dot(U2,y)
+        R_x -= X_full*omega
+        R_x -= P
+
+        R_y = np.dot(U2,x)
+        R_y += np.dot(U1,y)
+        R_y += Y_full*omega
+        R_y -= Q
 
         residual = np.vstack((R_x,R_y))
 #         print('residual.shape', residual.shape)
@@ -1692,6 +1766,7 @@ def sTDDFT_preconditioner(Rx, Ry, omega):
                                             V_holder, W_holder, m, X_new, Y_new)
         GS_end = time.time()
         GScost += GS_end - GS_start
+
 #         print('m & new_m', m, new_m)
         if new_m == m:
             print('All new guesses kicked out during GS orthonormalization')
@@ -1715,6 +1790,7 @@ def sTDDFT_preconditioner(Rx, Ry, omega):
         print('GScost', round(GScost,4), round(GScost/sTDDFT_precond_cost * 100,2),'%')
         print('subcost', round(subcost,4), round(subcost/sTDDFT_precond_cost * 100,2),'%')
         print('subgencost', round(subgencost,4), round(subgencost/sTDDFT_precond_cost * 100,2),'%')
+        print('symmetrycost', round(symmetrycost,4), round(symmetrycost/sTDDFT_precond_cost * 100,2),'%')
         print('final subspace', sigma.shape)
 
     show_memory_info('preconditioner at end')
