@@ -153,6 +153,8 @@ def gen_global_var(tddft, mf, mol, functional):
     '''
     td = tddft.TDA(mf)
     TD = tddft.TDDFT(mf)
+    '''hdiag is one dinension matrix, (A_size,)
+    '''
     TDA_vind, hdiag = td.gen_vind(mf)
     TDDFT_vind, Hdiag = TD.gen_vind(mf)
 
@@ -167,12 +169,13 @@ def gen_global_var(tddft, mf, mol, functional):
         mf.mo_coeff is the unorthonormalized coefficient matrix
         S = mf.get_ovlp()  is basis overlap matrix
         S = np.dot(np.linalg.inv(c.T), np.linalg.inv(c))
-        np.dot(C.T,C) is a an identity matrix
-        C is the orthonormalized coefficient matrix
+
+        C_matrix is the orthonormalized coefficient matrix
+        np.dot(C_matrix.T,C_matrix) is a an identity matrix
     '''
     S = mf.get_ovlp()
     X = mathlib.matrix_power(S, 0.5)
-    C = np.dot(X,mf.mo_coeff)
+    C_matrix = np.dot(X,mf.mo_coeff)
 
     N_bf = len(mo_occ)
     n_occ = len(np.where(mo_occ > 0)[0])
@@ -185,6 +188,7 @@ def gen_global_var(tddft, mf, mol, functional):
     max_vir = len(np.where(homo_vir <= tol_eV)[0])
 
     max_vir_hdiag = delta_hdiag[:,:max_vir]
+    rst_vir_hdiag = delta_hdiag[:,max_vir:]
 
     A_reduced_size = n_occ * max_vir
 
@@ -206,13 +210,14 @@ def gen_global_var(tddft, mf, mol, functional):
     print('A_size = ', A_size)
     print('A_reduced_size =', A_reduced_size)
 
-    return TDA_vind, TDDFT_vind, hdiag, max_vir_hdiag, delta_hdiag,\
-            max_vir_hdiag, Natm, C, N_bf, n_occ,\
+    return TDA_vind, TDDFT_vind, hdiag, delta_hdiag, max_vir_hdiag, \
+            rst_vir_hdiag, Natm, C_matrix, N_bf, n_occ,\
               n_vir, max_vir, A_size, A_reduced_size, R_array, a_x, beta, alpha
 
-TDA_vind, TDDFT_vind, hdiag, max_vir_hdiag, delta_hdiag, max_vir_hdiag, Natm,\
-C, N_bf, n_occ, n_vir, max_vir, A_size, A_reduced_size, \
-R_array, a_x, beta, alpha = gen_global_var(tddft, mf, mol, functional=args.functional)
+TDA_vind, TDDFT_vind, hdiag, delta_hdiag, max_vir_hdiag, rst_vir_hdiag, Natm,\
+C_matrix, N_bf, n_occ, n_vir, max_vir, A_size, A_reduced_size, \
+R_array, a_x, beta, alpha = \
+gen_global_var(tddft, mf, mol, functional=args.functional)
 
 def TDA_matrix_vector(V):
     '''return AX'''
@@ -249,7 +254,7 @@ def gen_gammaJK(mol=mol, Natm=Natm, R_array=R_array, beta=beta, alpha=alpha):
 
 GammaJ, GammaK = gen_gammaJK()
 
-def gen_QJK(C=C, mol=mol, Natm=Natm, N_bf=N_bf, max_vir=max_vir, \
+def gen_QJK(C_matrix=C_matrix, mol=mol, Natm=Natm, N_bf=N_bf, max_vir=max_vir, \
                                                 GammaJ=GammaJ, GammaK=GammaK):
     Qstart = time.time()
     '''build q_iajb tensor'''
@@ -258,7 +263,8 @@ def gen_QJK(C=C, mol=mol, Natm=Natm, N_bf=N_bf, max_vir=max_vir, \
     q_tensors = np.zeros([Natm, N_bf, N_bf])
     for atom_id in range(Natm):
         shst, shend, atstart, atend = aoslice[atom_id]
-        q_tensors[atom_id,:,:] = np.dot(C[atstart:atend,:].T, C[atstart:atend,:])
+        q_tensors[atom_id,:,:] = \
+                np.dot(C_matrix[atstart:atend,:].T, C_matrix[atstart:atend,:])
 
     '''pre-calculate and store the Q-Gamma rank 3 tensor
        qia * gamma * qjb -> qia GK_q_jb
@@ -283,7 +289,9 @@ def gen_QJK(C=C, mol=mol, Natm=Natm, N_bf=N_bf, max_vir=max_vir, \
 
 GammaJ, GammaK = gen_gammaJK(alpha=alpha, beta=beta)
 
-def gen_iajb_ijab_ibja_delta_fly(max_vir=max_vir, GammaJ=GammaJ, GammaK=GammaK):
+def gen_iajb_ijab_ibja_delta_fly(max_vir=max_vir, GammaJ=GammaJ, GammaK=GammaK,\
+                        delta_hdiag=delta_hdiag, max_vir_hdiag=max_vir_hdiag,\
+                        rst_vir_hdiag=rst_vir_hdiag):
     '''define sTDA on-the-fly two electron intergeral (pq|rs)
        A_iajb * v = delta_ia_ia*v + 2(ia|jb)*v - (ij|ab)*v
        iajb_v = einsum('Aia,Bjb,AB,jbm -> iam', q_ia, q_ia, GammaK, V)
@@ -321,11 +329,19 @@ def gen_iajb_ijab_ibja_delta_fly(max_vir=max_vir, GammaJ=GammaJ, GammaK=GammaK):
         delta_max_vir_v = einsum("ia,iam->iam", max_vir_hdiag, V)
         return delta_max_vir_v
 
-    return iajb_fly, ijab_fly, ibja_fly, delta_fly, delta_max_vir_fly
+    def delta_rst_vir_fly(V):
+        '''max_vir_hdiag.shape = (n_occ, n_vir-max_vir)'''
+        delta_rst_vir_v = einsum("ia,iam->iam", rst_vir_hdiag, V)
+        return delta_rst_vir_v
 
-def gen_sTDA_sTDDFT_stapol_fly(GammaJ=GammaJ, GammaK=GammaK):
+    return iajb_fly, ijab_fly, ibja_fly, delta_fly, \
+                delta_max_vir_fly, delta_rst_vir_fly
 
-    iajb_fly, ijab_fly, ibja_fly, delta_fly, delta_max_vir_fly = \
+def gen_sTDA_sTDDFT_stapol_fly(GammaJ=GammaJ, GammaK=GammaK, \
+                                n_occ=n_occ, max_vir=max_vir, A_size=A_size):
+
+    iajb_fly, ijab_fly, ibja_fly, delta_fly, delta_max_vir_fly, \
+    delta_rst_vir_fly = \
                     gen_iajb_ijab_ibja_delta_fly(GammaJ=GammaJ, GammaK=GammaK)
     def sTDA_mv(V):
         '''return AX'''
@@ -334,6 +350,20 @@ def gen_sTDA_sTDDFT_stapol_fly(GammaJ=GammaJ, GammaK=GammaK):
         MV = delta_max_vir_fly(V) + 2*iajb_fly(V) - ijab_fly(V)
         MV = MV.reshape(n_occ*max_vir,-1)
         return MV
+
+    def full_sTDA_mv(V, sTDA_mv=sTDA_mv, delta_rst_vir_fly=delta_rst_vir_fly):
+
+        V = V.reshape(n_occ,n_vir,-1)
+        U = np.zeros_like(V)
+
+        V1 = V[:,:max_vir,:]
+        V2 = V[:,max_vir:,:]
+
+        U[:,:max_vir,:] = sTDA_mv(V1).reshape(n_occ, max_vir, -1)
+        U[:,max_vir:,:] = delta_rst_vir_fly(V2)
+
+        U = U.reshape(A_size,-1)
+        return U
 
     def sTDDFT_mv(X, Y):
         '''return AX+BY and AY+BX
@@ -385,9 +415,9 @@ def gen_sTDA_sTDDFT_stapol_fly(GammaJ=GammaJ, GammaK=GammaK):
 
         return U
 
-    return sTDA_mv, sTDDFT_mv, sTDDFT_stapol_mv
+    return sTDA_mv, full_sTDA_mv, sTDDFT_mv, sTDDFT_stapol_mv
 
-sTDA_mv, sTDDFT_mv, sTDDFT_stapol_mv = gen_sTDA_sTDDFT_stapol_fly(\
+sTDA_mv, full_sTDA_mv, sTDDFT_mv, sTDDFT_stapol_mv = gen_sTDA_sTDDFT_stapol_fly(\
                                                 GammaJ=GammaJ, GammaK=GammaK)
 
 def TDA_A_diag_initial_guess(m, hdiag=hdiag):
@@ -1943,21 +1973,7 @@ def dump_yaml(Davidson_dic, calc, init, prec):
     with open(yamlpath, "w", encoding="utf-8") as f:
         yaml.dump(Davidson_dic, f)
 
-def full_sTDA_mv( V, sTDA_mv=sTDA_mv, n_occ=n_occ, n_vir=n_vir, hdiag=hdiag,\
-                                            A_size=A_size, max_vir=max_vir):
-    V = V.reshape(n_occ,n_vir,-1)
-    U = np.zeros_like(V)
 
-    V1 = V[:,:max_vir,:]
-    U[:,:max_vir,:] = sTDA_mv(V1).reshape(n_occ, max_vir, -1)
-
-    V2 = V[:,max_vir:,:]
-    V2 = V2.reshape(n_occ*(n_vir-max_vir),-1)
-    D = delta_hdiag[:,max_vir:].reshape(n_occ*(n_vir-max_vir),-1)
-    U[:,max_vir:,:] = (V2/D).reshape(n_occ, n_vir-max_vir, -1)
-
-    U = U.reshape(A_size,-1)
-    return U
 
 if __name__ == "__main__":
     calc = gen_calc()
@@ -1986,24 +2002,26 @@ if __name__ == "__main__":
             dump_yaml(Davidson_dic, calc, init, prec)
     if args.traceAA == True:
         print('checking diff AA')
+        print("{:<5s} {:<5s}  {:<20s}".format('alpha', 'beta' ,'norm'))
         for alpha in args.alpha:
             for beta in args.beta:
-                print('alpha =', alpha)
-                print('beta =', beta)
+
                 GammaJ, GammaK = gen_gammaJK(alpha=alpha, beta=beta)
-                sTDA_mv, sTDDFT_mv, sTDDFT_stapol_mv = \
+                sTDA_mv, full_sTDA_mv, sTDDFT_mv, sTDDFT_stapol_mv = \
                         gen_sTDA_sTDDFT_stapol_fly(GammaJ=GammaJ, GammaK=GammaK)
                 V = eigenkets
                 W = np.dot(V.T, full_sTDA_mv(V, sTDA_mv=sTDA_mv))
                 # print(W)
                 lambda_matrix = np.diag(Excitation_energies)
-                diff = lambda_matrix-W
-                norm = np.linalg.norm(diff)
-                print('norm=',norm)
+                # diff = lambda_matrix-W
+                # norm = np.linalg.norm(diff)
+                # print('norm=',norm)
 
                 commutator = np.dot(lambda_matrix,W)-np.dot(W,lambda_matrix)
                 trace = np.trace(commutator)
-                print('trace = ', trace)
+                norm = np.linalg.norm(commutator)
+                # print('trace = ', trace)
+                print("{:<5.2f} {:<5.2f}  {:<20.15f}".format(alpha, beta ,norm))
 
 
 
@@ -2052,7 +2070,7 @@ if __name__ == "__main__":
             # print('q_ab', q_ab.shape, 'GK_q_jb', GK_q_jb.shape)
             iajb_fly, ijab_fly, ibja_fly, delta_fly = gen_iajb_ijab_ibja_delta_fly()
 
-            sTDA_mv, sTDDFT_mv, sTDDFT_stapol_mv = gen_sTDA_sTDDFT_stapol_fly()
+            sTDA_mv, full_sTDA_mv, sTDDFT_mv, sTDDFT_stapol_mv = gen_sTDA_sTDDFT_stapol_fly()
 
             sTDA_start = time.time()
             sTDA_X = sTDA_mv(X)
