@@ -8,7 +8,7 @@ from opt_einsum import contract as einsum
 # import pyscf
 from pyscf import gto, scf, dft, tddft, data, lib
 import argparse
-import os
+import os, sys
 import psutil
 import yaml
 
@@ -256,7 +256,7 @@ GammaJ, GammaK = gen_gammaJK()
 
 def gen_QJK(C_matrix=C_matrix, mol=mol, Natm=Natm, N_bf=N_bf, max_vir=max_vir, \
                                                 GammaJ=GammaJ, GammaK=GammaK):
-    Qstart = time.time()
+    # Qstart = time.time()
     '''build q_iajb tensor'''
 
     aoslice = mol.aoslice_by_atom()
@@ -280,9 +280,9 @@ def gen_QJK(C_matrix=C_matrix, mol=mol, Natm=Natm, N_bf=N_bf, max_vir=max_vir, \
 
     GK_q_jb = einsum("Bjb,AB->Ajb", q_ia, GammaK)
     GJ_q_ab = einsum("Bab,AB->Aab", q_ab, GammaJ)
-    Qend = time.time()
-
-    Q_time = Qend - Qstart
+    # Qend = time.time()
+    #
+    # Q_time = Qend - Qstart
     # print('Q-Gamma tensors building time = %.2f'%Q_time)
     # show_memory_info('after Q matrix')
     return q_ij, q_ab, q_ia, GK_q_jb, GJ_q_ab
@@ -420,6 +420,52 @@ def gen_sTDA_sTDDFT_stapol_fly(GammaJ=GammaJ, GammaK=GammaK, \
 sTDA_mv, full_sTDA_mv, sTDDFT_mv, sTDDFT_stapol_mv = gen_sTDA_sTDDFT_stapol_fly(\
                                                 GammaJ=GammaJ, GammaK=GammaK)
 
+
+class on_the_fly_tensors(object):
+    ''' iajb_fly,
+        ijab_fly,
+        ibja_fly,
+        delta_fly,
+        delta_max_vir_fly,
+        delta_rst_vir_fly
+    '''
+    def __init__(self, alpha, beta):
+        self.alpha = alpha
+        self.beta = beta
+
+        '''first, update the gamma matrix
+        '''
+        self.GammaJ, \
+        self.GammaK = gen_gammaJK(alpha=self.alpha, beta=self.beta)
+
+        '''then generate tensors
+        '''
+        self.iajb_fly, \
+        self.ijab_fly, \
+        self.ibja_fly, \
+        self.delta_fly, \
+        self.delta_max_vir_fly, \
+        self.delta_rst_vir_fly = gen_iajb_ijab_ibja_delta_fly\
+                                    (GammaJ=self.GammaJ, GammaK=self.GammaK)
+    def sTDA_mv(self, V):
+        '''return AX'''
+        V = V.reshape(n_occ, max_vir, -1)
+        '''MV =  delta_fly(V) + 2*iajb_fly(V) - ijab_fly(V)'''
+        MV = self.delta_max_vir_fly(V) + 2*self.iajb_fly(V) - self.ijab_fly(V)
+        MV = MV.reshape(n_occ*max_vir,-1)
+        return MV
+
+    def full_sTDA_mv(self, V):
+        V = V.reshape(n_occ,n_vir,-1)
+        U = np.zeros_like(V)
+        V1 = V[:,:max_vir,:]
+        V2 = V[:,max_vir:,:]
+        U[:,:max_vir,:] = self.sTDA_mv(V1).reshape(n_occ, max_vir, -1)
+        U[:,max_vir:,:] = self.delta_rst_vir_fly(V2)
+        U = U.reshape(A_size,-1)
+        return U
+
+
 def TDA_A_diag_initial_guess(m, hdiag=hdiag):
     '''m is the amount of initial guesses'''
     hdiag = hdiag.reshape(-1,)
@@ -447,7 +493,7 @@ def TDA_A_diag_preconditioner(residual, sub_eigenvalue, hdiag=hdiag, \
     else:
         return new_guess
 
-def sTDA_eigen_solver(k, tol=args.initial_TOL):
+def sTDA_eigen_solver(k, tol=args.initial_TOL, matrix_vector_product=sTDA_mv):
     '''A'X = XΩ'''
     print('sTDA nstate =', k)
     sTDA_D_start = time.time()
@@ -465,7 +511,7 @@ def sTDA_eigen_solver(k, tol=args.initial_TOL):
                                             new_m, hdiag = max_vir_hdiag)
     for i in range(max):
         '''create subspace'''
-        W[:, m:new_m] = sTDA_mv(V[:, m:new_m])
+        W[:, m:new_m] = matrix_vector_product(V[:, m:new_m])
         sub_A = np.dot(V[:,:new_m].T, W[:,:new_m])
         sub_A = mathlib.symmetrize(sub_A)
 
@@ -509,7 +555,7 @@ def sTDA_eigen_solver(k, tol=args.initial_TOL):
     return U, omega
 
 def sTDA_preconditioner(residual, sub_eigenvalue, tol=args.precond_TOL,\
-                        current_dic={}, full_guess=None, return_index=None,\
+                        current_dic={}, matrix_vector_product=sTDA_mv,full_guess=None, return_index=None,\
                         W_H=None, V_H=None, sub_A_H=None):
     '''sTDA preconditioner
        (A - Ω*I)^-1 P = X
@@ -840,6 +886,28 @@ def Davidson(init, prec, k=args.nstates, tol=args.conv_tolerance):
         sub_A = mathlib.symmetrize(sub_A)
         print('subspace size: ', np.shape(sub_A)[0])
 
+        print('checking commutator_se norm')
+        print('{:<8s}{:<8s}{:<20s}'.format('beta','alpha','commutator_se_norm'))
+        # if ii == 0:
+        smallest_norm=1000
+        opt_alpha=alpha
+        opt_beta=beta
+        for try_beta in args.beta:
+            for try_alpha in args.alpha:
+                tensors = on_the_fly_tensors(alpha=try_alpha, beta=try_beta)
+
+                sub_A_se = np.dot(V[:,:new_m].T, tensors.full_sTDA_mv(V[:,:new_m]))
+                commutator = np.dot(sub_A,sub_A_se) - np.dot(sub_A_se,sub_A)
+                commutator_se_norm = np.linalg.norm(commutator)
+                if commutator_se_norm < smallest_norm :
+                    smallest_norm = commutator_se_norm
+                    opt_alpha=try_alpha
+                    opt_beta=try_beta
+                print("{:<8.2f}{:<8.2f}{:<20.15f}".format(try_beta,try_alpha,commutator_se_norm))
+        print('the predicted best alpha beta pairs is:')
+        print("{:<8.2f}{:<8.2f}{:<20.15f}".format(opt_beta,opt_alpha,smallest_norm))
+
+
         sub_eigenvalue, sub_eigenket = np.linalg.eigh(sub_A)
         full_guess = np.dot(V[:,:new_m], sub_eigenket[:, :k])
         residual = np.dot(W[:,:new_m], sub_eigenket[:,:k])
@@ -870,6 +938,7 @@ def Davidson(init, prec, k=args.nstates, tol=args.conv_tolerance):
         new_guess, current_dic = new_guess_generator(
                                 residual = residual[:,index],
                           sub_eigenvalue = sub_eigenvalue[:k][index],
+                   matrix_vector_product = on_the_fly_tensors(alpha=opt_alpha,beta=opt_beta).sTDA_mv,\
                              current_dic = current_dic,
                               full_guess = full_guess[:,index],
                             return_index = index,
@@ -1973,7 +2042,14 @@ def dump_yaml(Davidson_dic, calc, init, prec):
     with open(yamlpath, "w", encoding="utf-8") as f:
         yaml.dump(Davidson_dic, f)
 
+class HiddenPrints:
+    def __enter__(self):
+        self._original_stdout = sys.stdout
+        sys.stdout = open(os.devnull, 'w')
 
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        sys.stdout.close()
+        sys.stdout = self._original_stdout
 
 if __name__ == "__main__":
     calc = gen_calc()
@@ -2002,26 +2078,45 @@ if __name__ == "__main__":
             dump_yaml(Davidson_dic, calc, init, prec)
     if args.traceAA == True:
         print('checking diff AA')
-        print("{:<5s} {:<5s}  {:<20s}".format('alpha', 'beta' ,'norm'))
-        for alpha in args.alpha:
-            for beta in args.beta:
-
+        print("{:<8s} {:<8s} {:<20s} {:<20s} {:<20s} {:<20s} {:<20s} {:<20s}".\
+        format('beta', 'alpha', '|V^T[A,A^se]V|', '|V^se,T[A,A^se]V^se|','|(A - A^se)V|', '|V^TV^se|', '|V - V^se|', '|E - E^se|'))
+        # i=0
+        for beta in args.beta:
+            for alpha in args.alpha:
                 GammaJ, GammaK = gen_gammaJK(alpha=alpha, beta=beta)
                 sTDA_mv, full_sTDA_mv, sTDDFT_mv, sTDDFT_stapol_mv = \
                         gen_sTDA_sTDDFT_stapol_fly(GammaJ=GammaJ, GammaK=GammaK)
-                V = eigenkets
+                V = eigenkets #ab-initio eigenkets
                 W = np.dot(V.T, full_sTDA_mv(V, sTDA_mv=sTDA_mv))
-                # print(W)
+
                 lambda_matrix = np.diag(Excitation_energies)
-                # diff = lambda_matrix-W
-                # norm = np.linalg.norm(diff)
-                # print('norm=',norm)
+                diff = Excitation_energies*V - full_sTDA_mv(V, sTDA_mv=sTDA_mv)
+                diff_norm = np.linalg.norm(diff)
+
+                with HiddenPrints():
+                    # print("This will not be printed")
+                    V_se, energies_se = sTDA_eigen_solver(args.nstates)
+                VV = np.dot(V.T, V_se)
+                overlap_norm = np.linalg.norm(VV)
+
+                V_diff_norm = np.linalg.norm(V-V_se)
+
+                energy_norm = np.linalg.norm(Excitation_energies-energies_se)
 
                 commutator = np.dot(lambda_matrix,W)-np.dot(W,lambda_matrix)
-                trace = np.trace(commutator)
-                norm = np.linalg.norm(commutator)
-                # print('trace = ', trace)
-                print("{:<5.2f} {:<5.2f}  {:<20.15f}".format(alpha, beta ,norm))
+                # trace = np.trace(commutator)
+                commutator_norm = np.linalg.norm(commutator)
+
+                lambda_matrix_se = np.diag(energies_se)
+                # if i==0:
+                TDA_V_se = TDA_matrix_vector(V_se)
+                # i+=1
+                W_se = np.dot(V_se.T, TDA_V_se)
+                commutator_se = np.dot(W_se,lambda_matrix_se)-np.dot(lambda_matrix_se,W_se)
+                commutator_se_norm = np.linalg.norm(commutator_se)
+
+                print("{:<8.2f} {:<8.2f} {:<20.15f} {:<20.15f} {:<20.15f} {:<20.15f} {:<20.15f} {:<20.15f}".\
+                format(beta,alpha,commutator_norm, commutator_se_norm, diff_norm, overlap_norm, V_diff_norm, energy_norm))
 
 
 
