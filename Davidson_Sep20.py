@@ -42,7 +42,7 @@ def gen_args():
     parser.add_argument('-n','--nstates',           type=int,   default = 5,      help='number of excited states')
     parser.add_argument('-pytd','--pytd',           type=str2bool,  default = False , help='whether to compare with PySCF TDDFT')
 
-    parser.add_argument('-TDA','--TDA',             type=str2bool,  default = True, help='perform TDA')
+    parser.add_argument('-TDA','--TDA',             type=str2bool,  default = False, help='perform TDA')
     parser.add_argument('-TDDFT','--TDDFT',         type=str2bool,  default = False, help='perform TDDFT')
     parser.add_argument('-dynpol','--dynpol',       type=str2bool,  default = False, help='perform dynamic polarizability')
     parser.add_argument('-omega','--dynpol_omega',  type=float, default = [], nargs='+', help='dynamic polarizability with perurbation omega, a list')
@@ -51,6 +51,7 @@ def gen_args():
     parser.add_argument('-sTDDFT','--sTDDFT',       type=str2bool,  default = False, help='perform sTDDFT calculation')
     parser.add_argument('-TT','--Truncate_test',    type=str2bool,  default = False, help='test the wall time for different virtual truncation')
     parser.add_argument('-tr','--traceAA',          type=str2bool,  default = False, help='test different tr([A,A])')
+    parser.add_argument('-trnorm','--trnorm',       type=str2bool,  default = False, help='test different tr([A,A]), normalzied')
 
     parser.add_argument('-TV','--truncate_virtual', type=float, default = 40,    help='the threshold to truncate virtual orbitals, in eV')
 
@@ -68,8 +69,13 @@ def gen_args():
     parser.add_argument('-M','--memory',            type=int,   default= 4000, help='max_memory')
     parser.add_argument('-v','--verbose',           type=int,   default= 3,    help='mol.verbose = 3,4,5')
 
-    parser.add_argument('-be','--beta',             type=float, default= [],    nargs='+', help='beta = 4.00')
-    parser.add_argument('-al','--alpha',            type=float, default= [],    nargs='+', help='alpha = 0.83')
+    parser.add_argument('-beta','--beta',           type=float, default= None,  help='beta = 4.00')
+    parser.add_argument('-alpha','--alpha',         type=float, default= None,  help='alpha = 0.83')
+
+    parser.add_argument('-tuning','--tuning',       type=str2bool, default= False,    help='turn on on-the-fly tuning')
+
+    parser.add_argument('-beta_list','--beta_list',   type=float, default= [],    nargs='+', help='8 7 6 5 4 3 2')
+    parser.add_argument('-alpha_list','--alpha_list', type=float, default= [],    nargs='+', help='8 7 6 5 4 3 2 1.8 1 0.8')
 
     args = parser.parse_args()
     if args.dynpol == True and args.dynpol_omega == []:
@@ -199,11 +205,14 @@ def gen_global_var(tddft, mf, mol, functional):
 
     a_x, beta, alpha = parameterlib.gen_alpha_beta_ax(functional)
 
-    if args.beta != [] and args.traceAA == False:
-        beta = args.beta[0]
-        alpha = args.alpha[0]
+    if args.beta != None:
+        beta = args.beta
+        alpha = args.alpha
 
-    print('hdiag shape', hdiag.shape)
+    print('a_x =', a_x)
+    print('beta =', beta)
+    print('alpha =', alpha)
+
     print('n_occ = ', n_occ)
     print('n_vir = ', n_vir)
     print('max_vir = ', max_vir)
@@ -250,9 +259,14 @@ def gen_gammaJK(mol=mol, Natm=Natm, R_array=R_array, beta=beta, alpha=alpha):
     eta = (a+a.T)/2
     GammaJ = (R_array**beta + (a_x * eta)**(-beta))**(-1/beta)
     GammaK = (R_array**alpha + eta**(-alpha)) **(-1/alpha)
+
+    # print(R_array)
+    # print(eta)
+    # print(1/R_array)
+    # print(GammaJ)
     return GammaJ, GammaK
 
-GammaJ, GammaK = gen_gammaJK()
+GammaJ, GammaK = gen_gammaJK(alpha=alpha, beta=beta)
 
 def gen_QJK(C_matrix=C_matrix, mol=mol, Natm=Natm, N_bf=N_bf, max_vir=max_vir, \
                                                 GammaJ=GammaJ, GammaK=GammaK):
@@ -287,7 +301,7 @@ def gen_QJK(C_matrix=C_matrix, mol=mol, Natm=Natm, N_bf=N_bf, max_vir=max_vir, \
     # show_memory_info('after Q matrix')
     return q_ij, q_ab, q_ia, GK_q_jb, GJ_q_ab
 
-GammaJ, GammaK = gen_gammaJK(alpha=alpha, beta=beta)
+
 
 def gen_iajb_ijab_ibja_delta_fly(max_vir=max_vir, GammaJ=GammaJ, GammaK=GammaK,\
                         delta_hdiag=delta_hdiag, max_vir_hdiag=max_vir_hdiag,\
@@ -417,8 +431,8 @@ def gen_sTDA_sTDDFT_stapol_fly(GammaJ=GammaJ, GammaK=GammaK, \
 
     return sTDA_mv, full_sTDA_mv, sTDDFT_mv, sTDDFT_stapol_mv
 
-sTDA_mv, full_sTDA_mv, sTDDFT_mv, sTDDFT_stapol_mv = gen_sTDA_sTDDFT_stapol_fly(\
-                                                GammaJ=GammaJ, GammaK=GammaK)
+sTDA_mv, full_sTDA_mv, sTDDFT_mv, sTDDFT_stapol_mv \
+                    = gen_sTDA_sTDDFT_stapol_fly(GammaJ=GammaJ, GammaK=GammaK)
 
 
 class on_the_fly_tensors(object):
@@ -556,7 +570,7 @@ def sTDA_eigen_solver(k, tol=args.initial_TOL, matrix_vector_product=sTDA_mv):
 
 def sTDA_preconditioner(residual, sub_eigenvalue, tol=args.precond_TOL,\
                         current_dic={}, matrix_vector_product=sTDA_mv,full_guess=None, return_index=None,\
-                        W_H=None, V_H=None, sub_A_H=None):
+                        W_H=None, V_H=None, sub_A_H=None, max = 30):
     '''sTDA preconditioner
        (A - Ω*I)^-1 P = X
        AX - XΩ = P
@@ -576,7 +590,7 @@ def sTDA_preconditioner(residual, sub_eigenvalue, tol=args.precond_TOL,\
 
     start = time.time()
     tol = args.precond_TOL # Convergence tolerance
-    max = 30   # Maximum number of iterations
+       # Maximum number of iterations
 
     V = np.zeros((A_reduced_size, (max+1)*N_vectors))
     W = np.zeros((A_reduced_size, (max+1)*N_vectors))
@@ -617,7 +631,7 @@ def sTDA_preconditioner(residual, sub_eigenvalue, tol=args.precond_TOL,\
 
         '''project sTDA_A matrix and vector P into subspace'''
         mvstart = time.time()
-        W[:, count:new_count] = sTDA_mv(V[:, count:new_count])
+        W[:, count:new_count] = matrix_vector_product(V[:, count:new_count])
         mvend = time.time()
         mvcost += mvend - mvstart
 
@@ -665,7 +679,6 @@ def sTDA_preconditioner(residual, sub_eigenvalue, tol=args.precond_TOL,\
     if i == (max -1):
         print('_____sTDA Preconditioner Failed Due to Iteration Limit _______')
         print('failed after ', i, 'steps,', '%.4f'%p_cost,'s')
-        print('orthonormality of V', check_orthonormal(V[:,:count]))
         print('current residual norms', r_norms)
     else:
         print('sTDA precond Done after', i, 'steps;', '%.4f'%p_cost,'seconds')
@@ -674,7 +687,7 @@ def sTDA_preconditioner(residual, sub_eigenvalue, tol=args.precond_TOL,\
     for enrty in ['subgencost', 'mvcost', 'GScost', 'subcost']:
         cost = locals()[enrty]
         print("{:<10} {:<5.4f}s  {:<5.2%}".format(enrty, cost, cost/p_cost))
-    full_guess *= pnorm
+    full_guess = full_guess*pnorm
 
     U = np.zeros((n_occ,n_vir,N_vectors))
     U[:,:max_vir,:] = full_guess.reshape(n_occ,max_vir,-1)
@@ -845,6 +858,27 @@ def fill_dictionary(dic,init,prec,k,icost,pcost,wall_time,N_itr,N_mv,\
     dic['Dynamic polarizability initial tensor alpha'] = initial_tensor_alpha
     return dic
 
+def on_the_fly_tuning(sub_A, V):
+    print('checking commutator_se norm')
+    # print('{:<8s}{:<8s}{:<20s}'.format('beta','alpha','commutator_se_norm'))
+    smallest_norm=1000
+    opt_alpha=0
+    opt_beta=0
+    for try_beta in args.beta_list:
+        for try_alpha in args.alpha_list:
+            tensors = on_the_fly_tensors(alpha=try_alpha, beta=try_beta)
+            sub_A_se = np.dot(V.T, tensors.full_sTDA_mv(V))
+            commutator = np.dot(sub_A,sub_A_se) - np.dot(sub_A_se,sub_A)
+            commutator_se_norm = np.linalg.norm(commutator)
+            if commutator_se_norm < smallest_norm :
+                smallest_norm = commutator_se_norm
+                opt_alpha=try_alpha
+                opt_beta=try_beta
+            # print("{:<8.2f}{:<8.2f}{:<20.15f}".format(try_beta,try_alpha,commutator_se_norm))
+    print('the predicted best alpha beta pairs is:')
+    print("{:<8.2f}{:<8.2f}{:<20.15f}".format(opt_beta,opt_alpha,smallest_norm))
+    return opt_alpha, opt_beta
+
 def Davidson(init, prec, k=args.nstates, tol=args.conv_tolerance):
     '''Davidson frame, we can use different initial guess and preconditioner'''
     D_start = time.time()
@@ -886,30 +920,8 @@ def Davidson(init, prec, k=args.nstates, tol=args.conv_tolerance):
         sub_A = mathlib.symmetrize(sub_A)
         print('subspace size: ', np.shape(sub_A)[0])
 
-        print('checking commutator_se norm')
-        print('{:<8s}{:<8s}{:<20s}'.format('beta','alpha','commutator_se_norm'))
-        # if ii == 0:
-        smallest_norm=1000
-        opt_alpha=alpha
-        opt_beta=beta
-        for try_beta in args.beta:
-            for try_alpha in args.alpha:
-                tensors = on_the_fly_tensors(alpha=try_alpha, beta=try_beta)
-
-                sub_A_se = np.dot(V[:,:new_m].T, tensors.full_sTDA_mv(V[:,:new_m]))
-                commutator = np.dot(sub_A,sub_A_se) - np.dot(sub_A_se,sub_A)
-                commutator_se_norm = np.linalg.norm(commutator)
-                if commutator_se_norm < smallest_norm :
-                    smallest_norm = commutator_se_norm
-                    opt_alpha=try_alpha
-                    opt_beta=try_beta
-                print("{:<8.2f}{:<8.2f}{:<20.15f}".format(try_beta,try_alpha,commutator_se_norm))
-        print('the predicted best alpha beta pairs is:')
-        print("{:<8.2f}{:<8.2f}{:<20.15f}".format(opt_beta,opt_alpha,smallest_norm))
-
-
         sub_eigenvalue, sub_eigenket = np.linalg.eigh(sub_A)
-        full_guess = np.dot(V[:,:new_m], sub_eigenket[:, :k])
+        full_guess = np.dot(V[:,:new_m], sub_eigenket[:,:k])
         residual = np.dot(W[:,:new_m], sub_eigenket[:,:k])
         residual -= full_guess * sub_eigenvalue[:k]
 
@@ -935,16 +947,18 @@ def Davidson(init, prec, k=args.nstates, tol=args.conv_tolerance):
         index = [r_norms.index(i) for i in r_norms if i > tol]
 
         P_start = time.time()
-        new_guess, current_dic = new_guess_generator(
-                                residual = residual[:,index],
-                          sub_eigenvalue = sub_eigenvalue[:k][index],
-                   matrix_vector_product = on_the_fly_tensors(alpha=opt_alpha,beta=opt_beta).sTDA_mv,\
-                             current_dic = current_dic,
-                              full_guess = full_guess[:,index],
-                            return_index = index,
-                                     W_H = W[:,:m],
-                                     V_H = V[:,:m],
+
+        new_guess, current_dic = new_guess_generator(\
+                                residual = residual[:,index],\
+                          sub_eigenvalue = sub_eigenvalue[:k][index],\
+                   matrix_vector_product = sTDA_mv,\
+                             current_dic = current_dic,\
+                              full_guess = full_guess[:,index],\
+                            return_index = index,\
+                                     W_H = W[:,:m],\
+                                     V_H = V[:,:m],\
                                  sub_A_H = sub_A)
+
         P_end = time.time()
 
         iteration_list[ii] = current_dic
@@ -964,6 +978,8 @@ def Davidson(init, prec, k=args.nstates, tol=args.conv_tolerance):
         print('icost %.4f'%icost)
 
     energies = sub_eigenvalue[:k]*parameterlib.Hartree_to_eV
+    V_basis = V[:,:new_m]
+    W_basis = W[:,:new_m]
 
     D_end = time.time()
     Dcost = D_end - D_start
@@ -983,7 +999,7 @@ def Davidson(init, prec, k=args.nstates, tol=args.conv_tolerance):
     print('MVcost %.4f'%MVcost)
     print('Final subspace shape = %s'%np.shape(sub_A)[0])
     print('Precond time: %.4f seconds'%Pcost, '{:.2%}'.format(Pcost/Dcost))
-    return energies, full_guess, Davidson_dic
+    return energies, full_guess, residual, Davidson_dic, V_basis, W_basis, sub_A
 
 def TDDFT_A_diag_initial_guess(V_holder, W_holder, new_m, hdiag=hdiag):
     hdiag = hdiag.reshape(-1,)
@@ -1323,8 +1339,8 @@ def sTDDFT_preconditioner(Rx, Ry, omega, tol=args.precond_TOL):
         cost = locals()[enrty]
         print("{:<10} {:<5.4f}s  {:<5.2%}".format(enrty, cost, cost/P_cost))
 
-    X_full *=  pqnorm
-    Y_full *=  pqnorm
+    X_full = X_full*pqnorm
+    Y_full = Y_full*pqnorm
 
     X = np.zeros((n_occ,n_vir,k))
     Y = np.zeros((n_occ,n_vir,k))
@@ -1483,7 +1499,7 @@ def TDDFT_eigen_solver(init, prec, k=args.nstates, tol=args.conv_tolerance):
             print('All new guesses kicked out during GS orthonormalization')
             break
 
-    omega *= parameterlib.Hartree_to_eV
+    omega = omega*parameterlib.Hartree_to_eV
 
     difference = np.mean((np.array(initial_energies) - np.array(omega))**2)
     difference = float(difference)
@@ -1561,7 +1577,10 @@ def dynamic_polarizability(init, prec):
     P = P.reshape(-1,3)
 
     P_origin = np.zeros_like(P)
+    Q = np.zeros_like(P)
+
     P_origin[:,:] = P[:,:]
+    Q[:,:] = P[:,:]
 
     pnorm = np.linalg.norm(P, axis=0, keepdims = True)
     pqnorm = pnorm * (2**0.5)
@@ -1569,7 +1588,6 @@ def dynamic_polarizability(init, prec):
     P /= pqnorm
 
     P = np.tile(P,k)
-    Q = P
 
     max = args.max
     tol = args.conv_tolerance
@@ -1585,7 +1603,7 @@ def dynamic_polarizability(init, prec):
 
     alpha_omega_ig = []
     X_p_Y = X_ig + Y_ig
-    X_p_Y *= np.tile(pqnorm,k)
+    X_p_Y = X_p_Y*np.tile(pqnorm,k)
     for jj in range(k):
         '''*-1 from the definition of dipole moment. *2 for double occupancy'''
         X_p_Y_tmp = X_p_Y[:,3*jj:3*(jj+1)]
@@ -1727,7 +1745,7 @@ def dynamic_polarizability(init, prec):
 
     X_p_Y = X_full + Y_full
 
-    X_p_Y *= np.tile(pqnorm,k)
+    X_p_Y = X_p_Y*np.tile(pqnorm,k)
 
     for jj in range(k):
         X_p_Y_tmp = X_p_Y[:,3*jj:3*(jj+1)]
@@ -1754,8 +1772,9 @@ def stapol_A_diag_initprec(P, hdiag=hdiag, tol=None):
     # P /= -d
     return P
 
-def stapol_sTDDFT_initprec(Pr, tol=args.initial_TOL):
+def stapol_sTDDFT_initprec(Pr, tol=args.initial_TOL, matrix_vector_product=sTDDFT_stapol_mv):
     '''(A* + B*)X = -P
+       note the negative sign of P!
        residual = (A* + B*)X + P
        X_ig = -P/d
        X_new = residual/D
@@ -1789,7 +1808,7 @@ def stapol_sTDDFT_initprec(Pr, tol=args.initial_TOL):
         '''creating the subspace'''
         MV_start = time.time()
         '''U = AX + BX = (A+B)X'''
-        U_holder[:, m:new_m] = sTDDFT_stapol_mv(V_holder[:,m:new_m])
+        U_holder[:, m:new_m] = matrix_vector_product(V_holder[:,m:new_m])
         MV_end = time.time()
         MVcost += MV_end - MV_start
 
@@ -1854,7 +1873,7 @@ def stapol_sTDDFT_initprec(Pr, tol=args.initial_TOL):
         cost = locals()[enrty]
         print("{:<10} {:<5.4f}s  {:<5.2%}".format(enrty, cost, cost/ssp_cost))
 
-    X_full *= pnorm
+    X_full = X_full*pnorm
 
     U = np.zeros((n_occ,n_vir,npvec))
     U[:,:max_vir,:] = X_full.reshape(n_occ,max_vir,-1)[:,:,:]
@@ -1863,7 +1882,7 @@ def stapol_sTDDFT_initprec(Pr, tol=args.initial_TOL):
         ''' DX2 = -P2'''
         P2 = Pr.reshape(n_occ,n_vir,-1)[:,max_vir:,:]
         P2 = P2.reshape(n_occ*(n_vir-max_vir),-1)
-        D2 = hdiag.reshape(n_occ,n_vir,-1)[:,max_vir:,:]
+        D2 = delta_hdiag[:,max_vir:]
         D2 = D2.reshape(n_occ*(n_vir-max_vir),-1)
         X2 = (-P2/D2).reshape(n_occ,n_vir-max_vir,-1)
         U[:,max_vir:,:] = X2
@@ -1882,7 +1901,7 @@ def gen_stapol_lib():
 def static_polarizability(init, prec):
     '''(A+B)X = -P
        residual = (A+B)X + P
-       X_new = (residual - P)/D'''
+    '''
     print('initial guess', init)
     print('preconditioner', prec)
     sp_start = time.time()
@@ -1964,7 +1983,7 @@ def static_polarizability(init, prec):
         max_norm = np.max(r_norms)
         print('max_norm = %.2e'%max_norm)
         if max_norm < tol or ii == (max -1):
-            print('static polarizability precodure aborted\n')
+            # print('static polarizability precodure aborted\n')
             break
 
         '''preconditioning step'''
@@ -1987,7 +2006,7 @@ def static_polarizability(init, prec):
     X_full = np.dot(V,x)
     overlap = float(np.linalg.norm(np.dot(X_ig.T, X_full)))
 
-    X_full *= pnorm
+    X_full = X_full*pnorm
 
     tensor_alpha = np.dot(X_full.T, P_origin)*-4
     sp_end = time.time()
@@ -2051,6 +2070,194 @@ class HiddenPrints:
         sys.stdout.close()
         sys.stdout = self._original_stdout
 
+
+
+
+def gen_metrics(beta, alpha, ab_initio_V, ab_initio_E, \
+                    full_sTDA_mv, sTDA_mv, residual, NORM, \
+                                        V_basis, W_basis, sub_A):
+    V = ab_initio_V #ab-initio eigenkets
+    lambda_matrix = np.diag(ab_initio_E)
+    with HiddenPrints():
+        V_se, omega = sTDA_eigen_solver(k=args.nstates, tol=1e-5, matrix_vector_product=sTDA_mv)
+        omega /= parameterlib.Hartree_to_eV
+    '''commutator norm
+        |V.T[A, A^se]V|
+       =[λ, V.T*A^se*V]
+    '''
+    VAseV = np.dot(V.T, full_sTDA_mv(V))
+    commutator = mathlib.commutator(lambda_matrix, VAseV)
+    commutator_norm = np.linalg.norm(commutator)
+
+    '''condition number
+        |V.T * A^{se,-1}A * V|
+        AV = λ * V
+        A^{se,-1} AV = X => A^se X = AV
+    '''
+    with HiddenPrints():
+        '''A^se X=W
+        '''
+        X = stapol_sTDDFT_initprec(Pr = -ab_initio_E*V,tol=1e-10, matrix_vector_product=sTDA_mv)
+    sub_condition = np.dot(V.T, X)
+    condition_number = mathlib.cond_number(sub_condition, )
+
+    '''commutator_sub_A norm
+        |[V_b.T A V_b, V_b.T A^se V_b]|
+       =[sub_A, V_b Ase Vb]
+    '''
+    AseVb = full_sTDA_mv(V_basis)
+    VbAseVb = np.dot(V_basis.T, AseVb)
+    commutator_sub_A = mathlib.commutator(sub_A, VbAseVb)
+    commutator_sub_A_norm = np.linalg.norm(commutator_sub_A)
+
+    '''commutator basis V norm
+        here, V_b is the Kryove space basis, W = AV
+        |V_b.T [A, A^se] V_b|
+       = V_b.T (A A^se - A^se A) V_b
+       = V_b.T A A^se V_b - V_b.T A^se A V_b
+       = W_b.T W^se - W^se.T W_b
+    '''
+    WbAseVb = np.dot(W_basis.T, AseVb)
+    commutator_basis_A_norm = np.linalg.norm(WbAseVb - WbAseVb.T)
+
+    ''' quality norm
+        |(I - A^{se,-1}A) V |
+        = V - X
+    '''
+    if NORM == True:
+        X = X/np.linalg.norm(X)
+    norm_0 = np.linalg.norm(V - X)
+
+    ''' V.T quality norm
+        | V.T (I - A^{se,-1}A) V|
+        = I - V.TX
+        = I - sub_condition
+    '''
+    norm_1 = np.linalg.norm(np.eye(args.nstates) - np.dot(V.T, X))
+
+    ''' conditioner number of
+        |V^T (A^{se}-λ)^{-1}(A - λ) V|
+        = V^T(A^{se}-λ)^{-1}R
+        = V^T V^new
+    '''
+    with HiddenPrints():
+        ''' sTDA preconditioning R
+        '''
+        V_new, NA = sTDA_preconditioner(residual=residual, \
+                            sub_eigenvalue=omega, \
+                                tol=1e-6,\
+                    matrix_vector_product=sTDA_mv,\
+                                max = 40)
+    VV_new = np.dot(V.T,V_new)
+    condition_number_1 = mathlib.cond_number(VV_new)
+
+    ''' conditioner number of
+        | V^T (A^{se}-λ)^{-1}A V |
+        = V^T(A^{se}-λ)^{-1}λV
+        = V^T V^new1
+    '''
+    with HiddenPrints():
+        ''' sTDA preconditioning λV
+        '''
+        V_new1, NA = sTDA_preconditioner(residual = ab_initio_E*V, \
+                            sub_eigenvalue = omega, \
+                                tol = 1e-6,\
+                    matrix_vector_product=sTDA_mv,\
+                                max = 40)
+
+    VV_new1 = np.dot(V.T, V_new1)
+    condition_number_2 = mathlib.cond_number(VV_new1)
+
+    metric_list = \
+    [beta, \
+    alpha, \
+    commutator_norm, \
+    condition_number, \
+    commutator_sub_A_norm, \
+    commutator_basis_A_norm, \
+    norm_0, \
+    norm_1, \
+    condition_number_1, \
+    condition_number_2]
+
+    return metric_list
+
+def gen_metrics_diag(ab_initio_V, ab_initio_E, residual, NORM):
+    V = ab_initio_V #ab-initio eigenkets
+    lambda_matrix = np.diag(ab_initio_E)
+
+    '''commutator diag
+        ||V.T[A, D]V||
+       =[λ, V.T*D*V]
+    '''
+    DV = hdiag.reshape(-1,1)*V
+    VDV = np.dot(V.T, DV)
+    commutator_diag = np.dot(lambda_matrix,VDV)-np.dot(VDV,lambda_matrix)
+    commutator_norm = np.linalg.norm(commutator_diag)
+
+    '''condition number diag
+        ||V.T * D^{-1}A * V||
+        = V.T * D^{-1}  λ * V
+    '''
+    with HiddenPrints():
+        ''' D^{-1} λ * V = X
+            DX = λ * V
+        '''
+        X_D = stapol_A_diag_initprec(-ab_initio_E*V)
+    sub_condition = np.dot(V.T, X_D)
+    s,u = np.linalg.eig(sub_condition)
+    s = abs(s)
+    condition_number = max(s)/min(s)
+
+    ''' quality norm diag
+        ||(I - D^{-1}A) * V||
+        = V - X_D
+    '''
+    if NORM == True:
+        X_D = X_D/np.linalg.norm(X_D)
+    norm_0 = np.linalg.norm(V - X_D)
+
+    ''' quality norm
+        ||V.T (I - D^{-1}A) * V||
+        = I - V.T X_D
+        = I - sub_condition
+    '''
+    # print(sub_condition)
+    # sub_condition = np.dot(V.T, ab_initio_E*V/hdiag.reshape(A_size,1))
+    # norm_1 = np.linalg.norm(np.eye(args.nstates) - np.dot(V.T, X_normed))
+    norm_1 = np.linalg.norm(np.eye(args.nstates) - np.dot(V.T, X_D))
+
+    ''' quality preconditioner
+        ||[I - (D-λ)^{-1}(A - λ)] * V||
+        = V - (D-λ)^{-1}R
+        = V - V^new
+        (V^new = (D-λ)^{-1}R)
+    '''
+    with HiddenPrints():
+        ''' sTDA preconditioning R
+        '''
+        V_new = TDA_A_diag_preconditioner(residual=residual, \
+                            sub_eigenvalue=ab_initio_E)
+    if NORM == True:
+        V_new = V_new/np.linalg.norm(V_new)
+    # norm_2 = np.linalg.norm(V - V_new_normed)
+    norm_2 = np.linalg.norm(V - V_new)
+
+
+    ''' quality preconditioner
+        ||V^T [I - (D-λ)^{-1}(A - λ)] * V||
+        = I - V^T(D-λ)^{-1}R
+        = I - V^T V^new
+    '''
+
+    # norm_3 = np.linalg.norm(np.eye(args.nstates)-np.dot(V.T,V_new_normed))
+    norm_3 = np.linalg.norm(np.eye(args.nstates)-np.dot(V.T,V_new))
+
+    metric_list = \
+    [commutator_norm, condition_number, norm_0, norm_1, norm_2, norm_3]
+
+    return metric_list
+
 if __name__ == "__main__":
     calc = gen_calc()
     TDA_combo = [            # option
@@ -2073,52 +2280,49 @@ if __name__ == "__main__":
         for option in args.ip_options:
             init, prec = TDA_combo[option]
             print('\nNumber of excited states =', args.nstates)
-            Excitation_energies, eigenkets, Davidson_dic = Davidson(init,prec)
+            Excitation_energies, eigenkets, residual, Davidson_dic,\
+                                V_basis, W_basis, sub_A = Davidson(init,prec)
             print('Excited State energies (eV) =\n',Excitation_energies)
             dump_yaml(Davidson_dic, calc, init, prec)
+
     if args.traceAA == True:
-        print('checking diff AA')
-        print("{:<8s} {:<8s} {:<20s} {:<20s} {:<20s} {:<20s} {:<20s} {:<20s}".\
-        format('beta', 'alpha', '|V^T[A,A^se]V|', '|V^se,T[A,A^se]V^se|','|(A - A^se)V|', '|V^TV^se|', '|V - V^se|', '|E - E^se|'))
-        # i=0
-        for beta in args.beta:
-            for alpha in args.alpha:
+        metric_name_list = [
+        'beta',
+        'alpha',
+        '|V.T[A,A^se]V|',
+        'k(V.T(A^se,-1 A)V)',
+        '|[a, Vb.TA^seVb]|',
+        '|Vb.T[A, A^se]Vb|',
+        '|(I - A^se,-1 A)V|',
+        '|V.T(I-A^se,-1 A)V|',
+        'k(V.T(A^se-λ)^-1(A-λ)V)',
+        'k(V.T(A^se-λ)^-1 AV)']
+        metric_name_format = "{0[0]:<8s}{0[1]:<8s}{0[2]:<25s}{0[3]:<25s}{0[4]:<20s}{0[5]:<25s}{0[6]:<25s}{0[7]:<25s}{0[8]:<25s}{0[9]:<25s}"
+        metric_value_format = "{0[0]:<8.2f}{0[1]:<8.2f}{0[2]:<25.8f}{0[3]:<25.8f}{0[4]:<25.8f}{0[5]:<25.8f}{0[6]:<25.8f}{0[7]:<25.8f}{0[8]:<25.8f}{0[9]:<25.8f}"
+
+        with open("data.txt", "w") as data_file:
+            print(metric_name_format.format(metric_name_list),file=data_file)
+        print(metric_name_format.format(metric_name_list))
+
+        smallest_commutator_norm = 10000
+        opt_alpha, opt_beta = 0,0
+        for beta in args.beta_list:
+            for alpha in args.alpha_list:
                 GammaJ, GammaK = gen_gammaJK(alpha=alpha, beta=beta)
                 sTDA_mv, full_sTDA_mv, sTDDFT_mv, sTDDFT_stapol_mv = \
                         gen_sTDA_sTDDFT_stapol_fly(GammaJ=GammaJ, GammaK=GammaK)
-                V = eigenkets #ab-initio eigenkets
-                W = np.dot(V.T, full_sTDA_mv(V, sTDA_mv=sTDA_mv))
 
-                lambda_matrix = np.diag(Excitation_energies)
-                diff = Excitation_energies*V - full_sTDA_mv(V, sTDA_mv=sTDA_mv)
-                diff_norm = np.linalg.norm(diff)
+                metric_list = gen_metrics(beta=beta, alpha=alpha, \
+                                    ab_initio_V=eigenkets, \
+             ab_initio_E=Excitation_energies/parameterlib.Hartree_to_eV,
+                            V_basis=V_basis, W_basis=W_basis, sub_A=sub_A, \
+                                full_sTDA_mv=full_sTDA_mv, \
+                                    sTDA_mv=sTDA_mv,\
+                                residual=residual, NORM=args.trnorm)
 
-                with HiddenPrints():
-                    # print("This will not be printed")
-                    V_se, energies_se = sTDA_eigen_solver(args.nstates)
-                VV = np.dot(V.T, V_se)
-                overlap_norm = np.linalg.norm(VV)
-
-                V_diff_norm = np.linalg.norm(V-V_se)
-
-                energy_norm = np.linalg.norm(Excitation_energies-energies_se)
-
-                commutator = np.dot(lambda_matrix,W)-np.dot(W,lambda_matrix)
-                # trace = np.trace(commutator)
-                commutator_norm = np.linalg.norm(commutator)
-
-                lambda_matrix_se = np.diag(energies_se)
-                # if i==0:
-                TDA_V_se = TDA_matrix_vector(V_se)
-                # i+=1
-                W_se = np.dot(V_se.T, TDA_V_se)
-                commutator_se = np.dot(W_se,lambda_matrix_se)-np.dot(lambda_matrix_se,W_se)
-                commutator_se_norm = np.linalg.norm(commutator_se)
-
-                print("{:<8.2f} {:<8.2f} {:<20.15f} {:<20.15f} {:<20.15f} {:<20.15f} {:<20.15f} {:<20.15f}".\
-                format(beta,alpha,commutator_norm, commutator_se_norm, diff_norm, overlap_norm, V_diff_norm, energy_norm))
-
-
+                with open("data.txt", "a") as data_file:
+                    print(metric_value_format.format(metric_list), file=data_file)
+                print(metric_value_format.format(metric_list))
 
     if args.TDDFT == True:
         for option in args.ip_options:
@@ -2149,36 +2353,7 @@ if __name__ == "__main__":
         X, energies = sTDA_eigen_solver(k=args.nstates, tol=args.conv_tolerance)
     if args.sTDDFT == True:
         energies,X,Y = sTDDFT_eigen_solver(k=args.nstates,tol=args.conv_tolerance)
-    if args.Truncate_test == True:
-        n_states= args.nstates
-        X = np.random.rand(A_size,n_state)
-        Y = np.random.rand(A_size,n_state)
-        print('n_vir = ', n_vir)
-        print('A_size =', A_size)
-        print('n_states =', n_states)
-        print("{:<8} {:<8} {:<8} {:<8}".format(\
-                'eV', 'max_vir', 'sTDA_t', 'sTDDFT_t'))
-        for vir_trunc in [40, 50, 60, 70, 10000000]:
-            del max_vir, sTDA_mv, sTDDFT_mv
-            max_vir = gen_maxvir(tol_eV = vir_trunc)
-            q_ij, q_ab, q_ia , GK_q_jb, GJ_q_ab = gen_QJK(max_vir=max_vir)
-            # print('q_ab', q_ab.shape, 'GK_q_jb', GK_q_jb.shape)
-            iajb_fly, ijab_fly, ibja_fly, delta_fly = gen_iajb_ijab_ibja_delta_fly()
 
-            sTDA_mv, full_sTDA_mv, sTDDFT_mv, sTDDFT_stapol_mv = gen_sTDA_sTDDFT_stapol_fly()
-
-            sTDA_start = time.time()
-            sTDA_X = sTDA_mv(X)
-            sTDA_end = time.time()
-            sTDA_mv_time = sTDA_end - sTDA_start
-
-            sTDDFT_start = time.time()
-            sTDDFT_X, sTDDFT_Y = sTDDFT_mv(X, Y)
-            sTDDFT_end = time.time()
-            sTDDFT_mv_time = sTDDFT_end - sTDDFT_start
-
-            print("{:<8} {:<8} {:<8.4f} {:<8.4f}".format(\
-                    vir_trunc, max_vir, sTDA_mv_time, sTDDFT_mv_time))
     if args.pytd == True:
         TD.nstates = args.nstates
         TD.conv_tol = args.conv_tolerance
