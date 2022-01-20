@@ -11,6 +11,9 @@ import argparse
 import os, sys
 import psutil
 import yaml
+import scipy
+from scipy import optimize
+# from array import array
 
 '''wb97x  methanol, 1e-5
   sTDDFT no truncate [6.46636611 8.18031534 8.38140651 9.45011415 9.5061059 ]
@@ -51,7 +54,12 @@ def gen_args():
     parser.add_argument('-sTDDFT','--sTDDFT',       type=str2bool,  default = False, help='perform sTDDFT calculation')
     parser.add_argument('-TT','--Truncate_test',    type=str2bool,  default = False, help='test the wall time for different virtual truncation')
     parser.add_argument('-tr','--traceAA',          type=str2bool,  default = False, help='test different tr([A,A])')
-    parser.add_argument('-trnorm','--trnorm',       type=str2bool,  default = False, help='test different tr([A,A]), normalzied')
+    parser.add_argument('-AV','--AV',               type=str2bool,  default = False, help='AV = A*V or lambda V')
+    parser.add_argument('-etatune','--etatune',     type=str2bool,  default = False, help='optimize accoriding to eta')
+    parser.add_argument('-eta','--eta',             type=str2bool,  default = False, help='use the external eta set')
+    parser.add_argument('-bounds','--bounds',       type=float,  default = 0.1, help='0.9-1.1')
+    parser.add_argument('-step','--step',           type=float,  default = 1e-6, help='1e-2 - 1e-9')
+    parser.add_argument('-ftol','--ftol',           type=float,  default = 1e-9, help='1e-2 - 1e-9')
 
     parser.add_argument('-TV','--truncate_virtual', type=float, default = 40,    help='the threshold to truncate virtual orbitals, in eV')
 
@@ -94,9 +102,9 @@ show_memory_info('at beginning')
 
 basename = args.xyzfile.split('.',1)[0]
 
-def SCF_kernel(xyzfile=args.xyzfile, mol=gto.Mole(), basis_set=args.basis_set, \
-                                    verbose=args.verbose, max_memory=args.memory,\
-                                    method=args.method, checkfile=args.checkfile,\
+def SCF_kernel(xyzfile=args.xyzfile, mol=gto.Mole(), basis_set=args.basis_set,
+                                    verbose=args.verbose, max_memory=args.memory,
+                                    method=args.method, checkfile=args.checkfile,
                                     density_fit=args.density_fit):
     kernel_0 = time.time()
 
@@ -219,14 +227,13 @@ def gen_global_var(tddft, mf, mol, functional):
     print('A_size = ', A_size)
     print('A_reduced_size =', A_reduced_size)
 
-    return TDA_vind, TDDFT_vind, hdiag, delta_hdiag, max_vir_hdiag, \
-            rst_vir_hdiag, Natm, C_matrix, N_bf, n_occ,\
-              n_vir, max_vir, A_size, A_reduced_size, R_array, a_x, beta, alpha
+    return (TDA_vind, TDDFT_vind, hdiag, delta_hdiag, max_vir_hdiag,
+            rst_vir_hdiag, Natm, C_matrix, N_bf, n_occ, n_vir, max_vir, A_size,
+            A_reduced_size, R_array, a_x, beta, alpha)
 
-TDA_vind, TDDFT_vind, hdiag, delta_hdiag, max_vir_hdiag, rst_vir_hdiag, Natm,\
-C_matrix, N_bf, n_occ, n_vir, max_vir, A_size, A_reduced_size, \
-R_array, a_x, beta, alpha = \
-gen_global_var(tddft, mf, mol, functional=args.functional)
+(TDA_vind, TDDFT_vind, hdiag, delta_hdiag, max_vir_hdiag, rst_vir_hdiag, Natm,
+C_matrix, N_bf, n_occ, n_vir, max_vir, A_size, A_reduced_size, R_array, a_x,
+beta, alpha) = gen_global_var( tddft, mf, mol, functional=args.functional)
 
 def TDA_matrix_vector(V):
     '''return AX'''
@@ -247,28 +254,38 @@ def static_polarizability_matrix_vector(X):
     U1, U2 = TDDFT_matrix_vector(X,X)
     return U1
 
-def gen_gammaJK(mol=mol, Natm=Natm, R_array=R_array, beta=beta, alpha=alpha):
-    '''creat GammaK and GammaK matrix
+def gen_eta(mol=mol):
+    '''
        mol.atom_pure_symbol(atom_id) returns the element symbol
     '''
     HARDNESS = parameterlib.gen_HARDNESS()
     '''a list is a list of chemical hardness for all atoms
     '''
-    a = [HARDNESS[mol.atom_pure_symbol(atom_id)] for atom_id in range(Natm)]
-    a = np.asarray(a).reshape(1,-1)
-    eta = (a+a.T)/2
+    eta = [HARDNESS[mol.atom_pure_symbol(atom_id)] for atom_id in range(Natm)]
+    eta = np.asarray(eta).reshape(1,-1)
+
+    return eta
+
+if args.eta == True:
+    eta = np.loadtxt('SLSQP_eta.txt')
+else:
+    eta = gen_eta()
+
+print('eta =')
+print(eta)
+
+def gen_gammaJK(mol=mol, Natm=Natm, R_array=R_array, beta=beta, alpha=alpha, eta=eta):
+    '''creat GammaK and GammaK matrix
+    '''
+    eta = (eta + eta.T)/2
     GammaJ = (R_array**beta + (a_x * eta)**(-beta))**(-1/beta)
     GammaK = (R_array**alpha + eta**(-alpha)) **(-1/alpha)
 
-    # print(R_array)
-    # print(eta)
-    # print(1/R_array)
-    # print(GammaJ)
     return GammaJ, GammaK
 
 GammaJ, GammaK = gen_gammaJK(alpha=alpha, beta=beta)
 
-def gen_QJK(C_matrix=C_matrix, mol=mol, Natm=Natm, N_bf=N_bf, max_vir=max_vir, \
+def gen_QJK(C_matrix=C_matrix, mol=mol, Natm=Natm, N_bf=N_bf, max_vir=max_vir,
                                                 GammaJ=GammaJ, GammaK=GammaK):
     # Qstart = time.time()
     '''build q_iajb tensor'''
@@ -301,10 +318,8 @@ def gen_QJK(C_matrix=C_matrix, mol=mol, Natm=Natm, N_bf=N_bf, max_vir=max_vir, \
     # show_memory_info('after Q matrix')
     return q_ij, q_ab, q_ia, GK_q_jb, GJ_q_ab
 
-
-
-def gen_iajb_ijab_ibja_delta_fly(max_vir=max_vir, GammaJ=GammaJ, GammaK=GammaK,\
-                        delta_hdiag=delta_hdiag, max_vir_hdiag=max_vir_hdiag,\
+def gen_iajb_ijab_ibja_delta_fly(max_vir=max_vir, GammaJ=GammaJ, GammaK=GammaK,
+                        delta_hdiag=delta_hdiag, max_vir_hdiag=max_vir_hdiag,
                         rst_vir_hdiag=rst_vir_hdiag):
     '''define sTDA on-the-fly two electron intergeral (pq|rs)
        A_iajb * v = delta_ia_ia*v + 2(ia|jb)*v - (ij|ab)*v
@@ -348,15 +363,15 @@ def gen_iajb_ijab_ibja_delta_fly(max_vir=max_vir, GammaJ=GammaJ, GammaK=GammaK,\
         delta_rst_vir_v = einsum("ia,iam->iam", rst_vir_hdiag, V)
         return delta_rst_vir_v
 
-    return iajb_fly, ijab_fly, ibja_fly, delta_fly, \
-                delta_max_vir_fly, delta_rst_vir_fly
+    return (iajb_fly, ijab_fly, ibja_fly, delta_fly, delta_max_vir_fly,
+            delta_rst_vir_fly)
 
-def gen_sTDA_sTDDFT_stapol_fly(GammaJ=GammaJ, GammaK=GammaK, \
-                                n_occ=n_occ, max_vir=max_vir, A_size=A_size):
+def gen_mv_fly(GammaJ=GammaJ, GammaK=GammaK, n_occ=n_occ, max_vir=max_vir,
+                                                            A_size=A_size):
 
-    iajb_fly, ijab_fly, ibja_fly, delta_fly, delta_max_vir_fly, \
-    delta_rst_vir_fly = \
-                    gen_iajb_ijab_ibja_delta_fly(GammaJ=GammaJ, GammaK=GammaK)
+    (iajb_fly, ijab_fly, ibja_fly, delta_fly, delta_max_vir_fly,
+    delta_rst_vir_fly) = gen_iajb_ijab_ibja_delta_fly(GammaJ=GammaJ,
+                                                      GammaK=GammaK)
     def sTDA_mv(V):
         '''return AX'''
         V = V.reshape(n_occ, max_vir, -1)
@@ -431,9 +446,8 @@ def gen_sTDA_sTDDFT_stapol_fly(GammaJ=GammaJ, GammaK=GammaK, \
 
     return sTDA_mv, full_sTDA_mv, sTDDFT_mv, sTDDFT_stapol_mv
 
-sTDA_mv, full_sTDA_mv, sTDDFT_mv, sTDDFT_stapol_mv \
-                    = gen_sTDA_sTDDFT_stapol_fly(GammaJ=GammaJ, GammaK=GammaK)
-
+sTDA_mv, full_sTDA_mv, sTDDFT_mv, sTDDFT_stapol_mv = gen_mv_fly(GammaJ=GammaJ,
+                                                                GammaK=GammaK)
 
 class on_the_fly_tensors(object):
     ''' iajb_fly,
@@ -449,18 +463,18 @@ class on_the_fly_tensors(object):
 
         '''first, update the gamma matrix
         '''
-        self.GammaJ, \
-        self.GammaK = gen_gammaJK(alpha=self.alpha, beta=self.beta)
+        (self.GammaJ,
+        self.GammaK) = gen_gammaJK(alpha=self.alpha, beta=self.beta)
 
         '''then generate tensors
         '''
-        self.iajb_fly, \
-        self.ijab_fly, \
-        self.ibja_fly, \
-        self.delta_fly, \
-        self.delta_max_vir_fly, \
-        self.delta_rst_vir_fly = gen_iajb_ijab_ibja_delta_fly\
-                                    (GammaJ=self.GammaJ, GammaK=self.GammaK)
+        (self.iajb_fly,
+        self.ijab_fly,
+        self.ibja_fly,
+        self.delta_fly,
+        self.delta_max_vir_fly,
+        self.delta_rst_vir_fly) = gen_iajb_ijab_ibja_delta_fly(
+                                        GammaJ=self.GammaJ, GammaK=self.GammaK)
     def sTDA_mv(self, V):
         '''return AX'''
         V = V.reshape(n_occ, max_vir, -1)
@@ -479,7 +493,6 @@ class on_the_fly_tensors(object):
         U = U.reshape(A_size,-1)
         return U
 
-
 def TDA_A_diag_initial_guess(m, hdiag=hdiag):
     '''m is the amount of initial guesses'''
     hdiag = hdiag.reshape(-1,)
@@ -491,9 +504,10 @@ def TDA_A_diag_initial_guess(m, hdiag=hdiag):
         V[Dsort[j], j] = 1.0
     return V, energies
 
-def TDA_A_diag_preconditioner(residual, sub_eigenvalue, hdiag=hdiag, \
-                            current_dic=None, tol=None, full_guess=None, \
-                        return_index=None, W_H=None, V_H=None, sub_A_H=None):
+def TDA_A_diag_preconditioner(residual, sub_eigenvalue, hdiag=hdiag,
+                            current_dic=None, tol=None, full_guess=None,
+                        return_index=None, W_H=None, V_H=None, sub_A_H=None,
+                                    matrix_vector_product = None):
     '''DX = XΩ'''
     k = np.shape(residual)[1]
     t = 1e-14
@@ -511,18 +525,18 @@ def sTDA_eigen_solver(k, tol=args.initial_TOL, matrix_vector_product=sTDA_mv):
     '''A'X = XΩ'''
     print('sTDA nstate =', k)
     sTDA_D_start = time.time()
-    max = 30
+    max = 35
 
     '''m is size of subspace'''
     m = 0
     new_m = min([k+8, 2*k, A_size])
-    V = np.zeros((A_reduced_size, max*k + m))
+    V = np.zeros((A_reduced_size, (max+1)*k + m))
     W = np.zeros_like(V)
 
     '''V is subsapce basis
        W is transformed guess vectors'''
-    V[:, :new_m], initial_energies = TDA_A_diag_initial_guess(\
-                                            new_m, hdiag = max_vir_hdiag)
+    V[:, :new_m], initial_energies = TDA_A_diag_initial_guess(m=new_m,
+                                                          hdiag=max_vir_hdiag)
     for i in range(max):
         '''create subspace'''
         W[:, m:new_m] = matrix_vector_product(V[:, m:new_m])
@@ -546,9 +560,9 @@ def sTDA_eigen_solver(k, tol=args.initial_TOL, matrix_vector_product=sTDA_mv):
         '''index for unconverged residuals'''
         index = [r_norms.index(i) for i in r_norms if i > tol]
         '''precondition the unconverged residuals'''
-        new_guess = TDA_A_diag_preconditioner(\
-                        residual = residual[:,index],\
-                  sub_eigenvalue = sub_eigenvalue[:k][index],\
+        new_guess = TDA_A_diag_preconditioner(
+                        residual = residual[:,index],
+                  sub_eigenvalue = sub_eigenvalue[:k][index],
                            hdiag = max_vir_hdiag)
 
         '''orthonormalize the new guess against basis and put into V holder'''
@@ -568,8 +582,8 @@ def sTDA_eigen_solver(k, tol=args.initial_TOL, matrix_vector_product=sTDA_mv):
     omega = sub_eigenvalue[:k]*parameterlib.Hartree_to_eV
     return U, omega
 
-def sTDA_preconditioner(residual, sub_eigenvalue, tol=args.precond_TOL,\
-                        current_dic={}, matrix_vector_product=sTDA_mv,full_guess=None, return_index=None,\
+def sTDA_preconditioner(residual, sub_eigenvalue, tol=args.precond_TOL,
+                        current_dic={}, matrix_vector_product=sTDA_mv,full_guess=None, return_index=None,
                         W_H=None, V_H=None, sub_A_H=None, max = 30):
     '''sTDA preconditioner
        (A - Ω*I)^-1 P = X
@@ -609,8 +623,7 @@ def sTDA_preconditioner(residual, sub_eigenvalue, tol=args.precond_TOL,\
     '''
     t = 1e-10
     Dp = np.repeat(hdiag.reshape(-1,1), N_vectors, axis=1) - omega
-    Dp = np.where(abs(Dp)<t, \
-                                        np.sign(Dp)*t, Dp)
+    Dp = np.where(abs(Dp)<t, np.sign(Dp)*t, Dp)
     Dp = Dp.reshape(n_occ, n_vir, -1)
     D = Dp[:,:max_vir,:].reshape(A_reduced_size,-1)
     inv_D = 1/D
@@ -653,7 +666,7 @@ def sTDA_preconditioner(residual, sub_eigenvalue, tol=args.precond_TOL,\
         residual = np.dot(W[:,:new_count], sub_guess) - full_guess*omega - P
 
         r_norms = np.linalg.norm(residual, axis=0).tolist()
-        current_dic['preconditioning'].append(\
+        current_dic['preconditioning'].append(
                                     {'precondition residual norms': r_norms})
 
         max_norm = np.max(r_norms)
@@ -708,8 +721,8 @@ def sTDA_preconditioner(residual, sub_eigenvalue, tol=args.precond_TOL,\
         return the current_dic, rather than origin_dic'''
     return U, origin_dic
 
-def Jacobi_preconditioner(residual, sub_eigenvalue, current_dic, full_guess,\
-                return_index = None, W_H = None, V_H = None, sub_A_H = None, \
+def Jacobi_preconditioner(residual, sub_eigenvalue, current_dic, full_guess,
+                return_index = None, W_H = None, V_H = None, sub_A_H = None,
                 DKapp = args.DKapp):
     '''(1-uu*)(A-Ω*I)t = -B
         (1-uu*)Kz = y
@@ -733,8 +746,10 @@ def Jacobi_preconditioner(residual, sub_eigenvalue, current_dic, full_guess,\
         K_inv_y, NA_dic = sTDA_preconditioner(-B, omega)
         K_inv_u, NA_dic = sTDA_preconditioner(u, omega)
     else:
-        K_inv_y = TDA_A_diag_preconditioner(-B, omega)
-        K_inv_u = TDA_A_diag_preconditioner(u, omega)
+        K_inv_y = TDA_A_diag_preconditioner(
+                                residual=-B, sub_eigenvalue=omega, hdiag=hdiag)
+        K_inv_u = TDA_A_diag_preconditioner(
+                                residual=u, sub_eigenvalue=omega, hdiag=hdiag)
 
     n = np.multiply(u, K_inv_y).sum(axis=0)
     d = np.multiply(u, K_inv_u).sum(axis=0)
@@ -766,7 +781,7 @@ def on_the_fly_Hx(W, V, sub_A, x):
     Hx = a + b - c + d
     return Hx
 
-def new_ES(full_guess, return_index, W_H, V_H, sub_A_H, \
+def new_ES(full_guess, return_index, W_H, V_H, sub_A_H,
                         residual=None, sub_eigenvalue=None, current_dic=None):
     '''new eigenvalue solver, to diagonalize the H'
        the traditional Davidson to diagonalize the H' matrix
@@ -798,8 +813,10 @@ def new_ES(full_guess, return_index, W_H, V_H, sub_A_H, \
             break
         index = [r_norms.index(i) for i in r_norms if i > tol]
 
-        new_guess = TDA_A_diag_preconditioner(residual[:,index], \
-                                                    sub_eigenvalue[:k][index])
+        new_guess = TDA_A_diag_preconditioner(
+                                          residual=residual[:,index],
+                                    sub_eigenvalue=sub_eigenvalue[:k][index],
+                                             hdiag=hdiag)
         V, new_m = mathlib.Gram_Schmidt_fill_holder(V, m, new_guess)
         W[:, m:new_m] = on_the_fly_Hx(W_H, V_H, sub_A_H, V[:, m:new_m])
         m = new_m
@@ -823,8 +840,8 @@ def gen_TDA_lib():
     p_lib['new_ES'] = new_ES
     return i_lib, p_lib
 
-def fill_dictionary(dic,init,prec,k,icost,pcost,wall_time,N_itr,N_mv,\
-            initial_energies=None,energies=None,difference=None,overlap=None,\
+def fill_dictionary(dic,init,prec,k,icost,pcost,wall_time,N_itr,N_mv,
+            initial_energies=None,energies=None,difference=None,overlap=None,
             tensor_alpha=None, initial_tensor_alpha=None):
     dic['initial guess'] = init
     dic['preconditioner'] = prec
@@ -908,7 +925,8 @@ def Davidson(init, prec, k=args.nstates, tol=args.conv_tolerance):
     Pcost = 0
     MVcost = 0
     for ii in range(max):
-        print('\nIteration ', ii)
+        print('\n')
+        print('Iteration ', ii)
         istart = time.time()
 
         MV_start = time.time()
@@ -922,8 +940,8 @@ def Davidson(init, prec, k=args.nstates, tol=args.conv_tolerance):
 
         sub_eigenvalue, sub_eigenket = np.linalg.eigh(sub_A)
         full_guess = np.dot(V[:,:new_m], sub_eigenket[:,:k])
-        residual = np.dot(W[:,:new_m], sub_eigenket[:,:k])
-        residual -= full_guess * sub_eigenvalue[:k]
+        AV = np.dot(W[:,:new_m], sub_eigenket[:,:k])
+        residual = AV - full_guess * sub_eigenvalue[:k]
 
         r_norms = np.linalg.norm(residual, axis=0).tolist()
         max_norm = np.max(r_norms)
@@ -948,15 +966,15 @@ def Davidson(init, prec, k=args.nstates, tol=args.conv_tolerance):
 
         P_start = time.time()
 
-        new_guess, current_dic = new_guess_generator(\
-                                residual = residual[:,index],\
-                          sub_eigenvalue = sub_eigenvalue[:k][index],\
-                   matrix_vector_product = sTDA_mv,\
-                             current_dic = current_dic,\
-                              full_guess = full_guess[:,index],\
-                            return_index = index,\
-                                     W_H = W[:,:m],\
-                                     V_H = V[:,:m],\
+        new_guess, current_dic = new_guess_generator(
+                                residual = residual[:,index],
+                          sub_eigenvalue = sub_eigenvalue[:k][index],
+                   matrix_vector_product = sTDA_mv,
+                             current_dic = current_dic,
+                              full_guess = full_guess[:,index],
+                            return_index = index,
+                                     W_H = W[:,:m],
+                                     V_H = V[:,:m],
                                  sub_A_H = sub_A)
 
         P_end = time.time()
@@ -984,9 +1002,9 @@ def Davidson(init, prec, k=args.nstates, tol=args.conv_tolerance):
     D_end = time.time()
     Dcost = D_end - D_start
 
-    Davidson_dic = fill_dictionary(Davidson_dic, init=init, prec=prec, k=k,\
-                                icost=init_time, pcost=Pcost, wall_time=Dcost,\
-            energies = energies.tolist(), N_itr=ii+1, N_mv=np.shape(sub_A)[0],\
+    Davidson_dic = fill_dictionary(Davidson_dic, init=init, prec=prec, k=k,
+                                icost=init_time, pcost=Pcost, wall_time=Dcost,
+            energies = energies.tolist(), N_itr=ii+1, N_mv=np.shape(sub_A)[0],
             initial_energies=initial_energies.tolist())
     if ii == max-1:
         print('========== Davidson Failed Due to Iteration Limit ============')
@@ -999,16 +1017,20 @@ def Davidson(init, prec, k=args.nstates, tol=args.conv_tolerance):
     print('MVcost %.4f'%MVcost)
     print('Final subspace shape = %s'%np.shape(sub_A)[0])
     print('Precond time: %.4f seconds'%Pcost, '{:.2%}'.format(Pcost/Dcost))
-    return energies, full_guess, residual, Davidson_dic, V_basis, W_basis, sub_A
+    I_AAV = gen_forecaster(eta, sub_eigenvalue[:k], full_guess)
+    print('I_AAV =', I_AAV)
+    Davidson_dic['preconditioner forecaster'] = I_AAV
+    return (energies, full_guess, AV, residual, Davidson_dic, V_basis, W_basis,
+                                                                          sub_A)
 
 def TDDFT_A_diag_initial_guess(V_holder, W_holder, new_m, hdiag=hdiag):
     hdiag = hdiag.reshape(-1,)
     Dsort = hdiag.argsort()
     V_holder[:,:new_m], energies = TDA_A_diag_initial_guess(new_m, hdiag=hdiag)
-    return V_holder, W_holder, new_m, energies,\
-                V_holder[:,:new_m], W_holder[:,:new_m]
+    return (V_holder, W_holder, new_m, energies, V_holder[:,:new_m],
+                                                            W_holder[:,:new_m])
 
-def TDDFT_A_diag_preconditioner(R_x, R_y, omega, hdiag=hdiag, tol=None):
+def TDDFT_A_diag_preconditioner(R_x, R_y, omega, hdiag, tol=None):
     '''preconditioners for each corresponding residual (state)'''
     hdiag = hdiag.reshape(-1,1)
     k = R_x.shape[1]
@@ -1045,8 +1067,8 @@ def sTDDFT_eigen_solver(k, tol=args.initial_TOL):
     U2_holder = np.zeros_like(V_holder)
 
     '''set up initial guess V W, transformed vectors U1 U2'''
-    V_holder, W_holder, new_m, energies, Xig, Yig = \
-    TDDFT_A_diag_initial_guess(V_holder, W_holder, new_m, hdiag = max_vir_hdiag)
+    V_holder, W_holder, new_m, energies, Xig, Yig = TDDFT_A_diag_initial_guess(
+        V_holder=V_holder, W_holder=W_holder, new_m=new_m, hdiag=max_vir_hdiag)
 
     subcost = 0
     Pcost = 0
@@ -1060,8 +1082,8 @@ def sTDDFT_eigen_solver(k, tol=args.initial_TOL):
            U2 = AW + BV'''
 
         MV_start = time.time()
-        U1_holder[:, m:new_m], U2_holder[:, m:new_m] = \
-                                        sTDDFT_mv(V[:, m:new_m], W[:, m:new_m])
+        U1_holder[:, m:new_m], U2_holder[:, m:new_m] = sTDDFT_mv(
+                                            X=V[:, m:new_m], Y=W[:, m:new_m])
         MV_end = time.time()
         MVcost += MV_end - MV_start
 
@@ -1126,8 +1148,8 @@ def sTDDFT_eigen_solver(k, tol=args.initial_TOL):
         index = [r_norms.index(i) for i in r_norms if i > tol]
 
         '''preconditioning step'''
-        X_new, Y_new = TDDFT_A_diag_preconditioner(\
-                R_x[:,index], R_y[:,index], omega[index], hdiag = max_vir_hdiag)
+        X_new, Y_new = TDDFT_A_diag_preconditioner(R_x=R_x[:,index],
+                    R_y=R_y[:,index], omega=omega[index], hdiag = max_vir_hdiag)
 
         '''GS and symmetric orthonormalization'''
         m = new_m
@@ -1174,8 +1196,8 @@ def sTDDFT_eigen_solver(k, tol=args.initial_TOL):
 
 def sTDDFT_initial_guess(V_holder, W_holder, new_m):
     energies, X_new_backup, Y_new_backup = sTDDFT_eigen_solver(new_m)
-    V_holder, W_holder, new_m = mathlib.VW_Gram_Schmidt_fill_holder\
-                            (V_holder, W_holder, 0,  X_new_backup, Y_new_backup)
+    V_holder, W_holder, new_m = mathlib.VW_Gram_Schmidt_fill_holder(
+                            V_holder, W_holder, 0,  X_new_backup, Y_new_backup)
     return V_holder, W_holder, new_m, energies, X_new_backup, Y_new_backup
 
 def sTDDFT_preconditioner(Rx, Ry, omega, tol=args.precond_TOL):
@@ -1210,9 +1232,9 @@ def sTDDFT_preconditioner(Rx, Ry, omega, tol=args.precond_TOL):
     P /= pqnorm
     Q /= pqnorm
 
-    X_new, Y_new  = TDDFT_A_diag_preconditioner(\
-                        P, Q, omega, hdiag = max_vir_hdiag)
-    V_holder, W_holder, new_m = mathlib.VW_Gram_Schmidt_fill_holder(\
+    X_new, Y_new  = TDDFT_A_diag_preconditioner(R_x=P, R_y=Q, omega=omega,
+                                                            hdiag=max_vir_hdiag)
+    V_holder, W_holder, new_m = mathlib.VW_Gram_Schmidt_fill_holder(
                                     V_holder, W_holder, 0,  X_new, Y_new)
     initial_end = time.time()
     initial_cost = initial_end - initial_start
@@ -1230,8 +1252,8 @@ def sTDDFT_preconditioner(Rx, Ry, omega, tol=args.precond_TOL):
            U2 = AW + BV'''
 
         MV_start = time.time()
-        U1_holder[:, m:new_m], U2_holder[:, m:new_m] = \
-                                sTDDFT_mv(V[:, m:new_m], W[:, m:new_m])
+        U1_holder[:, m:new_m], U2_holder[:, m:new_m] = sTDDFT_mv(
+                                            X=V[:, m:new_m], Y=W[:, m:new_m])
         MV_end = time.time()
         MVcost += MV_end - MV_start
 
@@ -1305,7 +1327,7 @@ def sTDDFT_preconditioner(Rx, Ry, omega, tol=args.precond_TOL):
 
         '''preconditioning step'''
         Pstart = time.time()
-        X_new, Y_new = TDDFT_A_diag_preconditioner(R_x[:,index], R_y[:,index],\
+        X_new, Y_new = TDDFT_A_diag_preconditioner(R_x[:,index], R_y[:,index],
                                             omega[index], hdiag = max_vir_hdiag)
         Pend = time.time()
         Pcost += Pend - Pstart
@@ -1352,8 +1374,8 @@ def sTDDFT_preconditioner(Rx, Ry, omega, tol=args.precond_TOL):
         P2 = Rx[:,max_vir:,:].reshape(n_occ*(n_vir-max_vir),-1)
         Q2 = Ry[:,max_vir:,:].reshape(n_occ*(n_vir-max_vir),-1)
 
-        X2, Y2 = TDDFT_A_diag_preconditioner(\
-                        P2, Q2, omega, hdiag = delta_hdiag[:,max_vir:])
+        X2, Y2 = TDDFT_A_diag_preconditioner(R_x=P2, R_y=Q2, omega=omega,
+                                                hdiag=delta_hdiag[:,max_vir:])
         X[:,max_vir:,:] = X2.reshape(n_occ,n_vir-max_vir,-1)
         Y[:,max_vir:,:] = Y2.reshape(n_occ,n_vir-max_vir,-1)
 
@@ -1510,10 +1532,10 @@ def TDDFT_eigen_solver(init, prec, k=args.nstates, tol=args.conv_tolerance):
     TDDFT_end = time.time()
     TDDFT_cost = TDDFT_end - TDDFT_start
 
-    Davidson_dic = fill_dictionary(Davidson_dic, init=init, prec=prec, k=k,\
-            icost=init_time, pcost=Pcost, wall_time=TDDFT_cost, \
-            energies=omega.tolist(), N_itr=ii+1, N_mv=np.shape(sigma)[0], \
-            initial_energies=initial_energies, difference=difference,\
+    Davidson_dic = fill_dictionary(Davidson_dic, init=init, prec=prec, k=k,
+            icost=init_time, pcost=Pcost, wall_time=TDDFT_cost,
+            energies=omega.tolist(), N_itr=ii+1, N_mv=np.shape(sigma)[0],
+            initial_energies=initial_energies, difference=difference,
             overlap=overlap)
     if ii == (max -1):
         print('===== TDDFT Failed Due to Iteration Limit============')
@@ -1704,7 +1726,7 @@ def dynamic_polarizability(init, prec):
         index = [r_norms.index(i) for i in r_norms if i > tol]
 
         Pstart = time.time()
-        X_new, Y_new = new_guess_generator(R_x[:,index], \
+        X_new, Y_new = new_guess_generator(R_x[:,index],
                             R_y[:,index], omega[index], tol=args.precond_TOL)
         Pend = time.time()
         Pcost += Pend - Pstart
@@ -1758,11 +1780,11 @@ def dynamic_polarizability(init, prec):
     difference = float(difference)
 
     show_memory_info('Total Dynamic polarizability')
-    Davidson_dic = fill_dictionary(Davidson_dic, init=init, prec=prec, k=3*k,\
-            icost=initial_cost, pcost=Pcost, wall_time=dp_cost, \
-            energies=omega.tolist(), N_itr=ii+1, N_mv=np.shape(sigma)[0], \
-            difference=difference, overlap=overlap,\
-            tensor_alpha=[i.tolist() for i in alpha_omega],\
+    Davidson_dic = fill_dictionary(Davidson_dic, init=init, prec=prec, k=3*k,
+            icost=initial_cost, pcost=Pcost, wall_time=dp_cost,
+            energies=omega.tolist(), N_itr=ii+1, N_mv=np.shape(sigma)[0],
+            difference=difference, overlap=overlap,
+            tensor_alpha=[i.tolist() for i in alpha_omega],
             initial_tensor_alpha=[i.tolist() for i in alpha_omega_ig])
     return alpha_omega, Davidson_dic
 
@@ -2031,10 +2053,10 @@ def static_polarizability(init, prec):
 
     sp_end = time.time()
     spcost = sp_end - sp_start
-    Davidson_dic = fill_dictionary(Davidson_dic, init=init, prec=prec, k=3,\
-            icost=initial_cost, pcost=Pcost, wall_time=sp_cost, \
-            N_itr=ii+1, N_mv=np.shape(a_p_b)[0], difference=difference,\
-            overlap=overlap, tensor_alpha=[i.tolist() for i in tensor_alpha],\
+    Davidson_dic = fill_dictionary(Davidson_dic, init=init, prec=prec, k=3,
+            icost=initial_cost, pcost=Pcost, wall_time=sp_cost,
+            N_itr=ii+1, N_mv=np.shape(a_p_b)[0], difference=difference,
+            overlap=overlap, tensor_alpha=[i.tolist() for i in tensor_alpha],
             initial_tensor_alpha=[i.tolist() for i in alpha_init])
     return tensor_alpha, Davidson_dic
 
@@ -2048,7 +2070,7 @@ def gen_calc():
     name_dic['sTDDFT'] = args.sTDDFT
     name_dic['Truncate_test'] = args.Truncate_test
     name_dic['PySCF_TDDFT'] = args.pytd
-    for calc in ['TDA','TDDFT','dynpol','stapol',\
+    for calc in ['TDA','TDDFT','dynpol','stapol',
                         'sTDA','sTDDFT','Truncate_test','PySCF_TDDFT']:
         if name_dic[calc] == True:
             print(calc)
@@ -2070,26 +2092,40 @@ class HiddenPrints:
         sys.stdout.close()
         sys.stdout = self._original_stdout
 
-
-
-
-def gen_metrics(beta, alpha, ab_initio_V, ab_initio_E, \
-                    full_sTDA_mv, sTDA_mv, residual, NORM, \
-                                        V_basis, W_basis, sub_A):
+def gen_metrics(beta, alpha, ab_initio_V, ab_initio_E,
+                    full_sTDA_mv, sTDA_mv, AV, residual,
+                                V_basis, W_basis, sub_A):
     V = ab_initio_V #ab-initio eigenkets
     lambda_matrix = np.diag(ab_initio_E)
+
     with HiddenPrints():
-        V_se, omega = sTDA_eigen_solver(k=args.nstates, tol=1e-5, matrix_vector_product=sTDA_mv)
-        omega /= parameterlib.Hartree_to_eV
-    '''commutator norm
+        '''sTDA V and E
+           energies_se is in eV
+        '''
+        V_se, energies_se = sTDA_eigen_solver(k=args.nstates,
+                                            tol=args.conv_tolerance,
+                          matrix_vector_product=sTDA_mv)
+    '''energy difference
+    '''
+    energy_diff = np.linalg.norm(energies_se - ab_initio_E*parameterlib.Hartree_to_eV)
+
+    V_overlap = np.linalg.norm(np.dot(V_se.T, V))
+
+    if args.AV == True:
+        ab_initio_AV = AV
+    else:
+        ab_initio_AV = ab_initio_E * V
+
+    ''' commutator norm
         |V.T[A, A^se]V|
        =[λ, V.T*A^se*V]
     '''
     VAseV = np.dot(V.T, full_sTDA_mv(V))
     commutator = mathlib.commutator(lambda_matrix, VAseV)
-    commutator_norm = np.linalg.norm(commutator)
+    VcAAV = np.linalg.norm(commutator)
 
-    '''condition number
+    ''' 2nd promising!
+        condition number
         |V.T * A^{se,-1}A * V|
         AV = λ * V
         A^{se,-1} AV = X => A^se X = AV
@@ -2097,18 +2133,11 @@ def gen_metrics(beta, alpha, ab_initio_V, ab_initio_E, \
     with HiddenPrints():
         '''A^se X=W
         '''
-        X = stapol_sTDDFT_initprec(Pr = -ab_initio_E*V,tol=1e-10, matrix_vector_product=sTDA_mv)
+        X = stapol_sTDDFT_initprec(Pr=-ab_initio_AV,
+                                  tol=1e-6,
+                matrix_vector_product=sTDA_mv)
     sub_condition = np.dot(V.T, X)
-    condition_number = mathlib.cond_number(sub_condition, )
-
-    '''commutator_sub_A norm
-        |[V_b.T A V_b, V_b.T A^se V_b]|
-       =[sub_A, V_b Ase Vb]
-    '''
-    AseVb = full_sTDA_mv(V_basis)
-    VbAseVb = np.dot(V_basis.T, AseVb)
-    commutator_sub_A = mathlib.commutator(sub_A, VbAseVb)
-    commutator_sub_A_norm = np.linalg.norm(commutator_sub_A)
+    k_VA_1AV = mathlib.cond_number(sub_condition)
 
     '''commutator basis V norm
         here, V_b is the Kryove space basis, W = AV
@@ -2117,146 +2146,49 @@ def gen_metrics(beta, alpha, ab_initio_V, ab_initio_E, \
        = V_b.T A A^se V_b - V_b.T A^se A V_b
        = W_b.T W^se - W^se.T W_b
     '''
+    AseVb = full_sTDA_mv(V_basis)
     WbAseVb = np.dot(W_basis.T, AseVb)
-    commutator_basis_A_norm = np.linalg.norm(WbAseVb - WbAseVb.T)
+    VbcAAVb = np.linalg.norm(WbAseVb - WbAseVb.T)
 
-    ''' quality norm
+    ''' most promising!
+        quality norm
         |(I - A^{se,-1}A) V |
         = V - X
     '''
-    if NORM == True:
-        X = X/np.linalg.norm(X)
-    norm_0 = np.linalg.norm(V - X)
+    I_AAV = np.linalg.norm(V - X)
 
-    ''' V.T quality norm
-        | V.T (I - A^{se,-1}A) V|
-        = I - V.TX
-        = I - sub_condition
-    '''
-    norm_1 = np.linalg.norm(np.eye(args.nstates) - np.dot(V.T, X))
-
-    ''' conditioner number of
-        |V^T (A^{se}-λ)^{-1}(A - λ) V|
-        = V^T(A^{se}-λ)^{-1}R
-        = V^T V^new
-    '''
-    with HiddenPrints():
-        ''' sTDA preconditioning R
-        '''
-        V_new, NA = sTDA_preconditioner(residual=residual, \
-                            sub_eigenvalue=omega, \
-                                tol=1e-6,\
-                    matrix_vector_product=sTDA_mv,\
-                                max = 40)
-    VV_new = np.dot(V.T,V_new)
-    condition_number_1 = mathlib.cond_number(VV_new)
-
-    ''' conditioner number of
-        | V^T (A^{se}-λ)^{-1}A V |
-        = V^T(A^{se}-λ)^{-1}λV
-        = V^T V^new1
-    '''
-    with HiddenPrints():
-        ''' sTDA preconditioning λV
-        '''
-        V_new1, NA = sTDA_preconditioner(residual = ab_initio_E*V, \
-                            sub_eigenvalue = omega, \
-                                tol = 1e-6,\
-                    matrix_vector_product=sTDA_mv,\
-                                max = 40)
-
-    VV_new1 = np.dot(V.T, V_new1)
-    condition_number_2 = mathlib.cond_number(VV_new1)
-
-    metric_list = \
-    [beta, \
-    alpha, \
-    commutator_norm, \
-    condition_number, \
-    commutator_sub_A_norm, \
-    commutator_basis_A_norm, \
-    norm_0, \
-    norm_1, \
-    condition_number_1, \
-    condition_number_2]
+    metric_list = [
+        beta,
+        alpha,
+        I_AAV,
+        k_VA_1AV,
+        VcAAV,
+        VbcAAVb,
+        energy_diff,
+        V_overlap]
 
     return metric_list
 
-def gen_metrics_diag(ab_initio_V, ab_initio_E, residual, NORM):
-    V = ab_initio_V #ab-initio eigenkets
-    lambda_matrix = np.diag(ab_initio_E)
-
-    '''commutator diag
-        ||V.T[A, D]V||
-       =[λ, V.T*D*V]
+def gen_forecaster(eta, *args):
+    '''  |(I - A^{se,-1}A) V |  = V - X
+        a is chemical hardness for each atom, in shape (N_atm,)
     '''
-    DV = hdiag.reshape(-1,1)*V
-    VDV = np.dot(V.T, DV)
-    commutator_diag = np.dot(lambda_matrix,VDV)-np.dot(VDV,lambda_matrix)
-    commutator_norm = np.linalg.norm(commutator_diag)
-
-    '''condition number diag
-        ||V.T * D^{-1}A * V||
-        = V.T * D^{-1}  λ * V
-    '''
+    ab_initio_E, ab_initio_V = args
+    GammaJ, GammaK = gen_gammaJK(alpha=alpha, beta=beta, eta=eta)
+    sTDA_mv, full_sTDA_mv, sTDDFT_mv, sTDDFT_stapol_mv = gen_mv_fly(
+                                                        GammaJ=GammaJ,
+                                                        GammaK=GammaK)
     with HiddenPrints():
-        ''' D^{-1} λ * V = X
-            DX = λ * V
+        '''A^se X= AV
         '''
-        X_D = stapol_A_diag_initprec(-ab_initio_E*V)
-    sub_condition = np.dot(V.T, X_D)
-    s,u = np.linalg.eig(sub_condition)
-    s = abs(s)
-    condition_number = max(s)/min(s)
+        AV = ab_initio_E * ab_initio_V
+        X = stapol_sTDDFT_initprec(Pr=-AV, tol=1e-9,
+                            matrix_vector_product=sTDA_mv)
 
-    ''' quality norm diag
-        ||(I - D^{-1}A) * V||
-        = V - X_D
-    '''
-    if NORM == True:
-        X_D = X_D/np.linalg.norm(X_D)
-    norm_0 = np.linalg.norm(V - X_D)
+    I_AAV = float(np.linalg.norm(ab_initio_V - X))
 
-    ''' quality norm
-        ||V.T (I - D^{-1}A) * V||
-        = I - V.T X_D
-        = I - sub_condition
-    '''
-    # print(sub_condition)
-    # sub_condition = np.dot(V.T, ab_initio_E*V/hdiag.reshape(A_size,1))
-    # norm_1 = np.linalg.norm(np.eye(args.nstates) - np.dot(V.T, X_normed))
-    norm_1 = np.linalg.norm(np.eye(args.nstates) - np.dot(V.T, X_D))
+    return I_AAV
 
-    ''' quality preconditioner
-        ||[I - (D-λ)^{-1}(A - λ)] * V||
-        = V - (D-λ)^{-1}R
-        = V - V^new
-        (V^new = (D-λ)^{-1}R)
-    '''
-    with HiddenPrints():
-        ''' sTDA preconditioning R
-        '''
-        V_new = TDA_A_diag_preconditioner(residual=residual, \
-                            sub_eigenvalue=ab_initio_E)
-    if NORM == True:
-        V_new = V_new/np.linalg.norm(V_new)
-    # norm_2 = np.linalg.norm(V - V_new_normed)
-    norm_2 = np.linalg.norm(V - V_new)
-
-
-    ''' quality preconditioner
-        ||V^T [I - (D-λ)^{-1}(A - λ)] * V||
-        = I - V^T(D-λ)^{-1}R
-        = I - V^T V^new
-    '''
-
-    # norm_3 = np.linalg.norm(np.eye(args.nstates)-np.dot(V.T,V_new_normed))
-    norm_3 = np.linalg.norm(np.eye(args.nstates)-np.dot(V.T,V_new))
-
-    metric_list = \
-    [commutator_norm, condition_number, norm_0, norm_1, norm_2, norm_3]
-
-    return metric_list
 
 if __name__ == "__main__":
     calc = gen_calc()
@@ -2279,50 +2211,106 @@ if __name__ == "__main__":
     if args.TDA == True:
         for option in args.ip_options:
             init, prec = TDA_combo[option]
-            print('\nNumber of excited states =', args.nstates)
-            Excitation_energies, eigenkets, residual, Davidson_dic,\
-                                V_basis, W_basis, sub_A = Davidson(init,prec)
-            print('Excited State energies (eV) =\n',Excitation_energies)
+            print('\n','Number of excited states = ', args.nstates)
+            (Excitation_energies, eigenkets, AV, residual, Davidson_dic,
+                                V_basis, W_basis, sub_A) = Davidson(init,prec)
+            print('Excited State energies (eV) = ','\n', Excitation_energies)
+
             dump_yaml(Davidson_dic, calc, init, prec)
 
     if args.traceAA == True:
         metric_name_list = [
         'beta',
         'alpha',
-        '|V.T[A,A^se]V|',
-        'k(V.T(A^se,-1 A)V)',
-        '|[a, Vb.TA^seVb]|',
-        '|Vb.T[A, A^se]Vb|',
         '|(I - A^se,-1 A)V|',
-        '|V.T(I-A^se,-1 A)V|',
-        'k(V.T(A^se-λ)^-1(A-λ)V)',
-        'k(V.T(A^se-λ)^-1 AV)']
-        metric_name_format = "{0[0]:<8s}{0[1]:<8s}{0[2]:<25s}{0[3]:<25s}{0[4]:<20s}{0[5]:<25s}{0[6]:<25s}{0[7]:<25s}{0[8]:<25s}{0[9]:<25s}"
-        metric_value_format = "{0[0]:<8.2f}{0[1]:<8.2f}{0[2]:<25.8f}{0[3]:<25.8f}{0[4]:<25.8f}{0[5]:<25.8f}{0[6]:<25.8f}{0[7]:<25.8f}{0[8]:<25.8f}{0[9]:<25.8f}"
+        'k(V.T(A^se,-1 A)V)',
+        '|V.T[A, A^se]V|',
+        '|Vb.T[A, A^se]Vb|',
+        '|E^se - E^ab|',
+        '|V^se,T V|']
+
+        metric_name_format = "{0[0]:<8s}{0[1]:<8s}{0[2]:<20s}{0[3]:<20s}{0[4]:<20s}{0[5]:<20s}{0[6]:<20s}{0[7]:<20s}"
+        metric_value_format = "{0[0]:<8.2f}{0[1]:<8.2f}{0[2]:<20.8f}{0[3]:<20.8f}{0[4]:<20.8f}{0[5]:<20.8f}{0[6]:<20.8f}{0[7]:<20.8f}"
 
         with open("data.txt", "w") as data_file:
             print(metric_name_format.format(metric_name_list),file=data_file)
         print(metric_name_format.format(metric_name_list))
 
-        smallest_commutator_norm = 10000
-        opt_alpha, opt_beta = 0,0
+        smallest_I_AAV = 10000
+        opt_beta, opt_alpha = 0, 0
         for beta in args.beta_list:
             for alpha in args.alpha_list:
                 GammaJ, GammaK = gen_gammaJK(alpha=alpha, beta=beta)
-                sTDA_mv, full_sTDA_mv, sTDDFT_mv, sTDDFT_stapol_mv = \
-                        gen_sTDA_sTDDFT_stapol_fly(GammaJ=GammaJ, GammaK=GammaK)
+                sTDA_mv, full_sTDA_mv, sTDDFT_mv, sTDDFT_stapol_mv = gen_mv_fly(
+                                                                GammaJ=GammaJ,
+                                                                GammaK=GammaK)
 
-                metric_list = gen_metrics(beta=beta, alpha=alpha, \
-                                    ab_initio_V=eigenkets, \
+                metric_list = gen_metrics(beta=beta,
+                                         alpha=alpha,
+                                   ab_initio_V=eigenkets,
              ab_initio_E=Excitation_energies/parameterlib.Hartree_to_eV,
-                            V_basis=V_basis, W_basis=W_basis, sub_A=sub_A, \
-                                full_sTDA_mv=full_sTDA_mv, \
-                                    sTDA_mv=sTDA_mv,\
-                                residual=residual, NORM=args.trnorm)
+                                       V_basis=V_basis,
+                                       W_basis=W_basis,
+                                         sub_A=sub_A,
+                                  full_sTDA_mv=full_sTDA_mv,
+                                       sTDA_mv=sTDA_mv,
+                                            AV=AV,
+                                      residual=residual)
+                if metric_list[2] < smallest_I_AAV:
+                    smallest_I_AAV = metric_list[2]
+                    opt_beta, opt_alpha = metric_list[0], metric_list[1]
 
                 with open("data.txt", "a") as data_file:
                     print(metric_value_format.format(metric_list), file=data_file)
                 print(metric_value_format.format(metric_list))
+
+        print('smallest_I_AAV =', smallest_I_AAV)
+        print('opt_beta = ', opt_beta)
+        print('opt_alpha = ', opt_alpha)
+
+    if args.etatune == True:
+
+        eta=gen_eta()
+
+        [print(mol.atom_pure_symbol(atom_id), end=' ') for atom_id in range(Natm)]
+        print()
+        print('eta =')
+        [print(i) for i in eta[0,:].tolist()]
+        I_AAV_initial = gen_forecaster(eta, Excitation_energies/parameterlib.Hartree_to_eV, eigenkets)
+        print('I_AAV_initial =', I_AAV_initial)
+        bnds = []
+        for i in range(eta.shape[1]):
+            bnds.append((eta[0,i]*(1-args.bounds), eta[0,i]*(1+args.bounds)))
+        print('bnds =')
+        [print(i) for i in bnds]
+
+        for m in ['SLSQP']:
+            print('method =', m)
+            result = scipy.optimize.minimize(fun=gen_forecaster,
+                                              x0=eta,
+                    args=(Excitation_energies/parameterlib.Hartree_to_eV, eigenkets),
+                                          method=m,
+                                          bounds=bnds,
+                                          options={
+                                          'maxiter': 100,
+                                          'ftol': args.ftol,
+                                          'iprint': 99,
+                                          'disp': True,
+                                          'eps': args.step})
+            print('result.x =')
+            [print(i) for i in result.x]
+
+            print('result.success =', result.success)
+            print('result.message =', result.message)
+
+            with open(m+'_eta.txt', 'wb') as f:
+                np.savetxt(f, result.x)
+
+            I_AAV_min = gen_forecaster(result.x, Excitation_energies/parameterlib.Hartree_to_eV, eigenkets)
+            Davidson_dic['I_AAV_min'] = I_AAV_min
+            dump_yaml(Davidson_dic, calc, init, prec)
+            print('I_AAV_min =', I_AAV_min)
+            print()
 
     if args.TDDFT == True:
         for option in args.ip_options:

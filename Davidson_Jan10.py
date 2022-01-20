@@ -2,6 +2,7 @@
 
 import time
 import numpy as np
+from collections import Counter
 import mathlib
 import parameterlib
 from opt_einsum import contract as einsum
@@ -13,13 +14,16 @@ import psutil
 import yaml
 import scipy
 from scipy import optimize
-# from array import array
+import glob
 
 '''wb97x  methanol, 1e-5
   sTDDFT no truncate [6.46636611 8.18031534 8.38140651 9.45011415 9.5061059 ]
             40 eV    [6.46746642 8.18218267 8.38314651 9.45214869 9.5126739 ]
     sTDA no truncate [6.46739711 8.18182208 8.38358473 9.45195554 9.52133129]
             40 eV    [6.46827111 8.18334703 8.38483801 9.45361525 9.52562255]
+   PBE0  methanol, 1e-5
+    sTDA no truncate [ 7.2875264   8.93645089  9.18027002  9.92054961 10.16937337]
+
 '''
 print('curpath', os.getcwd())
 print('lib.num_threads() = ', lib.num_threads())
@@ -61,7 +65,11 @@ def gen_args():
     parser.add_argument('-eta','--eta',             type=str2bool,  default = False, help='use the external eta set')
     parser.add_argument('-bounds','--bounds',       type=float,  default = 0.1, help='0.9-1.1')
     parser.add_argument('-step','--step',           type=float,  default = 1e-6, help='1e-2 - 1e-9')
-    parser.add_argument('-ftol','--ftol',           type=float,  default = 1e-9, help='1e-2 - 1e-9')
+    parser.add_argument('-ftol','--ftol',           type=float,  default = 1e-5, help='1e-2 - 1e-9')
+
+    parser.add_argument('-Utune','--Utune',         type=str2bool,  default = False, help='optimize accoriding to U')
+    parser.add_argument('-U','--U',                 type=str2bool,  default = False, help='optimize accoriding to U')
+
 
     parser.add_argument('-TV','--truncate_virtual', type=float, default = 40,    help='the threshold to truncate virtual orbitals, in eV')
 
@@ -175,7 +183,7 @@ def gen_global_var(tddft, mf, mol, functional):
     TDA_vind, hdiag = td.gen_vind(mf)
     TDDFT_vind, Hdiag = TD.gen_vind(mf)
 
-    Natm = mol.natm
+    N_atm = mol.natm
     mo_occ = mf.mo_occ
     '''mf.mo_occ is an array of occupance [2,2,2,2,2,0,0,0,0.....]
        N_bf is the total amount of MOs
@@ -192,6 +200,7 @@ def gen_global_var(tddft, mf, mol, functional):
     '''
     S = mf.get_ovlp()
     X = mathlib.matrix_power(S, 0.5)
+    un_ortho_C_matrix = mf.mo_coeff
     C_matrix = np.dot(X,mf.mo_coeff)
 
     N_bf = len(mo_occ)
@@ -231,80 +240,119 @@ def gen_global_var(tddft, mf, mol, functional):
     print('A_reduced_size =', A_reduced_size)
 
     return (TDA_vind, TDDFT_vind, hdiag, delta_hdiag, max_vir_hdiag,
-            rst_vir_hdiag, Natm, C_matrix, N_bf, n_occ, n_vir, max_vir, A_size,
-            A_reduced_size, R_array, a_x, beta, alpha)
+        rst_vir_hdiag, N_atm, un_ortho_C_matrix, C_matrix, N_bf, n_occ, n_vir,
+        max_vir, A_size, A_reduced_size, R_array, a_x, beta, alpha)
 
-(TDA_vind, TDDFT_vind, hdiag, delta_hdiag, max_vir_hdiag, rst_vir_hdiag, Natm,
-C_matrix, N_bf, n_occ, n_vir, max_vir, A_size, A_reduced_size, R_array, a_x,
-beta, alpha) = gen_global_var( tddft, mf, mol, functional=args.functional)
+(TDA_vind, TDDFT_vind, hdiag, delta_hdiag, max_vir_hdiag, rst_vir_hdiag, N_atm,
+un_ortho_C_matrix, C_matrix, N_bf, n_occ, n_vir, max_vir, A_size,
+A_reduced_size, R_array, a_x, beta, alpha) = gen_global_var(tddft=tddft, mf=mf,
+                                            mol=mol, functional=args.functional)
 
-def gen_electron_int():
-    auxmol = gto.M(atom=atom_coordinates)
-    print('asigning auxiliary basis set')
-    # alpha index  s: s type orbital contraction coefficient
-    auxmol.basis = {
-    'O': gto.parse(
+
+# U_list = [0.125]*N_atm
+
+#PBE0
+# U_list = [
+# 0.08076662560543,
+# 0.09590984529187832,
+# 0.124,
+# 0.124,
+# 0.124,
+# 0.11471069052940008]
+
+#wb97x
+# U_list = [
+# 1.2161373541063307,
+# 2.1903830225866874,
+# 0.124,
+# 0.124,
+# 0.124,
+# 0.17504205914879986]
+
+if args.U == True:
+    with open(glob.glob('*_U.txt')[0]) as f:
+        U_file = f.readlines()
+        U_list = [float(i) for i in U_file]
+
+else:
+    U_list = [0.123]*N_atm
+
+# print('U_list = \n', U_list)
+
+
+def gen_auxmol(U_list=U_list, atom_coordinates:str=atom_coordinates) -> mol:
+
     '''
-    O    s
-         0.105              1.0
-    ''' )
-    ,
-    'C': gto.parse(
-    '''
-    C    s
-         0.11              1.0
-    '''),
-    'H': gto.parse(
-    '''
-    H    s
-         0.1              1.0
-    '''),
+    U_list is a list of gaussian index for each atom
+    aux_basis = {
+    'O': [[0, [0.1235, 1.0]]],
+    'C': [[0, [0.1235, 1.0]]],
+    'H': [[0, [0.1510, 1.0]]],
+    'H^2': [[0, [0.1510, 1.0]]],
+    'H^3': [[0, [0.1510, 1.0]]],
+    'H^4': [[0, [0.1510, 1.0]]]
     }
+    '''
+    auxmol = gto.M(atom=atom_coordinates)
+
+    atom_count = Counter(auxmol.elements)
+
+    auxmol_basis_keys = []
+    for key in atom_count:
+        for i in range(atom_count[key]):
+            if i > 0:
+                auxmol_basis_keys.append(key+'^'+str(i+1))
+            else:
+                auxmol_basis_keys.append(key)
+
+    basis = [[[0, [i, 1.0]]] for i in U_list]
+    aux_basis = dict(zip(auxmol_basis_keys, basis))
+    [ print("{:<5s} {:<5.3f}".format(key, value[0][1][0])) for key, value in aux_basis.items()]
+    auxmol.basis = aux_basis
     auxmol.build()
+    return auxmol
 
-    #chemical hardness  alpha
-    #O	0.58691863	0.541097674
-    #C	0.42195412	0.279672871
-    #H	0.47259288	0.350827982
+def gen_electron_int(atom_coordinates=atom_coordinates, mol=mol, U_list=U_list):
 
+    print('asigning auxiliary basis set')
+
+    auxmol = gen_auxmol(U_list = U_list)
     pmol = mol + auxmol
 
     nao = mol.nao_nr()
     naux = auxmol.nao_nr()
-    print('nao = ', nao)
-    print('naux = ', naux)
 
     '''2 center 2 electron integral'''
     eri2c = auxmol.intor('int2c2e_sph')
     # print('eri2c size =', eri2c.shape)
 
-    '''3 center 2 electron integral'''
-    eri3c = pmol.intor('int3c2e_sph', shls_slice=(0,mol.nbas,0,mol.nbas,mol.nbas,mol.nbas+auxmol.nbas))
-    # print('eri3c size =', eri3c.shape)
+    '''3 center 2 electron integral
+        N_bf * N_bf * N_atm
+    '''
 
+    eri3c = pmol.intor('int3c2e_sph', shls_slice=(0,mol.nbas,0,mol.nbas,
+                                                mol.nbas,mol.nbas+auxmol.nbas))
+    # print('eri3c size =', eri3c.shape)
     return eri2c, eri3c
 
-eri2c, eri3c = gen_electron_int()
-
-def gen_GAMMA(C_matrix=C_matrix, mol=mol, Natm=Natm, N_bf=N_bf, eri2c=eri2c,
-                                                                eri3c=eri3c):
-
+def gen_GAMMA(un_ortho_C_matrix=un_ortho_C_matrix, mol=mol, N_atm=N_atm, N_bf=N_bf, U_list=U_list):
+    eri2c, eri3c = gen_electron_int(U_list=U_list)
     eri2c_inv = np.linalg.inv(eri2c)
 
-    Delta = einsum("PQ, pqQ -> pqP", eri2c_inv, eri3c)
-    GAMMA = einsum("up, vq, pqP -> pqP", C_matrix, C_matrix, Delta)
+    Delta = einsum("PQ, uvQ -> uvP", eri2c_inv, eri3c)
+    GAMMA = einsum("up, vq, uvP -> pqP", un_ortho_C_matrix, un_ortho_C_matrix, Delta)
 
-    GAMMA_ij = np.zeros((n_occ, n_occ, Natm))
+    GAMMA_ij = np.zeros((n_occ, n_occ, N_atm))
     GAMMA_ij[:,:,:] = GAMMA[:n_occ,:n_occ,:]
 
-    GAMMA_ab = np.zeros((n_vir, n_vir, Natm))
+    GAMMA_ab = np.zeros((n_vir, n_vir, N_atm))
     GAMMA_ab[:,:,:] = GAMMA[n_occ:,n_occ:,:]
 
-    GAMMA_ia = np.zeros((n_occ, n_vir, Natm))
+    GAMMA_ia = np.zeros((n_occ, n_vir, N_atm))
     GAMMA_ia[:,:,:] = GAMMA[:n_occ,n_occ:,:]
 
-    GAMMA_J_ia = einsum("iaA , AB -> iaB", GAMMA_ia, eri2c_inv)
-    GAMMA_J_ij = einsum("ijA , AB -> ijB", GAMMA_ij, eri2c_inv)
+    GAMMA_J_ia = einsum("iaA , AB -> iaB", GAMMA_ia, eri2c)
+    GAMMA_J_ij = einsum("ijA , AB -> ijB", GAMMA_ij, eri2c)
 
     return GAMMA_ij, GAMMA_ab, GAMMA_ia, GAMMA_J_ia, GAMMA_J_ij
 
@@ -336,7 +384,7 @@ def gen_eta(mol=mol):
     HARDNESS = parameterlib.gen_HARDNESS()
     '''a list is a list of chemical hardness for all atoms
     '''
-    eta = [HARDNESS[mol.atom_pure_symbol(atom_id)] for atom_id in range(Natm)]
+    eta = [HARDNESS[mol.atom_pure_symbol(atom_id)] for atom_id in range(N_atm)]
     eta = np.asarray(eta).reshape(1,-1)
 
     return eta
@@ -348,7 +396,7 @@ if args.eta == True:
 else:
     eta = gen_eta()
 
-def gen_gammaJK(mol=mol, Natm=Natm, R_array=R_array, beta=beta, alpha=alpha, eta=eta):
+def gen_gammaJK(mol=mol, N_atm=N_atm, R_array=R_array, beta=beta, alpha=alpha, eta=eta):
     '''creat GammaK and GammaK matrix
     '''
     eta = (eta + eta.T)/2
@@ -359,14 +407,14 @@ def gen_gammaJK(mol=mol, Natm=Natm, R_array=R_array, beta=beta, alpha=alpha, eta
 
 GammaJ, GammaK = gen_gammaJK(alpha=alpha, beta=beta)
 
-def gen_QJK(C_matrix=C_matrix, mol=mol, Natm=Natm, N_bf=N_bf, max_vir=max_vir,
+def gen_QJK(C_matrix=C_matrix, mol=mol, N_atm=N_atm, N_bf=N_bf, max_vir=max_vir,
                                                 GammaJ=GammaJ, GammaK=GammaK):
     # Qstart = time.time()
     '''build q_iajb tensor'''
 
     aoslice = mol.aoslice_by_atom()
-    q_tensors = np.zeros([Natm, N_bf, N_bf])
-    for atom_id in range(Natm):
+    q_tensors = np.zeros([N_atm, N_bf, N_bf])
+    for atom_id in range(N_atm):
         shst, shend, atstart, atend = aoslice[atom_id]
         q_tensors[atom_id,:,:] = \
                 np.dot(C_matrix[atstart:atend,:].T, C_matrix[atstart:atend,:])
@@ -374,13 +422,13 @@ def gen_QJK(C_matrix=C_matrix, mol=mol, Natm=Natm, N_bf=N_bf, max_vir=max_vir,
     '''pre-calculate and store the Q-Gamma rank 3 tensor
        qia * gamma * qjb -> qia GK_q_jb
     '''
-    q_ij = np.zeros((Natm, n_occ, n_occ))
+    q_ij = np.zeros((N_atm, n_occ, n_occ))
     q_ij[:,:,:] = q_tensors[:,:n_occ,:n_occ]
 
-    q_ab = np.zeros((Natm, max_vir, max_vir))
+    q_ab = np.zeros((N_atm, max_vir, max_vir))
     q_ab[:,:,:] = q_tensors[:,n_occ:n_occ+max_vir,n_occ:n_occ+max_vir]
 
-    q_ia = np.zeros((Natm, n_occ, max_vir))
+    q_ia = np.zeros((N_atm, n_occ, max_vir))
     q_ia[:,:,:] = q_tensors[:,:n_occ,n_occ:n_occ+max_vir]
 
     GK_q_jb = einsum("Bjb,AB->Ajb", q_ia, GammaK)
@@ -440,7 +488,7 @@ def gen_iajb_ijab_ibja_delta_fly(max_vir=max_vir, GammaJ=GammaJ, GammaK=GammaK,
     return (iajb_fly, ijab_fly, ibja_fly, delta_fly, delta_max_vir_fly,
             delta_rst_vir_fly)
 
-def gen_as_mv(GAMMA_ij, GAMMA_ab, GAMMA_ia, GAMMA_J_ia, GAMMA_J_ij):
+def gen_as_iajb_ijab_fly(GAMMA_ij, GAMMA_ab, GAMMA_ia, GAMMA_J_ia, GAMMA_J_ij):
     def as_iajb_fly(V):
         '''(ia|jb) '''
         GAMMA_jb_V = einsum("iaA, iam -> Am", GAMMA_ia, V)
@@ -455,12 +503,18 @@ def gen_as_mv(GAMMA_ij, GAMMA_ab, GAMMA_ia, GAMMA_J_ia, GAMMA_J_ij):
 
     return as_iajb_fly, as_ijab_fly
 
-def gen_as_mv_fly(GAMMA_ij=GAMMA_ij, GAMMA_ab=GAMMA_ab, GAMMA_ia=GAMMA_ia,
-                    GAMMA_J_ia=GAMMA_J_ia, GAMMA_J_ij=GAMMA_J_ij, a_x=a_x):
+def gen_as_mv_fly(GAMMA_ij=GAMMA_ij,
+                  GAMMA_ab=GAMMA_ab,
+                  GAMMA_ia=GAMMA_ia,
+                  GAMMA_J_ia=GAMMA_J_ia,
+                  GAMMA_J_ij=GAMMA_J_ij,
+                  a_x=a_x):
 
-    as_iajb_fly, as_ijab_fly = gen_as_mv(GAMMA_ij=GAMMA_ij, GAMMA_ab=GAMMA_ab,
-            GAMMA_ia=GAMMA_ia, GAMMA_J_ia=GAMMA_J_ia, GAMMA_J_ij=GAMMA_J_ij)
-
+    as_iajb_fly, as_ijab_fly = gen_as_iajb_ijab_fly(GAMMA_ij=GAMMA_ij,
+                                                    GAMMA_ab=GAMMA_ab,
+                                                    GAMMA_ia=GAMMA_ia,
+                                                    GAMMA_J_ia=GAMMA_J_ia,
+                                                    GAMMA_J_ij=GAMMA_J_ij)
     def as_mv(V):
         '''return AX'''
         V = V.reshape(n_occ, n_vir, -1)
@@ -472,7 +526,6 @@ def gen_as_mv_fly(GAMMA_ij=GAMMA_ij, GAMMA_ab=GAMMA_ab, GAMMA_ia=GAMMA_ia,
     return as_mv
 
 as_mv = gen_as_mv_fly()
-
 
 def gen_mv_fly(GammaJ=GammaJ, GammaK=GammaK, n_occ=n_occ, max_vir=max_vir,
                                                             A_size=A_size):
@@ -556,6 +609,9 @@ def gen_mv_fly(GammaJ=GammaJ, GammaK=GammaK, n_occ=n_occ, max_vir=max_vir,
 
 sTDA_mv, full_sTDA_mv, sTDDFT_mv, sTDDFT_stapol_mv = gen_mv_fly(GammaJ=GammaJ,
                                                                 GammaK=GammaK)
+
+sTDA_mv = as_mv
+sTDDFT_stapol_mv = as_mv
 
 class on_the_fly_tensors(object):
     ''' iajb_fly,
@@ -2277,6 +2333,18 @@ def gen_metrics(beta, alpha, ab_initio_V, ab_initio_E,
 
     return metric_list
 
+def gen_I_AAV(ab_initio_E:list, ab_initio_V:np.array,
+                            matrix_vector_product=sTDA_mv) -> float:
+    with HiddenPrints():
+        '''A^se X= AV
+        '''
+        AV = ab_initio_E * ab_initio_V
+        X = stapol_sTDDFT_initprec(Pr=-AV, tol=1e-6,
+                            matrix_vector_product=matrix_vector_product)
+
+    I_AAV = float(np.linalg.norm(ab_initio_V - X))
+    return I_AAV
+
 def gen_forecaster(eta, *args):
     '''  |(I - A^{se,-1}A) V |  = V - X
         a is chemical hardness for each atom, in shape (N_atm,)
@@ -2286,17 +2354,29 @@ def gen_forecaster(eta, *args):
     sTDA_mv, full_sTDA_mv, sTDDFT_mv, sTDDFT_stapol_mv = gen_mv_fly(
                                                         GammaJ=GammaJ,
                                                         GammaK=GammaK)
-    with HiddenPrints():
-        '''A^se X= AV
-        '''
-        AV = ab_initio_E * ab_initio_V
-        X = stapol_sTDDFT_initprec(Pr=-AV, tol=1e-9,
-                            matrix_vector_product=sTDA_mv)
 
-    I_AAV = float(np.linalg.norm(ab_initio_V - X))
+    I_AAV = gen_I_AAV(ab_initio_E=ab_initio_E, ab_initio_V=ab_initio_V,
+                                                matrix_vector_product=sTDA_mv)
 
     return I_AAV
 
+def gen_as_forecaster(U:np.array, *args):
+    U = U.tolist()
+    '''  |(I - A^{se,-1}A) V |  = V - X
+        U is index for each atom, 1d array (N_atm,)
+    '''
+    ab_initio_E, ab_initio_V = args
+    GAMMA_ij, GAMMA_ab, GAMMA_ia, GAMMA_J_ia, GAMMA_J_ij = gen_GAMMA(U_list=U)
+    as_mv = gen_as_mv_fly(GAMMA_ij=GAMMA_ij,
+                      GAMMA_ab=GAMMA_ab,
+                      GAMMA_ia=GAMMA_ia,
+                      GAMMA_J_ia=GAMMA_J_ia,
+                      GAMMA_J_ij=GAMMA_J_ij)
+
+    I_AAV = gen_I_AAV(ab_initio_E=ab_initio_E, ab_initio_V=ab_initio_V,
+                                                matrix_vector_product=as_mv)
+
+    return I_AAV
 
 if __name__ == "__main__":
     calc = gen_calc()
@@ -2325,7 +2405,6 @@ if __name__ == "__main__":
             print('Excited State energies (eV) = ','\n', Excitation_energies)
 
             dump_yaml(Davidson_dic, calc, init, prec)
-
     if args.traceAA == True:
         metric_name_list = [
         'beta',
@@ -2375,13 +2454,12 @@ if __name__ == "__main__":
         print('smallest_I_AAV =', smallest_I_AAV)
         print('opt_beta = ', opt_beta)
         print('opt_alpha = ', opt_alpha)
-
     if args.etatune == True:
 
         eta=gen_eta()
 
-        [print(mol.atom_pure_symbol(atom_id), end=' ') for atom_id in range(Natm)]
-        print()
+        print(mol.elements)
+
         print('eta =')
         [print(i) for i in eta[0,:].tolist()]
         I_AAV_initial = gen_forecaster(eta, Excitation_energies/parameterlib.Hartree_to_eV, eigenkets)
@@ -2414,11 +2492,54 @@ if __name__ == "__main__":
             with open(m+'_eta.txt', 'wb') as f:
                 np.savetxt(f, result.x)
 
-            I_AAV_min = gen_forecaster(result.x, Excitation_energies/parameterlib.Hartree_to_eV, eigenkets)
+            I_AAV_min = gen_forecaster(result.x,
+                    Excitation_energies/parameterlib.Hartree_to_eV, eigenkets)
             Davidson_dic['I_AAV_min'] = I_AAV_min
             dump_yaml(Davidson_dic, calc, init, prec)
             print('I_AAV_min =', I_AAV_min)
             print()
+    if args.Utune == True:
+
+        # U_list = [0.124]*N_atm
+        U_list=np.array(U_list)
+        print('U_list shape =', U_list.shape)
+        bnds = []
+        for i in range(N_atm):
+            bnds.append((U_list[i,]*0.1, U_list[i,]*30))
+
+        print('boundary =', bnds)
+        I_AAV_initial = gen_as_forecaster(U_list, Excitation_energies/parameterlib.Hartree_to_eV, eigenkets)
+        print('I_AAV_initial =', I_AAV_initial)
+
+        print('starting scipy optimization')
+        with HiddenPrints():
+            result = scipy.optimize.minimize(fun=gen_as_forecaster,
+                                              x0=U_list,
+                    args=(Excitation_energies/parameterlib.Hartree_to_eV, eigenkets),
+                                          method='SLSQP',
+                                          bounds=bnds,
+                                          options={
+                                          'maxiter': 100,
+                                          'ftol': args.ftol,
+                                          'iprint': 99,
+                                          'disp': False,
+                                          'eps': args.step})
+        print('scipy optimization finished')
+        print('result.x =')
+        [print(i) for i in result.x]
+
+        print('result.success =', result.success)
+        print('result.status =', result.status)
+        print('result.message =', result.message)
+        print('result.fun =', result.fun)
+        print('result.nit =', result.nit)
+
+
+        with open('SLSQP_U.txt', 'wb') as f:
+            np.savetxt(f, result.x)
+
+        Davidson_dic['I_AAV_min'] = result.fun
+        dump_yaml(Davidson_dic, calc, init, prec)
 
     if args.TDDFT == True:
         for option in args.ip_options:
@@ -2446,7 +2567,9 @@ if __name__ == "__main__":
             print(tensor_alpha)
             dump_yaml(Davidson_dic, calc, init, prec)
     if args.sTDA == True:
-        X, energies = sTDA_eigen_solver(k=args.nstates, tol=args.conv_tolerance)
+        sTDA_mv, full_sTDA_mv, sTDDFT_mv, sTDDFT_stapol_mv = gen_mv_fly(GammaJ=GammaJ,
+                                                                        GammaK=GammaK)
+        X, energies = sTDA_eigen_solver(k=args.nstates, tol=args.conv_tolerance, matrix_vector_product=sTDA_mv)
     if args.TDDFTas == True:
         X, energies = sTDA_eigen_solver(k=args.nstates, tol=args.conv_tolerance, matrix_vector_product=as_mv)
     if args.sTDDFT == True:
