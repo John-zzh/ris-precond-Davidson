@@ -80,12 +80,12 @@ class TDDFT_as(object):
 
     def gen_electron_int(self, mol, auxmol, omega=0):
 
-        pmol = mol + auxmol
-
         nao = mol.nao_nr()
         naux = auxmol.nao_nr()
 
         auxmol.set_range_coulomb(omega)
+        mol.set_range_coulomb(omega)
+
 
         '''2 center 2 electron integral
             N_atm * N_atm
@@ -95,6 +95,8 @@ class TDDFT_as(object):
         '''3 center 2 electron integral
             N_bf * N_bf * N_atm
         '''
+        pmol = mol + auxmol
+
         eri3c = pmol.intor('int3c2e_sph', shls_slice=(0,mol.nbas,0,mol.nbas,
                                                 mol.nbas,mol.nbas+auxmol.nbas))
 
@@ -142,6 +144,7 @@ class TDDFT_as(object):
 
         def as_mv(V):
             '''return AX'''
+            # print('using as')
             # a_x=1
             V = V.reshape(n_occ, n_vir, -1)
             '''AX =  delta_fly(V) + 2*iajb_fly(V) - a_x*ijab_fly(V)'''
@@ -152,11 +155,12 @@ class TDDFT_as(object):
         return as_mv
 
     def build(self):
+
         auxmol = self.gen_auxmol()
 
         eri2c, eri3c = self.gen_electron_int(mol=mol, auxmol=auxmol, omega=0)
 
-        eri2c_erf, eri3c_erf = self.gen_electron_int(mol=mol, auxmol=auxmol, omega=0.3)
+        eri2c_erf, eri3c_erf = self.gen_electron_int(mol=mol, auxmol=auxmol, omega=self.omega)
 
         ''' alpha + beta = 1
         '''
@@ -212,6 +216,6 @@ class TDDFT_as(object):
                         as_ijab_fly=as_ijab_fly_RSH)
 
 
-TDDFT_as = TDDFT_as(U_list=U_list)
+TDDFT_as = TDDFT_as(U_list=U_list, omega=args.RSH_omega)
 TDDFT_as.build()
 as_mv = TDDFT_as.TDA_as_mv
