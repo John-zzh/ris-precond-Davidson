@@ -146,7 +146,6 @@ class TDDFT_as(object):
             V = V.reshape(n_occ, n_vir, -1)
             '''AX =  delta_fly(V) + 2*iajb_fly(V) - a_x*ijab_fly(V)'''
             MV = einsum("ia,iam->iam", delta_hdiag, V) + 2*as_iajb_fly(V) - a_x*as_ijab_fly(V)
-            # MV = einsum("ia,iam->iam", delta_hdiag, V) + 2*as_iajb_fly(V)
             MV = MV.reshape(n_occ*n_vir,-1)
             return MV
 
@@ -157,31 +156,36 @@ class TDDFT_as(object):
 
         eri2c, eri3c = self.gen_electron_int(mol=mol, auxmol=auxmol, omega=0)
 
-        eri2c_RSH, eri3c_RSH = self.gen_electron_int(mol=mol, auxmol=auxmol, omega=3)
+        eri2c_erf, eri3c_erf = self.gen_electron_int(mol=mol, auxmol=auxmol, omega=0.3)
 
+        ''' alpha + beta = 1
+        '''
+        alpha_RSH = 0.157706
+        beta_RSH = 0.842294
 
-        # omega N_iter
-        # 3.0   6   [ 9.32125256 11.39473229 11.52783428 12.37778115 12.72601012]
-        # 2.0   6   [ 9.32136768 11.39762631 11.52905574 12.37802545 12.72959624]
-        # 0.1   9   [ 9.34584171 11.73371826 11.94179497 12.42125722 12.99706121]
+        ''' the 2c2e and 3c2e integrals with RSH
+        '''
+        eri2c_RSH = alpha_RSH*eri2c + beta_RSH*eri2c_erf
+        eri3c_RSH = alpha_RSH*eri3c + beta_RSH*eri3c_erf
 
-
+        '''the GAMMA tensors without RSH
+        '''
         (GAMMA_ij,
         GAMMA_ab,
         GAMMA_ia,
         GAMMA_J_ia,
-        GAMMA_J_ij) = self.gen_GAMMA(
-                        eri2c=eri2c,
-                        eri3c=eri3c)
+        GAMMA_J_ij) = self.gen_GAMMA(eri2c=eri2c, eri3c=eri3c)
 
+        '''the GAMMA tensors with RSH
+        '''
         (GAMMA_ij_RSH,
         GAMMA_ab_RSH,
         GAMMA_ia_RSH,
         GAMMA_J_ia_RSH,
-        GAMMA_J_ij_RSH) = self.gen_GAMMA(
-                        eri2c=eri2c_RSH,
-                        eri3c=eri3c_RSH)
+        GAMMA_J_ij_RSH) = self.gen_GAMMA(eri2c=eri2c_RSH, eri3c=eri3c_RSH)
 
+        ''' the 4c2e integrals without RSH
+        '''
         (as_iajb_fly,
         as_ijab_fly) = self.gen_as_2e_fly(
                         GAMMA_ij=GAMMA_ij,
@@ -190,14 +194,8 @@ class TDDFT_as(object):
                         GAMMA_J_ia=GAMMA_J_ia,
                         GAMMA_J_ij=GAMMA_J_ij)
 
-        # (as_iajb_fly,
-        # as_ijab_fly) = self.gen_as_2e_fly(
-        #                 GAMMA_ij=GAMMA_ij_RSH,
-        #                 GAMMA_ab=GAMMA_ab_RSH,
-        #                 GAMMA_ia=GAMMA_ia,
-        #                 GAMMA_J_ia=GAMMA_J_ia,
-        #                 GAMMA_J_ij=GAMMA_J_ij_RSH)
-
+        ''' the 4c2e integrals with RSH
+        '''
         (as_iajb_fly_RSH,
         as_ijab_fly_RSH) = self.gen_as_2e_fly(
                         GAMMA_ij=GAMMA_ij_RSH,
@@ -206,9 +204,12 @@ class TDDFT_as(object):
                         GAMMA_J_ia=GAMMA_J_ia_RSH,
                         GAMMA_J_ij=GAMMA_J_ij_RSH)
 
+        ''' use columb type integral without RSH,
+            only the exchange type integral with RSH
+        '''
         self.TDA_as_mv = self.gen_as_mv_fly(
-                        as_iajb_fly=as_iajb_fly_RSH,
-                        as_ijab_fly=as_ijab_fly)
+                        as_iajb_fly=as_iajb_fly,
+                        as_ijab_fly=as_ijab_fly_RSH)
 
 
 TDDFT_as = TDDFT_as(U_list=U_list)
