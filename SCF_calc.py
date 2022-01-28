@@ -1,17 +1,17 @@
-#!/usr/bin/python
+# -*- coding: utf-8 -*-
 
 from arguments import args
 from pyscf import gto, scf, dft, tddft, data, lib
 import numpy as np
 import time
-import parameterlib
-import mathlib
+import mathlib.parameter as parameter
+import mathlib.math as math
 import os, sys
 import psutil
 from pyscf import gto, scf, dft, tddft, data, lib
+from opt_einsum import contract as einsum
 
 basename = args.xyzfile.split('.',1)[0]
-
 
 def show_memory_info(hint):
     pid = os.getpid()
@@ -20,16 +20,16 @@ def show_memory_info(hint):
     memory = info.uss / 1024**3
     print('{} memory used: {:<.2f} GB'.format(hint, memory))
 
-def SCF_kernel(xyzfile=args.xyzfile,
-                mol=gto.Mole(),
-                basis_set=args.basis_set,
-                verbose=args.verbose,
-                max_memory=args.memory,
-                method=args.method,
-                checkfile=args.checkfile,
-                density_fit=args.density_fit,
-                functional=args.functional,
-                grid_level=args.grid_level):
+def SCF_kernel(xyzfile = args.xyzfile,
+                   mol = gto.Mole(),
+             basis_set = args.basis_set,
+               verbose = args.verbose,
+            max_memory = args.memory,
+                method = args.method,
+             checkfile = args.checkfile,
+           density_fit = args.density_fit,
+            functional = args.functional,
+            grid_level = args.grid_level):
     kernel_0 = time.time()
 
     '''read the xyzfile but ommit its first two lines'''
@@ -88,32 +88,36 @@ show_memory_info('after SCF')
 '''Collect everything needed from PySCF'''
 
 def gen_global_var(tddft, mf, mol, functional=args.functional):
-    '''TDA_vind & TDDFT_vind are ab-initio matrix vector multiplication function
+    '''
+    TDA_vind & TDDFT_vind are ab-initio matrix vector multiplication function
     '''
     td = tddft.TDA(mf)
     TD = tddft.TDDFT(mf)
-    '''hdiag is one dinension matrix, (A_size,)
+    '''
+    hdiag is one dinension matrix, (A_size,)
     '''
     TDA_vind, hdiag = td.gen_vind(mf)
     TDDFT_vind, Hdiag = TD.gen_vind(mf)
 
     N_atm = mol.natm
     mo_occ = mf.mo_occ
-    '''mf.mo_occ is an array of occupance [2,2,2,2,2,0,0,0,0.....]
-       N_bf is the total amount of MOs
-       if no truncation, then max_vir = n_vir and n_occ + max_vir = N_bf
+    '''
+    mf.mo_occ is an array of occupance [2,2,2,2,2,0,0,0,0.....]
+    N_bf is the total amount of MOs
+    if no truncation, then max_vir = n_vir and n_occ + max_vir = N_bf
     '''
 
-    ''' produce orthonormalized coefficient matrix C, N_bf * N_bf
-        mf.mo_coeff is the unorthonormalized coefficient matrix
-        S = mf.get_ovlp()  is basis overlap matrix
-        S = np.dot(np.linalg.inv(c.T), np.linalg.inv(c))
+    '''
+    produce orthonormalized coefficient matrix C, N_bf * N_bf
+    mf.mo_coeff is the unorthonormalized coefficient matrix
+    S = mf.get_ovlp()  is basis overlap matrix
+    S = np.dot(np.linalg.inv(c.T), np.linalg.inv(c))
 
-        C_matrix is the orthonormalized coefficient matrix
-        np.dot(C_matrix.T,C_matrix) is a an identity matrix
+    C_matrix is the orthonormalized coefficient matrix
+    np.dot(C_matrix.T,C_matrix) is a an identity matrix
     '''
     S = mf.get_ovlp()
-    X = mathlib.matrix_power(S, 0.5)
+    X = math.matrix_power(S, 0.5)
     un_ortho_C_matrix = mf.mo_coeff
     C_matrix = np.dot(X,mf.mo_coeff)
 
@@ -123,7 +127,7 @@ def gen_global_var(tddft, mf, mol, functional=args.functional):
     delta_hdiag = hdiag.reshape(n_occ, n_vir)
     A_size = n_occ * n_vir
 
-    tol_eV = args.truncate_virtual/parameterlib.Hartree_to_eV
+    tol_eV = args.truncate_virtual/parameter.Hartree_to_eV
     homo_vir = delta_hdiag[-1,:]
     max_vir = len(np.where(homo_vir <= tol_eV)[0])
 
@@ -132,12 +136,13 @@ def gen_global_var(tddft, mf, mol, functional=args.functional):
 
     A_reduced_size = n_occ * max_vir
 
-    '''R_array is inter-particle distance array
-       unit == ’Bohr’, 5.29177210903(80)×10^(−11) m
+    '''
+    R_array is inter-particle distance array
+    unit == ’Bohr’, 5.29177210903(80)×10^(−11) m
     '''
     R_array = gto.mole.inter_distance(mol, coords=None)
 
-    a_x, beta, alpha = parameterlib.gen_alpha_beta_ax(functional)
+    a_x, beta, alpha = parameter.gen_alpha_beta_ax(functional)
 
     if args.beta != None:
         beta = args.beta
@@ -159,27 +164,13 @@ def gen_global_var(tddft, mf, mol, functional=args.functional):
 
 (TDA_vind, TDDFT_vind, hdiag, delta_hdiag, max_vir_hdiag, rst_vir_hdiag, N_atm,
 un_ortho_C_matrix, C_matrix, N_bf, n_occ, n_vir, max_vir, A_size,
-A_reduced_size, R_array, a_x, beta, alpha) = gen_global_var( tddft=tddft, mf=mf,
+A_reduced_size, R_array, a_x, beta, alpha) = gen_global_var(tddft=tddft, mf=mf,
 mol=mol, functional=args.functional)
 
-def gen_eta(mol=mol):
-    ''' mol.atom_pure_symbol(atom_id) returns the element symbol
-    '''
-    if args.eta == True:
-        eta = np.loadtxt('SLSQP_eta.txt')
-    else:
-        HARDNESS = parameterlib.gen_HARDNESS()
-        '''a list is a list of chemical hardness for all atoms
-        '''
-        eta = [HARDNESS[mol.atom_pure_symbol(atom_id)] for atom_id in range(N_atm)]
-        eta = np.asarray(eta).reshape(1,-1)
-
-    return eta
-
-eta = gen_eta()
-
 def TDA_matrix_vector(V):
-    '''return AX'''
+    '''
+    return AX
+    '''
     return TDA_vind(V.T).T
 
 def TDDFT_matrix_vector(X, Y):
@@ -191,15 +182,75 @@ def TDDFT_matrix_vector(X, Y):
     return U1, U2
 
 def static_polarizability_matrix_vector(X):
-    '''return (A+B)X
-       this is not the optimum way, but the only way in PySCF
+    '''
+    return (A+B)X
+    this is not the optimum way, but the only way in PySCF
     '''
     U1, U2 = TDDFT_matrix_vector(X,X)
     return U1
 
+def delta_fly(V):
+    '''
+    delta_hdiag.shape = (n_occ, n_vir)
+    '''
+    delta_v = einsum("ia,iam->iam", delta_hdiag, V)
+    return delta_v
+
+def delta_max_vir_fly(V):
+    '''
+    max_vir_hdiag.shape = (n_occ, max_vir)
+    '''
+    delta_max_vir_v = einsum("ia,iam->iam", max_vir_hdiag, V)
+    return delta_max_vir_v
+
+def delta_rst_vir_fly(V):
+    '''
+    max_vir_hdiag.shape = (n_occ, n_vir-max_vir)
+    '''
+    delta_rst_vir_v = einsum("ia,iam->iam", rst_vir_hdiag, V)
+    return delta_rst_vir_v
+
+def gen_P():
+    mo_coeff = mf.mo_coeff
+    mo_occ = mf.mo_occ
+    occidx = mo_occ > 0
+    orbo = mo_coeff[:, occidx]
+    orbv = mo_coeff[:,~occidx]
+    int_r= mol.intor_symmetric('int1e_r')
+    P = lib.einsum("xpq,pi,qa->iax", int_r, orbo, orbv.conj())
+    return P
+
+def gen_ip_func(diag_i, iter_i, diag_p, iter_p):
+    dict = {}
+    dict[0] = (iter_i, iter_p)
+    dict[1] = (diag_i, diag_p)
+    dict[2] = (diag_i, iter_p)
+    dict[3] = (iter_i, diag_p)
+    return dict
+
+ip_name = [            # option
+['iter','iter'],       # 0
+['diag','diag'],       # 1
+['diag','iter'],       # 2
+['iter','diag']]       # 3
+
+def gen_calc():
+    dict={}
+    dict['TDA'] = args.TDA
+    dict['TDDFT'] = args.TDDFT
+    dict['dpolar'] = args.dpolar
+    dict['spolar'] = args.spolar
+    dict['sTDA'] = args.sTDA
+    dict['sTDDFT'] = args.sTDDFT
+    dict['PySCF_TDDFT'] = args.pytd
+    for calc in dict.keys():
+        if dict[calc] == True:
+            print(calc)
+            return calc
+calc_name = gen_calc()
 
 global_var = (basename, atom_coordinates, mol, mf, kernel_t, TDA_vind,
 TDDFT_vind, hdiag, delta_hdiag, max_vir_hdiag, rst_vir_hdiag, N_atm,
 un_ortho_C_matrix, C_matrix, N_bf, n_occ, n_vir, max_vir, A_size,
-A_reduced_size, R_array, a_x, beta, alpha, eta, show_memory_info,
-TDA_matrix_vector, TDDFT_matrix_vector, static_polarizability_matrix_vector)
+A_reduced_size, R_array, a_x, beta, alpha, TDA_matrix_vector,
+TDDFT_matrix_vector, static_polarizability_matrix_vector)
