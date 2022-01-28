@@ -95,16 +95,19 @@ def anti_symmetrize(A):
     return A
 
 def check_orthonormal(A):
-    '''define the orthonormality of a matrix A as the norm of (A.T*A - I)'''
+    '''
+    define the orthonormality of a matrix A as the norm of (A.T*A - I)
+    '''
     n = np.shape(A)[1]
     B = np.dot(A.T, A)
     c = np.linalg.norm(B - np.eye(n))
     return c
 
 def VW_Gram_Schmidt_fill_holder(V_holder, W_holder, m, X_new, Y_new):
-    '''put X_new into V, and Y_new into W
-       m: the amount of vectors that already on V or W
-       nvec: amount of new vectors intended to put in the V and W
+    '''
+    put X_new into V, and Y_new into W
+    m: the amount of vectors that already on V or W
+    nvec: amount of new vectors intended to put in the V and W
     '''
     VWGSstart = time.time()
     nvec = np.shape(X_new)[1]
@@ -119,18 +122,11 @@ def VW_Gram_Schmidt_fill_holder(V_holder, W_holder, m, X_new, Y_new):
         x_tmp = X_new[:,j].reshape(-1,1)
         y_tmp = Y_new[:,j].reshape(-1,1)
 
-        GSstart = time.time()
         x_tmp,y_tmp = VW_Gram_Schmidt(x_tmp, y_tmp, V, W)
         x_tmp,y_tmp = VW_Gram_Schmidt(x_tmp, y_tmp, V, W)
-        GSend = time.time()
-        GScost += GSend - GSstart
 
-        symmetrystart = time.time()
         x_tmp,y_tmp = S_symmetry_orthogonal(x_tmp,y_tmp)
-        symmetryend = time.time()
-        symmetrycost += symmetryend - symmetrystart
 
-        normstart = time.time()
         xy_norm = (np.dot(x_tmp.T, x_tmp)+np.dot(y_tmp.T, y_tmp))**0.5
 
         if  xy_norm > 1e-14:
@@ -142,20 +138,9 @@ def VW_Gram_Schmidt_fill_holder(V_holder, W_holder, m, X_new, Y_new):
             m += 1
         else:
             print('vector kicked out during GS orthonormalization')
-        normend = time.time()
-        normcost += normend - normstart
-
-    VWGSend = time.time()
-    VWGScost = VWGSend - VWGSstart
-    # print('GScost',round(GScost/VWGScost *100, 2),'%')
-    # print('normcost',round(normcost/VWGScost *100, 2),'%')
-    # print('symmetrycost', round(symmetrycost/VWGScost *100, 2),'%')
-    # print('check VW orthonormalization')
-    # VW = np.vstack((V_holder[:,:m], W_holder[:,:m]))
-    # WV = np.vstack((W_holder[:,:m], V_holder[:,:m]))
-    # VWWV = np.hstack((VW,WV))
-    # print('check_orthonormal VWWV:',check_orthonormal(VWWV))
-    return V_holder, W_holder, m
+    new_m = m
+    
+    return V_holder, W_holder, new_m
 
 def solve_AX_Xla_B(A, omega, Q):
     '''AX - XΩ  = Q
