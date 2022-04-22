@@ -8,7 +8,7 @@ import mathlib.parameter as parameter
 import mathlib.math as math
 import os, sys
 import psutil
-from pyscf import gto, scf, dft, tddft, data, lib
+
 from opt_einsum import contract as einsum
 
 basename = args.xyzfile.split('.',1)[0]
@@ -73,6 +73,7 @@ def SCF_kernel(xyzfile = args.xyzfile,
     print ('Molecule built')
     print ('Calculating SCF Energy...')
     mf.kernel()
+    # [print(k, v,'\n') for k, v in mol._basis.items()]
 
     kernel_1 = time.time()
     kernel_t = kernel_1 - kernel_0

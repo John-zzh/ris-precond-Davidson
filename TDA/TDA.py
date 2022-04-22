@@ -7,6 +7,8 @@ import os,sys
 script_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(script_dir)
 
+
+import spectra
 from TDA.TDA_solver import TDA_solver
 from TDA.TDA_iter_initial_guess import TDA_iter_initial_guess
 from TDA.TDA_iter_preconditioner import TDA_iter_preconditioner
@@ -14,7 +16,9 @@ from TDA.TDA_iter_preconditioner import TDA_iter_preconditioner
 from arguments import args
 from mathlib.diag_ip import TDA_diag_initial_guess, TDA_diag_preconditioner
 from SCF_calc import gen_ip_func, ip_name, calc_name
+from approx_mv import approx_TDA_mv
 from dump_yaml import dump_yaml
+
 
 '''
 wb97x  methanol, 1e-5
@@ -47,6 +51,13 @@ def main():
                               max = args.max)
 
         dump_yaml(Davidson_dict, option)
+
+    '''
+    spectra comparation
+    '''
+    spectra.gen_spectra(energies = Excitation_energies,
+               transition_vector = transition_vector_X,
+                            name = 'TDA')
 
 if __name__ == '__main__':
     main()

@@ -35,6 +35,19 @@ HARDNESS = dict(zip(elements,hardness))
 
 
 
+common_elements = ['H', 'C', 'N', 'O', 'F', 'Si', 'S', 'Cl']
+'''
+GB Radii
+Ghosh, Dulal C and coworkers
+The wave mechanical evaluation of the absolute radii of atoms.
+Journal of Molecular Structure: THEOCHEM 865, no. 1-3 (2008): 60-67.
+'''
+
+radii = [0.5292, 0.6513, 0.5428, 0.4652, 0.4071, 1.1477, 0.8739, 0.7808]
+radii_au = [i*1.8897259885789 for i in radii]
+#
+RADII = dict(zip(common_elements,radii_au))
+print(RADII)
 RSH_F = [
 'lc-b3lyp',
 'wb97',
@@ -78,6 +91,9 @@ omega_dic['wb97x'] = 0.3
 
 RSH_omega = omega_dic[args.functional]
 print('RSH_omega =', RSH_omega)
+
+
+
 
 def gen_alpha_beta_ax(functional):
 

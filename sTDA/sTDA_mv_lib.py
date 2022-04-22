@@ -29,15 +29,16 @@ def gen_eta(mol=mol):
 
     return eta
 
-eta = gen_eta()
+# eta = gen_eta()
 
 class sTDA(object):
 
-    def __init__(self, eta=eta):
+    def __init__(self, eta=gen_eta()):
         self.eta = eta
 
     def gen_gammaJK(self, eta):
         ''' creat GammaK and GammaK matrix
+            Q Gamma Q
         '''
         eta = (eta + eta.T)/2
         GammaJ = (R_array**beta + (a_x * eta)**(-beta))**(-1/beta)
@@ -221,4 +222,4 @@ class sTDA(object):
                                 ijab_fly=ijab_fly,
                                 ibja_fly=ibja_fly)
 
-        return sTDA_mv, full_sTDA_mv, TDDFT_mv, sTDDFT_spolar_mv
+        return sTDA_mv, TDDFT_mv, sTDDFT_spolar_mv

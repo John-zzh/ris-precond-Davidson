@@ -32,14 +32,21 @@ def gen_args():
     parser.add_argument('-sTDDFT','--sTDDFT',       type=str2bool,  default = False, help='perform sTDDFT calculation')
     parser.add_argument('-TDDFT_as','--TDDFT_as',   type=str2bool,  default = False, help='perform TDDFT_as calculation')
 
+    parser.add_argument('-spectra','--spectra',     type=str2bool,  default = True, help='plot excitaition spectra peaks')
+
     parser.add_argument('-etatune','--etatune',     type=str2bool,  default = False, help='optimize accoriding to eta')
     parser.add_argument('-eta','--eta',             type=str2bool,  default = False, help='use the external eta set')
     parser.add_argument('-bounds','--bounds',       type=float,  default = 0.1, help='0.9-1.1')
-    parser.add_argument('-step','--step',           type=float,  default = 1e-6, help='1e-2 - 1e-9')
-    parser.add_argument('-ftol','--ftol',           type=float,  default = 1e-5, help='1e-2 - 1e-9')
+    parser.add_argument('-step','--step',           type=float,  default = 1e-4, help='1e-2 - 1e-9')
+    parser.add_argument('-ftol','--ftol',           type=float,  default = 1e-3, help='1e-2 - 1e-9')
 
-    parser.add_argument('-Utune','--Utune',         type=str2bool,  default = False, help='optimize accoriding to U')
-    parser.add_argument('-U','--U',                 type=str2bool,  default = False, help='optimize accoriding to U')
+
+    parser.add_argument('-Uread','--Uread',         type=str2bool,  default = False, help='read Uk value from txt file')
+    parser.add_argument('-coulomb_ex','--coulomb_ex', type=str,  default = 'all', help='coulomb & exchange & all & none')
+
+    parser.add_argument('-Uconst','--Uconst',       type=float,  default = 0.0, help='use a constant 0.123 as s and p orbital exponential')
+    parser.add_argument('-Uk','--Uk',               type=float,  default = 1.0, help='use k/R**0.5 as s orbital exponential')
+    parser.add_argument('-Uk_tune','--Uk_tune',     type=str2bool,  default = False, help='tune the k parameter of k/R**0.5')
 
     parser.add_argument('-TV','--truncate_virtual', type=float, default = 40,    help='the threshold to truncate virtual orbitals, in eV')
 

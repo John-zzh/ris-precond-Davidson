@@ -44,7 +44,9 @@ def TDA_solver(N_states, initial_guess, preconditioner,
 
     init_start = time.time()
     initial_vectors, initial_energies = initial_guess(N_states=new_m, hdiag=hdiag)
+    # print('initial_vectors.shape', initial_vectors.shape)
     initial_energies = initial_energies[:N_states]
+
 
     print('excitation energies:')
     print(initial_energies)
@@ -129,7 +131,7 @@ def TDA_solver(N_states, initial_guess, preconditioner,
     Dcost = D_end - D_start
 
     energy_diff = float(np.linalg.norm(initial_energies - energies))
-    X_overlap = float(np.linalg.norm(np.dot(initial_vectors.T, full_guess)))
+    X_overlap = float(np.linalg.norm(np.dot(initial_vectors[:,:N_states].T, full_guess)))
 
     Davidson_dict = fill_dictionary(Davidson_dict,
                            N_itr = ii+1,

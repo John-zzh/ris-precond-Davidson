@@ -15,6 +15,16 @@ from mathlib import math, parameter
 from dump_yaml import fill_dictionary
 
 
+def gen_alpha_tensor(X, Y, pqnorm, k, P_origin):
+    alpha_omega = []
+    X_p_Y = X + Y
+    X_p_Y *= np.tile(pqnorm, k)
+    for jj in range(k):
+        '''*-1 from the definition of dipole moment. *2 for double occupancy'''
+        X_p_Y_tmp = X_p_Y[:,3*jj:3*(jj+1)]
+        alpha_omega.append(np.dot(P_origin.T, X_p_Y_tmp)*-2)
+    return alpha_omega
+
 def dpolar_solver(initial_guess, preconditioner, dpolar_omega,
                                     max = 30,
                                conv_tol = 1e-5,
@@ -25,8 +35,7 @@ def dpolar_solver(initial_guess, preconditioner, dpolar_omega,
     [ A  B ] - [1  0]X  w = -P
     [ B  A ]   [0 -1]Y    = -Q
     pretty same structure as TDDFT iterative precodnitioner
-    both the initial guess and precodnitioenr use TDDFT iterative preconditioner
-    (with |P,Q> as the residuals)
+    (with |P,Q> as the righht hand side residuals)
     '''
     print('====== Dynamic Polarizability Calculation Starts ======')
     dp_start = time.time()
@@ -42,18 +51,20 @@ def dpolar_solver(initial_guess, preconditioner, dpolar_omega,
     k = len(dpolar_omega)
     omega =  np.zeros([3*k])
     for jj in range(k):
-        '''if have 3 ω, [ω1 ω1 ω1, ω2 ω2 ω2, ω3 ω3 ω3]
-           convert nm to Hartree'''
+        '''
+        if have 3 ω, [ω1 ω1 ω1, ω2 ω2 ω2, ω3 ω3 ω3]
+        convert nm to Hartree
+        '''
         omega[3*jj:3*(jj+1)] = 45.56337117/dpolar_omega[jj]
 
     P = gen_P()
     P = P.reshape(-1,3)
 
-    P_origin = np.zeros_like(P)
-    Q = np.zeros_like(P)
+    P_origin = np.copy(P)
 
-    P_origin[:,:] = P[:,:]
-    Q[:,:] = P[:,:]
+    '''
+    normalize the right hand side
+    '''
 
     pnorm = np.linalg.norm(P, axis=0, keepdims = True)
     pqnorm = pnorm * (2**0.5)
@@ -64,6 +75,7 @@ def dpolar_solver(initial_guess, preconditioner, dpolar_omega,
     repeat k times
     '''
     P = np.tile(P,k)
+    Q = np.copy(P)
 
     m = 0
     V_holder = np.zeros((A_size, (max+1)*k*3))
@@ -77,13 +89,13 @@ def dpolar_solver(initial_guess, preconditioner, dpolar_omega,
                             omega = omega,
                          conv_tol = initial_TOL)
 
-    alpha_omega_ig = []
-    X_p_Y = X_ig + Y_ig
-    X_p_Y = X_p_Y*np.tile(pqnorm,k)
-    for jj in range(k):
-        '''*-1 from the definition of dipole moment. *2 for double occupancy'''
-        X_p_Y_tmp = X_p_Y[:,3*jj:3*(jj+1)]
-        alpha_omega_ig.append(np.dot(P_origin.T, X_p_Y_tmp)*-2)
+
+    alpha_omega_ig = gen_alpha_tensor(X = X_ig,
+                                      Y = Y_ig,
+                                 pqnorm = pqnorm,
+                                      k = k,
+                               P_origin = P_origin)
+
     print('initial guess of tensor alpha')
     for i in range(k):
         print(dpolar_omega[i],'nm')
@@ -225,18 +237,17 @@ def dpolar_solver(initial_guess, preconditioner, dpolar_omega,
         print("{:<10} {:<5.4f}s  {:<5.2%}".format(enrty, cost, cost/dp_cost))
 
 
-    alpha_omega = []
+
 
     X_overlap = float(np.linalg.norm(np.dot(X_ig.T, X_full))\
                     + np.linalg.norm(np.dot(Y_ig.T, Y_full)))
 
-    X_p_Y = X_full + Y_full
+    alpha_omega = gen_alpha_tensor(X = X_full,
+                                   Y = Y_full,
+                              pqnorm = pqnorm,
+                                   k = k,
+                            P_origin = P_origin)
 
-    X_p_Y = X_p_Y*np.tile(pqnorm,k)
-
-    for jj in range(k):
-        X_p_Y_tmp = X_p_Y[:,3*jj:3*(jj+1)]
-        alpha_omega.append(np.dot(P_origin.T, X_p_Y_tmp)*-2)
 
     print('tensor alpha')
     for i in range(k):
