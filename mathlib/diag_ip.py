@@ -9,7 +9,7 @@ sys.path.append(script_dir)
 
 from mathlib import parameter
 import numpy as np
-from SCF_calc import max_vir_hdiag, hdiag
+from SCF_calc import delta_hdiag2, hdiag
 
 def TDA_diag_initial_guess(N_states, hdiag=hdiag):
     '''
@@ -74,7 +74,7 @@ def TDDFT_diag_preconditioner(R_x, R_y, omega, hdiag = hdiag, conv_tol = None):
 
     return X_new, Y_new
 
-def spolar_diag_initprec(Pr, hdiag=max_vir_hdiag, conv_tol=None):
+def spolar_diag_initprec(Pr, hdiag=delta_hdiag2, conv_tol=None):
 
     d = hdiag.reshape(-1,1)
     Pr = -Pr/d

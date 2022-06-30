@@ -1,0 +1,81 @@
+A matrix size: 351
+N_itr: 7
+N_mv: 20
+N_states: 5
+SCF time: 2.346220016479492
+dynamic polarizability wavelength:
+- 800.0
+ex_reduced_occ: 9
+ex_reduced_vir: 39
+final solution:
+- - - 16.935939122963095
+    - -1.397112298406682
+    - -0.37221906397546783
+  - - -1.3971122984066797
+    - 16.852175034103333
+    - 0.4926042830604038
+  - - -0.37221906397546645
+    - 0.4926042830604035
+    - 15.133886731243683
+functional: pbe0
+initial guess threshold: 0.001
+initial guess time: 0.017643213272094727
+initial solution:
+- - - 19.367297407835984
+    - -1.7050019465619597
+    - -0.45423488405332757
+  - - -1.7050019465619601
+    - 20.747445927221825
+    - 0.7952485075374516
+  - - -0.4542348840533276
+    - 0.7952485075374496
+    - 17.973567540630235
+initial-final difference: 3.28162865033128
+initial-final overlap: 3.103646189515774
+initial_guess: iter
+iteration:
+- residual norms:
+  - 0.2740788149473046
+  - 0.2895070495072647
+  - 0.2185523070264883
+- residual norms:
+  - 0.08446086114585645
+  - 0.06022277131673767
+  - 0.036044676022902886
+- residual norms:
+  - 0.016201679573133107
+  - 0.010063258466678267
+  - 0.0036115196033824548
+- residual norms:
+  - 0.0026639416901198193
+  - 0.0009689049974130517
+  - 0.00040202717098260856
+- residual norms:
+  - 0.0004536684814255557
+  - 0.00015388117572144594
+  - 5.660371848584579e-05
+- residual norms:
+  - 3.9135174816081496e-05
+  - 1.8208174896528415e-05
+  - 5.426437605108061e-06
+- residual norms:
+  - 3.3265850352311846e-06
+  - 1.2611715587735686e-06
+  - 1.7550652386342422e-06
+method: RKS
+molecule: methanol
+n_occ: 9
+n_vir: 39
+precondition time: 0.0897378921508789
+preconditioner: iter
+preconditioner threshold: 0.01
+reduced_occ: 9
+reduced_vir: 16
+sTDA_alpha: 1.54
+sTDA_ax: 0.25
+sTDA_beta: 0.6575
+threshold: 1.0e-05
+virtual truncation tol:
+- 40.0
+- 1000000.0
+wall time: 1.742002010345459

@@ -11,9 +11,10 @@ sys.path.append(script_dir)
 
 from mathlib import parameter
 from arguments import args
-from SCF_calc import (alpha, beta, mol, N_atm, N_bf, n_occ, n_vir, max_vir,
-                    R_array, C_matrix, a_x, delta_fly, delta_max_vir_fly,
-                    delta_rst_vir_fly)
+from SCF_calc import (alpha, beta, mol, N_atm, N_bf, n_occ, n_vir, reduced_vir,
+                    R_array, C_matrix, a_x, delta_fly, delta_hdiag2_fly,
+                    delta_hdiag3_fly)
+
 
 
 def gen_eta(mol=mol):
@@ -63,11 +64,12 @@ class sTDA(object):
         q_ij = np.zeros((N_atm, n_occ, n_occ))
         q_ij[:,:,:] = q_tensors[:,:n_occ,:n_occ]
 
-        q_ab = np.zeros((N_atm, max_vir, max_vir))
-        q_ab[:,:,:] = q_tensors[:,n_occ:n_occ+max_vir,n_occ:n_occ+max_vir]
+        q_ab = np.zeros((N_atm, reduced_vir, reduced_vir))
+        q_ab[:,:,:] = q_tensors[:,n_occ:n_occ+reduced_vir,n_occ:n_occ+reduced_vir]
 
-        q_ia = np.zeros((N_atm, n_occ, max_vir))
-        q_ia[:,:,:] = q_tensors[:,:n_occ,n_occ:n_occ+max_vir]
+        q_ia = np.zeros((N_atm, n_occ, reduced_vir))
+        print('q_ia.shape', q_ia.shape)
+        q_ia[:,:,:] = q_tensors[:,:n_occ,n_occ:n_occ+reduced_vir]
 
         GK_q_jb = einsum("Bjb,AB->Ajb", q_ia, GammaK)
         GJ_q_ab = einsum("Bab,AB->Aab", q_ab, GammaJ)
@@ -116,26 +118,10 @@ class sTDA(object):
             return AX
             MV =  delta_fly(V) + 2*iajb_fly(V) - ijab_fly(V)
             '''
-            V = V.reshape(n_occ, max_vir, -1)
-            MV = delta_max_vir_fly(V) + 2*iajb_fly(V) - ijab_fly(V)
-            MV = MV.reshape(n_occ*max_vir,-1)
+            V = V.reshape(n_occ, reduced_vir, -1)
+            MV = delta_hdiag2_fly(V) + 2*iajb_fly(V) - ijab_fly(V)
+            MV = MV.reshape(n_occ*reduced_vir,-1)
             return MV
-
-        def full_sTDA_mv(V):
-            '''
-            used in Jacobi preconditioner
-            '''
-            V = V.reshape(n_occ,n_vir,-1)
-            U = np.zeros_like(V)
-
-            V1 = V[:,:max_vir,:]
-            V2 = V[:,max_vir:,:]
-
-            U[:,:max_vir,:] = sTDA_mv(V1).reshape(n_occ, max_vir, -1)
-            U[:,max_vir:,:] = delta_rst_vir_fly(V2)
-
-            U = U.reshape(n_occ * n_vir,-1)
-            return U
 
         def sTDDFT_mv(X, Y):
             '''
@@ -143,23 +129,20 @@ class sTDA(object):
             sTDA_A =  delta_fly(V) + 2*iajb_fly(V) - ijab_fly(V)
             sTDDFT_B = 2*iajb_fly(V) - a_x*ibja_fly(V)
             '''
-            X = X.reshape(n_occ, max_vir,-1)
-            Y = Y.reshape(n_occ, max_vir,-1)
+            X = X.reshape(n_occ, reduced_vir,-1)
+            Y = Y.reshape(n_occ, reduced_vir,-1)
 
-            X_max_vir = X[:,:max_vir,:]
-            Y_max_vir = Y[:,:max_vir,:]
+            iajb_X = iajb_fly(X)
+            iajb_Y = iajb_fly(Y)
 
-            iajb_X = iajb_fly(X_max_vir)
-            iajb_Y = iajb_fly(Y_max_vir)
+            ijab_X = ijab_fly(X)
+            ijab_Y = ijab_fly(Y)
 
-            ijab_X = ijab_fly(X_max_vir)
-            ijab_Y = ijab_fly(Y_max_vir)
+            ibja_X = ibja_fly(X)
+            ibja_Y = ibja_fly(Y)
 
-            ibja_X = ibja_fly(X_max_vir)
-            ibja_Y = ibja_fly(Y_max_vir)
-
-            delta_X = delta_max_vir_fly(X_max_vir)
-            delta_Y = delta_max_vir_fly(Y_max_vir)
+            delta_X = delta_hdiag2_fly(X)
+            delta_Y = delta_hdiag2_fly(Y)
 
             AX = delta_X + 2*iajb_X - ijab_X
             AY = delta_Y + 2*iajb_Y - ijab_Y
@@ -170,11 +153,11 @@ class sTDA(object):
             U1 = np.zeros_like(X)
             U2 = np.zeros_like(X)
 
-            U1[:,:max_vir,:] = AX + BY
-            U2[:,:max_vir,:] = AY + BX
+            U1[:,:reduced_vir,:] = AX + BY
+            U2[:,:reduced_vir,:] = AY + BX
 
-            U1 = U1.reshape(n_occ*max_vir,-1)
-            U2 = U2.reshape(n_occ*max_vir,-1)
+            U1 = U1.reshape(n_occ*reduced_vir,-1)
+            U2 = U2.reshape(n_occ*reduced_vir,-1)
 
             return U1, U2
 
@@ -183,13 +166,13 @@ class sTDA(object):
             (A+B)X = delta_fly(V) + 4*iajb_fly(V)
                     - ijab_fly(V) - a_x*ibja_fly(V)
             '''
-            X = X.reshape(n_occ, max_vir, -1)
-            U = delta_max_vir_fly(X) + 4*iajb_fly(X) - ijab_fly(X) - a_x*ibja_fly(X)
-            U = U.reshape(n_occ*max_vir, -1)
+            X = X.reshape(n_occ, reduced_vir, -1)
+            U = delta_hdiag2_fly(X) + 4*iajb_fly(X) - ijab_fly(X) - a_x*ibja_fly(X)
+            U = U.reshape(n_occ*reduced_vir, -1)
 
             return U
 
-        return sTDA_mv, full_sTDA_mv, sTDDFT_mv, sTDDFT_spolar_mv
+        return sTDA_mv, sTDDFT_mv, sTDDFT_spolar_mv
 
 
     def build(self):
@@ -215,7 +198,6 @@ class sTDA(object):
                             GJ_q_ab=GJ_q_ab)
 
         (sTDA_mv,
-        full_sTDA_mv,
         TDDFT_mv,
         sTDDFT_spolar_mv) = self.gen_mv_fly(
                                 iajb_fly=iajb_fly,

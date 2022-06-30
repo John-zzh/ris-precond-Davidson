@@ -4,6 +4,10 @@ import numpy as np
 import scipy
 import time
 
+import multiprocessing as mp
+
+num_cores = int(mp.cpu_count())
+print("This job can use: " + str(num_cores) + "CPUs")
 
 def commutator(A,B):
     commu = np.dot(A,B) - np.dot(B,A)
@@ -21,6 +25,20 @@ def matrix_power(S,a):
     s = s**a
     X = np.dot(ket*s,ket.T)
     return X
+
+def copy_array(A):
+    B = np.zeros_like(A)
+    dim = len(B.shape)
+    if dim == 1:
+        B[:,] = A[:,]
+    elif dim == 2:
+        B[:,:] = A[:,:]
+    elif dim == 3:
+        B[:,:,:] = A[:,:,:]
+    return B
+
+
+
 
 def Gram_Schmidt_bvec(A, bvec):
     '''orthonormalize vector b against all vectors in A
@@ -47,7 +65,177 @@ def VW_Gram_Schmidt(x, y, V, W):
     y -= np.dot(V,n)
     return x, y
 
-def Gram_Schmidt_fill_holder(V, count, vecs):
+# def gen_VW(VW_old, V_old, V_new, W_old, W_new, size_old, size_new, symmetry = True, up_triangle = False):
+#     '''
+#     [ V_old.T ] [W_old, W_new] = [VW_old,     V_old.T W_new]
+#     [ V_new.T ]                  [V_new.T W_old, V_new.T W_new]
+#     '''
+#
+#     VW_new = np.zeros((size_new,size_new))
+#     VW_new[:size_old,:size_old] = VW_old
+#
+#     VW_new[:size_old,size_old:] = np.dot(V_old.T, W_new)
+#
+#     if up_triangle == False:
+#         if symmetry == True:
+#             VW_new[size_old:,:size_old] = VW_new[:size_old,size_old:].T
+#         else:
+#             VW_new[size_old:,:size_old] = np.dot(V_new.T, W_old)
+#
+#     VW_new[size_old:,size_old:] = np.dot(V_new.T, W_new)
+#
+#     return VW_new
+
+def block_symmetrize(A,m,n):
+    A[m:n,:m] = A[:m,m:n].T
+    return A
+
+def utriangle_symmetrize(A):
+    upper = np.triu_indices(n=A.shape[0], k=1)
+    lower = (upper[1], upper[0])
+    A[lower] = A[upper]
+    return A
+
+def anti_block_symmetrize(A,m,n):
+    A[m:n,:m] = -A[:m,m:n].T
+    return A
+
+def gen_VW(sub_A_holder, V_holder, W_holder, size_old, size_new, symmetry = True, up_triangle = False):
+    '''
+    [ V_old.T ] [W_old, W_new] = [VW_old,        V_old.T W_new] = [VW_old, V_current.T W_new]
+    [ V_new.T ]                  [V_new.T W_old, V_new.T W_new]   [               '' ''     ]
+
+
+    V_holder or W_holder
+
+                size_old     size_new
+    |--------------|--------------|------------|
+    |              |              |            |
+    |   V_old      |    V_new     |            |
+    |              |              |            |
+    |              |              |            |
+    |              |              |            |
+    |              |              |            |
+    |        [ V_current ]        |            |
+    |              |              |            |
+    |              |              |            |
+    |              |              |            |
+    |              |              |            |
+    |              |              |            |
+    |              |              |            |
+    |              |              |            |
+    |              |              |            |
+    |--------------|--------------|------------|
+
+    sub_A_holder
+
+                            size_old            size_new
+                |---------------|-----------------｜-----------------｜
+                |               |                 ｜                 ｜
+                |    VW_old     |                 ｜                 ｜
+                |               |                 ｜                 ｜
+      size_old  |---------------|V_current.T W_new｜-----------------｜
+                | V_new.T W_old |                 ｜                 ｜
+                | or            |                 ｜                 ｜
+                | W_new.T V_old |                 ｜                 ｜
+      size_new  |---------------|-----------------｜-----------------｜
+                |               |                 ｜                 ｜
+                |               |                 ｜                 ｜
+                |               |                 ｜                 ｜
+                |---------------|-----------------｜-----------------｜
+    '''
+
+    V_current = V_holder[:,:size_new]
+    W_new = W_holder[:,size_old:size_new]
+    sub_A_holder[:size_new,size_old:size_new] = np.dot(V_current.T, W_new)
+
+    if symmetry == True:
+        sub_A_holder = block_symmetrize(sub_A_holder,size_old,size_new)
+    elif symmetry == False:
+        if up_triangle == False:
+            '''
+            up_triangle == False means also explicitly compute the lower triangle,
+                                        either equal upper triangle.T or recompute
+            '''
+            V_new = V_holder[:,size_old:size_new]
+            W_old = W_holder[:,:size_old]
+            sub_A_holder[size_old:size_new,:size_old] = np.dot(V_new.T, W_old)
+        elif up_triangle == True:
+            '''
+            otherwise juts let the lower triangle be zeros
+            '''
+            pass
+
+    return sub_A_holder
+
+
+def gen_VP(sub_P_holder, V_holder, P, size_old, size_new):
+    '''
+    [ V_old.T ] [P] = [P_old    ]
+    [ V_new.T ]       [V_new.T P]
+    '''
+    V_new = V_holder[:,size_old:size_new]
+    sub_P_holder[size_old:size_new,:] = np.dot(V_new.T, P)
+    return sub_P_holder
+
+
+def gen_sub_pq(V_holder, W_holder, P, Q, VP_holder, WQ_holder, WP_holder, VQ_holder, size_old, size_new):
+    '''
+    [ V_old.T ] [P_old] = [P_old]
+    [ V_new.T ]           [V_new.T [P_old]]
+    '''
+    VP_holder = gen_VP(VP_holder, V_holder, P, size_old, size_new)
+
+    VQ_holder = gen_VP(VQ_holder, V_holder, Q, size_old, size_new)
+
+    WP_holder = gen_VP(WP_holder, W_holder, P, size_old, size_new)
+
+    WQ_holder = gen_VP(WQ_holder, W_holder, Q, size_old, size_new)
+
+    p = VP_holder[:size_new,:] + WQ_holder[:size_new,:]
+    q = WP_holder[:size_new,:] + VQ_holder[:size_new,:]
+
+    return p, q, VP_holder, WQ_holder, WP_holder, VQ_holder
+
+
+def gen_sub_ab(V_holder, W_holder, U1_holder, U2_holder,
+              VU1_holder, WU2_holder, VU2_holder, WU1_holder,
+              VV_holder, WW_holder, VW_holder,
+              size_old, size_new):
+    '''
+    a = V.T U1 + W.T U2
+    b = V.T U2 + W.T U1
+    V.T U1 = gen_sub_A()
+    '''
+
+    VU1_holder = gen_VW(VU1_holder, V_holder, U1_holder, size_old, size_new, symmetry = False, up_triangle = True)
+    VU2_holder = gen_VW(VU2_holder, V_holder, U2_holder, size_old, size_new, symmetry = False, up_triangle = True)
+    WU1_holder = gen_VW(WU1_holder, W_holder, U1_holder, size_old, size_new, symmetry = False, up_triangle = True)
+    WU2_holder = gen_VW(WU2_holder, W_holder, U2_holder, size_old, size_new, symmetry = False, up_triangle = True)
+
+    VV_holder = gen_VW(VV_holder, V_holder, V_holder, size_old, size_new, symmetry = False, up_triangle = True)
+    WW_holder = gen_VW(WW_holder, W_holder, W_holder, size_old, size_new, symmetry = False, up_triangle = True)
+    VW_holder = gen_VW(VW_holder, V_holder, W_holder, size_old, size_new, symmetry = False, up_triangle = False)
+
+    sub_A = VU1_holder[:size_new, :size_new] + WU2_holder[:size_new, :size_new]
+    sub_A = utriangle_symmetrize(sub_A)
+
+    sub_B = VU2_holder[:size_new, :size_new] + WU1_holder[:size_new, :size_new]
+    sub_B = utriangle_symmetrize(sub_B)
+
+    sigma = VV_holder[:size_new, :size_new] - WW_holder[:size_new, :size_new]
+    sigma = utriangle_symmetrize(sigma)
+
+    pi = VW_holder[:size_new, :size_new] - VW_holder[:size_new, :size_new].T
+
+    return sub_A, sub_B, sigma, pi, VU1_holder, WU2_holder, VU2_holder, WU1_holder, VV_holder, WW_holder, VW_holder
+
+
+
+
+
+
+def Gram_Schmidt_fill_holder(V, count, vecs, double = True):
     '''V is a vectors holder
        count is the amount of vectors that already sit in the holder
        nvec is amount of new vectors intended to fill in the V
@@ -57,7 +245,8 @@ def Gram_Schmidt_fill_holder(V, count, vecs):
     for j in range(nvec):
         vec = vecs[:, j].reshape(-1,1)
         vec = Gram_Schmidt_bvec(V[:, :count], vec)   #single orthonormalize
-        vec = Gram_Schmidt_bvec(V[:, :count], vec)   #double orthonormalize
+        if double == True:
+            vec = Gram_Schmidt_bvec(V[:, :count], vec)   #double orthonormalize
         norm = np.linalg.norm(vec)
         if  norm > 1e-14:
             vec = vec/norm
@@ -103,7 +292,21 @@ def check_orthonormal(A):
     c = np.linalg.norm(B - np.eye(n))
     return c
 
-def VW_Gram_Schmidt_fill_holder(V_holder, W_holder, m, X_new, Y_new):
+def check_symmetry(A):
+    '''
+    define matrix A is symmetric
+    '''
+    a = np.linalg.norm(A - A.T)
+    return a
+
+def check_anti_symmetry(A):
+    '''
+    define matrix A is symmetric
+    '''
+    a = np.linalg.norm(A + A.T)
+    return a
+
+def VW_Gram_Schmidt_fill_holder(V_holder, W_holder, m, X_new, Y_new, double = True):
     '''
     put X_new into V, and Y_new into W
     m: the amount of vectors that already on V or W
@@ -115,6 +318,7 @@ def VW_Gram_Schmidt_fill_holder(V_holder, W_holder, m, X_new, Y_new):
     GScost = 0
     normcost = 0
     symmetrycost = 0
+    GSfill_start = time.time()
     for j in range(0, nvec):
         V = V_holder[:,:m]
         W = W_holder[:,:m]
@@ -122,12 +326,22 @@ def VW_Gram_Schmidt_fill_holder(V_holder, W_holder, m, X_new, Y_new):
         x_tmp = X_new[:,j].reshape(-1,1)
         y_tmp = Y_new[:,j].reshape(-1,1)
 
+        VW_Gram_Schmidt_start = time.time()
         x_tmp,y_tmp = VW_Gram_Schmidt(x_tmp, y_tmp, V, W)
-        x_tmp,y_tmp = VW_Gram_Schmidt(x_tmp, y_tmp, V, W)
+        if double == True:
+            # print('double')
+            x_tmp,y_tmp = VW_Gram_Schmidt(x_tmp, y_tmp, V, W)
+        VW_Gram_Schmidt_end = time.time()
+        GScost += VW_Gram_Schmidt_end - VW_Gram_Schmidt_start
 
+        symmetry_start = time.time()
         x_tmp,y_tmp = S_symmetry_orthogonal(x_tmp,y_tmp)
+        symmetry_end = time.time()
+        symmetrycost += symmetry_end - symmetry_start
 
+        norm_start = time.time()
         xy_norm = (np.dot(x_tmp.T, x_tmp)+np.dot(y_tmp.T, y_tmp))**0.5
+
 
         if  xy_norm > 1e-14:
             x_tmp = x_tmp/xy_norm
@@ -138,8 +352,18 @@ def VW_Gram_Schmidt_fill_holder(V_holder, W_holder, m, X_new, Y_new):
             m += 1
         else:
             print('vector kicked out during GS orthonormalization')
+
+        norm_end = time.time()
+        normcost += norm_end - norm_start
+
+    GSfill_end = time.time()
+    GSfill_cost = GSfill_end - GSfill_start
+
+    # print('GScost = {:.2%}'.format(GScost/GSfill_cost))
+    # print('symmetrycost ={:.2%}'.format(symmetrycost/GSfill_cost))
+    # print('normcost ={:.2%}'.format(normcost/GSfill_cost))
     new_m = m
-    
+
     return V_holder, W_holder, new_m
 
 def solve_AX_Xla_B(A, omega, Q):
@@ -147,9 +371,11 @@ def solve_AX_Xla_B(A, omega, Q):
        A, Ω, Q are known, solve X
     '''
     Qnorm = np.linalg.norm(Q, axis=0, keepdims = True)
-    Q /= Qnorm
+    Q = Q/Qnorm
     N_vectors = len(omega)
     a, u = np.linalg.eigh(A)
+    print('a =',a)
+    print('omega =',omega)
     ub = np.dot(u.T, Q)
     ux = np.zeros_like(Q)
     for k in range(N_vectors):
@@ -218,8 +444,8 @@ def TDDFT_subspace_liear_solver(a, b, sigma, pi, p, q, omega):
     pq = np.vstack((p,q))
     pqnorm = np.linalg.norm(pq, axis=0, keepdims = True)
 
-    p /= pqnorm
-    q /= pqnorm
+    p = p/pqnorm
+    q = q/pqnorm
 
     d = abs(np.diag(sigma))
     d_mh = d**(-0.5)

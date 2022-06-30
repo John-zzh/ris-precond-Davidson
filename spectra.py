@@ -7,8 +7,7 @@ from SCF_calc import gen_P, basename
 from mathlib import parameter
 
 from arguments import args
-from sTDA import sTDA_mv_lib
-from TDDFT_as import TDDFT_as_lib
+
 from TDA.TDA_iter_initial_guess import TDA_iter_initial_guess
 from TDDFT.TDDFT_iter_initial_guess import TDDFT_iter_initial_guess_solver
 
@@ -49,7 +48,9 @@ def gen_spectra(energies, transition_vector, name):
     '''
     oscillator_strength = 2/3 * hartree * np.sum(trans_dipole, axis=0)
 
-
+    '''
+    eV, oscillator_strength, cm_1, nm
+    '''
     entry = [eV, oscillator_strength, cm_1, nm]
     data = np.zeros((eV.shape[0],len(entry)))
     for i in range(4):
@@ -62,6 +63,9 @@ def gen_spectra(energies, transition_vector, name):
 
 def main():
 
+
+    from sTDA import sTDA_mv_lib
+    from TDDFT_as import TDDFT_as_lib
     '''
     generate spectra peaks for sTDA and TDA-as
     '''
@@ -70,7 +74,7 @@ def main():
     b = [sTDA_mv_lib.sTDA(), TDDFT_as_lib.TDDFT_as()]
 
     for i in range(len(a)):
-        print('computing', a[i], 'speatra')
+        print('computing', a[i], 'spectra')
         approx_TDA_mv, approx_TDDFT_mv, approx_spolar_mv = b[i].build()
 
         U, omega = TDA_iter_initial_guess(N_states = args.nstates,
@@ -92,6 +96,6 @@ def main():
 
 
 
-
-if __name__ == '__main__':
-    main()
+#
+# if __name__ == '__main__':
+#     main()

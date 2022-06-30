@@ -3,7 +3,8 @@
 import os
 import yaml
 from arguments import args
-from SCF_calc import (n_occ, n_vir, max_vir, a_x, alpha, beta, basename,
+from SCF_calc import (n_occ, n_vir, reduced_occ, reduced_vir, ex_rest_occ, ex_rest_vir,
+                    a_x, alpha, beta, basename,
                       kernel_t, A_size, ip_name, calc_name)
 
 def fill_dictionary(dict, icost, pcost, wall_time, N_itr, N_mv,
@@ -45,7 +46,10 @@ def dump_yaml(dict, option):
     dict['A matrix size'] = A_size
     dict['n_occ'] = n_occ
     dict['n_vir'] = n_vir
-    dict['max_vir'] = max_vir
+    dict['reduced_occ'] = reduced_occ
+    dict['reduced_vir'] = reduced_vir
+    dict['ex_reduced_occ'] = ex_rest_occ
+    dict['ex_reduced_vir'] = ex_rest_vir
     dict['N_states'] = args.nstates
     dict['initial guess threshold'] = args.initial_TOL
     dict['preconditioner threshold'] = args.precond_TOL

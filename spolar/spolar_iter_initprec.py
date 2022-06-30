@@ -17,28 +17,44 @@ from arguments import args
 from mathlib import math
 from mathlib.diag_ip import spolar_diag_initprec
 
-from SCF_calc import (hdiag, delta_hdiag, max_vir_hdiag, A_size,
-                    n_occ, n_vir, max_vir, A_reduced_size)
+from SCF_calc import (hdiag, delta_hdiag, delta_hdiag2, A_size,
+             n_occ, n_vir, trunced_occ, reduced_occ, trunced_vir, reduced_vir,
+                     trunced_vir, A_reduced_size)
 
 def spolar_iter_initprec(Pr, conv_tol,
                 matrix_vector_product = approx_spolar_mv,
-                          initial_TOL = 1e-3,
-                          precond_TOL = 1e-2,
-                                hdiag = hdiag):
-    '''(A' + B')X = -P
+                                hdiag = hdiag,
+                                n_occ = n_occ,
+                                n_vir = n_vir,
+                          trunced_occ = trunced_occ,
+                          reduced_occ = reduced_occ,
+                          trunced_vir = trunced_vir,
+                          reduced_vir = reduced_vir,
+                       A_reduced_size = A_reduced_size,
+                               A_size = A_size):
+
+    ''' [ diag1   0        0 ] [0]    [P1]
+        [  0   reduced_A   0 ] [X]  = [P2]
+        [  0      0     diag3] [0]    [P3]
+       (A' + B')X = -P
        note the negative sign of P!
        residual = (A' + B')X + P
        X_ig = -P/d
        X_new = residual/D
     '''
     ssp_start = time.time()
-    max = 30
+    max = 20
     m = 0
     npvec = Pr.shape[1]
 
-    P = Pr.reshape(n_occ,n_vir,-1)[:,:max_vir,:]
+
+    Pr = Pr.reshape(n_occ,n_vir,-1)
+
+    P = Pr[trunced_occ:,:reduced_vir,:].copy()
     P = P.reshape(A_reduced_size,-1)
     pnorm = np.linalg.norm(P, axis=0, keepdims = True)
+    print('iter ip solar pnorm =', pnorm)
+    print('iter ip solar pnorm.shape =', pnorm.shape)
     P /= pnorm
 
     V_holder = np.zeros((A_reduced_size, (max+1)*npvec))
@@ -46,7 +62,7 @@ def spolar_iter_initprec(Pr, conv_tol,
 
     '''setting up initial guess'''
     init_start = time.time()
-    X_ig = spolar_diag_initprec(P, hdiag=max_vir_hdiag)
+    X_ig = spolar_diag_initprec(P, hdiag=delta_hdiag2)
     V_holder, new_m = math.Gram_Schmidt_fill_holder(V_holder, m, X_ig)
     init_end = time.time()
     initial_cost = init_end - init_start
@@ -94,7 +110,7 @@ def spolar_iter_initprec(Pr, conv_tol,
             break
 
         Pstart = time.time()
-        X_new = spolar_diag_initprec(-residual[:,index], hdiag=max_vir_hdiag)
+        X_new = spolar_diag_initprec(-residual[:,index], hdiag=delta_hdiag2)
         Pend = time.time()
         Pcost += Pend - Pstart
 
@@ -130,15 +146,26 @@ def spolar_iter_initprec(Pr, conv_tol,
     X_full = X_full*pnorm
 
     U = np.zeros((n_occ,n_vir,npvec))
-    U[:,:max_vir,:] = X_full.reshape(n_occ,max_vir,-1)[:,:,:]
+    U[trunced_occ:,:reduced_vir,:] = X_full.reshape(reduced_occ,reduced_vir,-1)
 
-    if max_vir < n_vir:
-        ''' DX2 = -P2'''
-        P2 = Pr.reshape(n_occ,n_vir,-1)[:,max_vir:,:]
-        P2 = P2.reshape(n_occ*(n_vir-max_vir),-1)
-        D2 = delta_hdiag[:,max_vir:]
-        D2 = D2.reshape(n_occ*(n_vir-max_vir),-1)
-        X2 = (-P2/D2).reshape(n_occ,n_vir-max_vir,-1)
-        U[:,max_vir:,:] = X2
+    if reduced_occ < n_occ:
+        ''' D1*X1 = -P1 '''
+        P1 = Pr.reshape(n_occ,n_vir,-1)[:trunced_occ,:reduced_vir,:]
+        P1 = P1.reshape(trunced_occ*reduced_vir,-1)
+
+        D1 = delta_hdiag[:trunced_occ,:reduced_vir]
+        D1 = D1.reshape(trunced_occ*reduced_vir,-1)
+        X1 = (-P1/D1).reshape(trunced_occ*reduced_vir,-1)
+        U[:trunced_occ,:reduced_vir,:] = X1
+
+
+    if reduced_vir < n_vir:
+        ''' D3*X3 = -P3 '''
+        P3 = Pr.reshape(n_occ,n_vir,-1)[:,reduced_vir:,:]
+        P3 = P3.reshape(n_occ*trunced_vir,-1)
+        D3 = delta_hdiag[:,reduced_vir:]
+        D3 = D3.reshape(n_occ*trunced_vir,-1)
+        X3 = (-P3/D3).reshape(n_occ,trunced_vir,-1)
+        U[:,reduced_vir:,:] = X3
     U = U.reshape(A_size, npvec)
     return U

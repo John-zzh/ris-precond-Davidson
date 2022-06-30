@@ -19,9 +19,9 @@ from dump_yaml import dump_yaml
 
 def main():
     TDA_ip_dict = gen_ip_func(diag_i = TDDFT_diag_initial_guess,
-                                      iter_i = TDDFT_iter_initial_guess,
-                                      diag_p = TDDFT_diag_preconditioner,
-                                      iter_p = TDDFT_iter_preconditioner)
+                              iter_i = TDDFT_iter_initial_guess,
+                              diag_p = TDDFT_diag_preconditioner,
+                              iter_p = TDDFT_iter_preconditioner)
 
     for option in args.ip_options:
         initial_guess, preconditioner = TDA_ip_dict[option]

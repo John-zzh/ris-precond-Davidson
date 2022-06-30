@@ -12,7 +12,7 @@ import numpy as np
 
 from mathlib import math, parameter
 from SCF_calc import (static_polarizability_matrix_vector, A_size,
-                    hdiag, max_vir_hdiag, n_occ, n_vir, max_vir, gen_P)
+                    hdiag, delta_hdiag2, n_occ, n_vir, trunced_vir, gen_P)
 from dump_yaml import fill_dictionary
 
 
@@ -20,10 +20,10 @@ from dump_yaml import fill_dictionary
 
 def spolar_solver(initial_guess, preconditioner,
             matrix_vector_product = static_polarizability_matrix_vector,
-                              max = 35,
+                              max = 20,
                          conv_tol = 1e-5,
                             hdiag = hdiag,
-                    max_vir_hdiag = max_vir_hdiag,
+                     delta_hdiag2 = delta_hdiag2,
                       initial_TOL = 1e-3,
                       precond_TOL = 1e-2):
     '''
@@ -36,10 +36,10 @@ def spolar_solver(initial_guess, preconditioner,
     P = gen_P()
     P = P.reshape(-1,3)
 
-    P_origin = np.zeros_like(P)
-    P_origin[:,:] = P[:,:]
+    P_origin = P.copy()
 
     pnorm = np.linalg.norm(P, axis=0, keepdims = True)
+    print('solver pnorm.shape =', pnorm.shape)
     P /= pnorm
 
     Davidson_dict = {}
@@ -68,7 +68,7 @@ def spolar_solver(initial_guess, preconditioner,
     subgencost = 0
     for ii in range(max):
         print()
-        print('Iteration', ii)
+        print('Iteration', ii+1)
         MV_start = time.time()
         U_holder[:, m:new_m] = matrix_vector_product(V_holder[:,m:new_m])
         MV_end = time.time()

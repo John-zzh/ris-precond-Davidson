@@ -10,7 +10,7 @@ sys.path.append(script_dir)
 import time
 import numpy as np
 from SCF_calc import (TDDFT_matrix_vector, A_size, show_memory_info,
-                    hdiag, max_vir_hdiag, n_occ, n_vir, max_vir, gen_P)
+                    hdiag, delta_hdiag2, n_occ, n_vir, trunced_vir, gen_P)
 from mathlib import math, parameter
 from dump_yaml import fill_dictionary
 
@@ -30,7 +30,8 @@ def dpolar_solver(initial_guess, preconditioner, dpolar_omega,
                                conv_tol = 1e-5,
                             initial_TOL = 1e-3,
                             precond_TOL = 1e-2,
-                  matrix_vector_product = TDDFT_matrix_vector):
+                  matrix_vector_product = TDDFT_matrix_vector,
+                                 double = False):
     '''
     [ A  B ] - [1  0]X  w = -P
     [ B  A ]   [0 -1]Y    = -Q
@@ -77,13 +78,27 @@ def dpolar_solver(initial_guess, preconditioner, dpolar_omega,
     P = np.tile(P,k)
     Q = np.copy(P)
 
-    m = 0
-    V_holder = np.zeros((A_size, (max+1)*k*3))
+    size_old = 0
+    max_N_mv = (max+1)*k*3
+    V_holder = np.zeros((A_size, max_N_mv))
     W_holder = np.zeros_like(V_holder)
 
     U1_holder = np.zeros_like(V_holder)
     U2_holder = np.zeros_like(V_holder)
 
+    VU1_holder = np.zeros((max_N_mv, max_N_mv))
+    VU2_holder = np.zeros_like(VU1_holder)
+    WU1_holder = np.zeros_like(VU1_holder)
+    WU2_holder = np.zeros_like(VU1_holder)
+
+    VV_holder = np.zeros_like(VU1_holder)
+    VW_holder = np.zeros_like(VU1_holder)
+    WW_holder = np.zeros_like(VU1_holder)
+
+    VP_holder = np.zeros((max_N_mv, P.shape[1]))
+    VQ_holder = np.zeros_like(VP_holder)
+    WP_holder = np.zeros_like(VP_holder)
+    WQ_holder = np.zeros_like(VP_holder)
     init_start = time.time()
     X_ig, Y_ig = initial_guess(-P, -Q,
                             omega = omega,
@@ -101,7 +116,7 @@ def dpolar_solver(initial_guess, preconditioner, dpolar_omega,
         print(dpolar_omega[i],'nm')
         print(alpha_omega_ig[i])
 
-    V_holder, W_holder, new_m = math.VW_Gram_Schmidt_fill_holder(
+    V_holder, W_holder, size_new = math.VW_Gram_Schmidt_fill_holder(
                                             V_holder = V_holder,
                                             W_holder = W_holder,
                                                    m = 0,
@@ -115,48 +130,34 @@ def dpolar_solver(initial_guess, preconditioner, dpolar_omega,
     GScost = 0
     subgencost = 0
     for ii in range(max):
-        print('Iteration', ii)
-
-        V = V_holder[:,:new_m]
-        W = W_holder[:,:new_m]
-
+        print('Iteration', ii+1)
         MV_start = time.time()
-        U1_holder[:, m:new_m], U2_holder[:, m:new_m] = matrix_vector_product(
-                                                V[:, m:new_m], W[:, m:new_m])
+        U1_holder[:,size_old:size_new], U2_holder[:,size_old:size_new] = matrix_vector_product(
+                                                            X=V_holder[:,size_old:size_new],
+                                                            Y=W_holder[:,size_old:size_new])
         MV_end = time.time()
         MVcost += MV_end - MV_start
 
-        U1 = U1_holder[:,:new_m]
-        U2 = U2_holder[:,:new_m]
-
         subgenstart = time.time()
-        a = np.dot(V.T, U1)
-        a += np.dot(W.T, U2)
-
-        b = np.dot(V.T, U2)
-        b += np.dot(W.T, U1)
-
-        sigma = np.dot(V.T, V)
-        sigma -= np.dot(W.T, W)
-
-        pi = np.dot(V.T, W)
-        pi -= np.dot(W.T, V)
-
-        '''p = VP + WQ
-           q = WP + VQ'''
-        p = np.dot(V.T, P)
-        p += np.dot(W.T, Q)
-
-        q = np.dot(W.T, P)
-        q += np.dot(V.T, Q)
+        (sub_A, sub_B, sigma, pi,
+        VU1_holder, WU2_holder, VU2_holder, WU1_holder,
+        VV_holder, WW_holder, VW_holder) = math.gen_sub_ab(
+                      V_holder, W_holder, U1_holder, U2_holder,
+                      VU1_holder, WU2_holder, VU2_holder, WU1_holder,
+                      VV_holder, WW_holder, VW_holder,
+                      size_old, size_new)
+        p, q, VP_holder, WQ_holder, WP_holder, VQ_holder = math.gen_sub_pq(
+                                V_holder, W_holder, P, Q,
+                                VP_holder, WQ_holder, WP_holder, VQ_holder,
+                                size_old, size_new)
 
         subgenend = time.time()
         subgencost += subgenend - subgenstart
 
-        print('sigma.shape', sigma.shape)
+        print('sub_A.shape', sub_A.shape)
 
         subcost_start = time.time()
-        x, y = math.TDDFT_subspace_liear_solver(a, b, sigma, pi, -p, -q, omega)
+        x, y = math.TDDFT_subspace_liear_solver(sub_A, sub_B, sigma, pi, -p, -q, omega)
         subcost_end = time.time()
         subcost += subcost_end - subcost_start
 
@@ -166,6 +167,11 @@ def dpolar_solver(initial_guess, preconditioner, dpolar_omega,
            X_full = Vx + Wy
            Y_full = Wx + Vy
         '''
+        V = V_holder[:,:size_new]
+        W = W_holder[:,:size_new]
+        U1 = U1_holder[:,:size_new]
+        U2 = U2_holder[:,:size_new]
+
         X_full = np.dot(V,x)
         X_full += np.dot(W,y)
 
@@ -204,18 +210,19 @@ def dpolar_solver(initial_guess, preconditioner, dpolar_omega,
         Pend = time.time()
         Pcost += Pend - Pstart
 
-        m = new_m
+        size_old = size_new
         GS_start = time.time()
-        V_holder, W_holder, new_m = math.VW_Gram_Schmidt_fill_holder(
-                                        V_holder = V_holder,
-                                        W_holder = W_holder,
-                                               m = m,
-                                           X_new = X_new,
-                                           Y_new = Y_new)
+        V_holder, W_holder, size_new = math.VW_Gram_Schmidt_fill_holder(
+                                            V_holder = V_holder,
+                                            W_holder = W_holder,
+                                               X_new = X_new,
+                                               Y_new = Y_new,
+                                                   m = size_old,
+                                              double = double)
         GS_end = time.time()
         GScost += GS_end - GS_start
 
-        if new_m == m:
+        if size_new == size_old:
             print('All new guesses kicked out during GS orthonormalization')
             break
 
@@ -230,7 +237,7 @@ def dpolar_solver(initial_guess, preconditioner, dpolar_omega,
         print('Dynamic polarizability Done')
 
     print('Finished in {:d} steps, {:.2f} seconds'.format(ii+1, dp_cost))
-    print('final subspace', a.shape[0])
+    print('final subspace', sub_A.shape[0])
     print('max_norm = {:.2e}'.format(max_norm))
     for enrty in ['initial_cost','MVcost','GScost','subgencost','subcost']:
         cost = locals()[enrty]
@@ -239,7 +246,7 @@ def dpolar_solver(initial_guess, preconditioner, dpolar_omega,
 
 
 
-    X_overlap = float(np.linalg.norm(np.dot(X_ig.T, X_full))\
+    X_overlap = float(np.linalg.norm(np.dot(X_ig.T, X_full))
                     + np.linalg.norm(np.dot(Y_ig.T, Y_full)))
 
     alpha_omega = gen_alpha_tensor(X = X_full,
@@ -266,7 +273,7 @@ def dpolar_solver(initial_guess, preconditioner, dpolar_omega,
                            N_itr = ii+1,
                            pcost = Pcost,
                            icost = initial_cost,
-                            N_mv = a.shape[0],
+                            N_mv = sub_A.shape[0],
                        wall_time = dp_cost,
                 initial_solution = [i.tolist() for i in alpha_omega_ig],
                   final_solution = [i.tolist() for i in alpha_omega],

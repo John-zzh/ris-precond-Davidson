@@ -35,7 +35,7 @@ HARDNESS = dict(zip(elements,hardness))
 
 
 
-common_elements = ['H', 'C', 'N', 'O', 'F', 'Si', 'S', 'Cl']
+common_elements = ['H','B','C', 'N', 'O', 'F', 'Si', 'S', 'Cl', 'Br']
 '''
 GB Radii
 Ghosh, Dulal C and coworkers
@@ -43,11 +43,13 @@ The wave mechanical evaluation of the absolute radii of atoms.
 Journal of Molecular Structure: THEOCHEM 865, no. 1-3 (2008): 60-67.
 '''
 
-radii = [0.5292, 0.6513, 0.5428, 0.4652, 0.4071, 1.1477, 0.8739, 0.7808]
-radii_au = [i*1.8897259885789 for i in radii]
+radii = [0.5292, 0.8141, 0.6513, 0.5428, 0.4652, 0.4071, 1.1477, 0.8739, 0.7808, 0.9532]
+
+
+exp = [1/(i*1.8897259885789)**2 for i in radii]
 #
-RADII = dict(zip(common_elements,radii_au))
-print(RADII)
+as_exp = dict(zip(common_elements,exp))
+# print(as_exp)
 RSH_F = [
 'lc-b3lyp',
 'wb97',
@@ -69,7 +71,7 @@ hybride_F = [
 'pbe0',
 'm06',
 'm06-2x',
-'NA']
+None]
 hybride_ax = [
 0.2,
 0.1,
@@ -85,12 +87,15 @@ beta2 = 1.83
 alpha1 = 1.42
 alpha2 = 0.48
 
-omega_dic = {}
-omega_dic['pbe0'] = 0
-omega_dic['wb97x'] = 0.3
+# omega_dic = {}
+# omega_dic['pbe0'] = 0
+# omega_dic['wb97x_V'] = 0.3
 
-RSH_omega = omega_dic[args.functional]
-print('RSH_omega =', RSH_omega)
+if 'wb97' in args.functional:
+    RSH_omega = 0.3
+else:
+    RSH_omega = 0
+    print('RSH_omega =', RSH_omega)
 
 
 

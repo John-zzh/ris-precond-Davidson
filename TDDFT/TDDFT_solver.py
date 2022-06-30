@@ -9,14 +9,14 @@ import time
 import numpy as np
 from mathlib import math, parameter
 
-from SCF_calc import A_size, hdiag, max_vir_hdiag, TDDFT_matrix_vector, show_memory_info
+from SCF_calc import A_size, hdiag, delta_hdiag2, TDDFT_matrix_vector, show_memory_info
 from dump_yaml import fill_dictionary
 
 
 def TDDFT_solver(N_states, initial_guess, preconditioner,
                 matrix_vector_product = TDDFT_matrix_vector,
                                A_size = A_size,
-                                hidag = max_vir_hdiag,
+                                hidag = delta_hdiag2,
                                   max = 35,
                              conv_tol = 1e-5,
                          extrainitial = 8):
@@ -31,76 +31,77 @@ def TDDFT_solver(N_states, initial_guess, preconditioner,
 
     TDDFT_start = time.time()
 
-    m = 0
+    size_old = 0
 
-    new_m = min([N_states+extrainitial, 2*N_states, A_size])
+    size_new = min([N_states+extrainitial, 2*N_states, A_size])
 
-    V_holder = np.zeros((A_size, (max+1) * N_states + new_m))
+    max_N_mv = max * N_states + size_new
+    V_holder = np.zeros((A_size, max_N_mv))
     W_holder = np.zeros_like(V_holder)
 
     U1_holder = np.zeros_like(V_holder)
     U2_holder = np.zeros_like(V_holder)
 
+    VU1_holder = np.zeros((max_N_mv,max_N_mv))
+    VU2_holder = np.zeros_like(VU1_holder)
+    WU1_holder = np.zeros_like(VU1_holder)
+    WU2_holder = np.zeros_like(VU1_holder)
+
+    VV_holder = np.zeros_like(VU1_holder)
+    VW_holder = np.zeros_like(VU1_holder)
+    WW_holder = np.zeros_like(VU1_holder)
+
     init_start = time.time()
 
     (V_holder,
     W_holder,
-    new_m,
+    size_new,
     initial_energies,
     X_ig,
     Y_ig) = initial_guess(V_holder = V_holder,
                           W_holder = W_holder,
-                          N_states = new_m)
+                          N_states = size_new)
 
     init_end = time.time()
     init_time = init_end - init_start
 
     initial_energies = initial_energies[:N_states]
 
-    print('new_m =', new_m)
+    print('size_new =', size_new)
     print('initial guess done')
 
     Pcost = 0
     for ii in range(max):
         print()
-        print('Iteration', ii)
+        print('Iteration', ii+1)
         show_memory_info('beginning of step '+ str(ii))
 
-        V = V_holder[:,:new_m]
-        W = W_holder[:,:new_m]
+        V = V_holder[:,:size_new]
+        W = W_holder[:,:size_new]
 
         '''
         U1 = AV + BW
         U2 = AW + BV
         '''
-        U1_holder[:, m:new_m], U2_holder[:, m:new_m] = TDDFT_matrix_vector(
-                                                                V[:, m:new_m],
-                                                                W[:, m:new_m])
+        U1_holder[:, size_old:size_new], U2_holder[:, size_old:size_new] = TDDFT_matrix_vector(
+                                                                V[:, size_old:size_new],
+                                                                W[:, size_old:size_new])
 
-        U1 = U1_holder[:,:new_m]
-        U2 = U2_holder[:,:new_m]
+        U1 = U1_holder[:,:size_new]
+        U2 = U2_holder[:,:size_new]
 
-        a = np.dot(V.T, U1)
-        a += np.dot(W.T, U2)
+        (sub_A, sub_B, sigma, pi,
+        VU1_holder, WU2_holder, VU2_holder, WU1_holder,
+        VV_holder, WW_holder, VW_holder) = math.gen_sub_ab(
+                      V_holder, W_holder, U1_holder, U2_holder,
+                      VU1_holder, WU2_holder, VU2_holder, WU1_holder,
+                      VV_holder, WW_holder, VW_holder,
+                      size_old, size_new)
 
-        b = np.dot(V.T, U2)
-        b += np.dot(W.T, U1)
+        print('subspace size:', sub_A.shape[0])
 
-        sigma = np.dot(V.T, V)
-        sigma -= np.dot(W.T, W)
-
-        pi = np.dot(V.T, W)
-        pi -= np.dot(W.T, V)
-
-        a = math.symmetrize(a)
-        b = math.symmetrize(b)
-        sigma = math.symmetrize(sigma)
-        pi = math.anti_symmetrize(pi)
-
-        print('subspace size:', a.shape[0])
-
-        omega, x, y = math.TDDFT_subspace_eigen_solver(a = a,
-                                                       b = b,
+        omega, x, y = math.TDDFT_subspace_eigen_solver(a = sub_A,
+                                                       b = sub_B,
                                                    sigma = sigma,
                                                       pi = pi,
                                                        k = N_states)
@@ -147,19 +148,19 @@ def TDDFT_solver(N_states, initial_guess, preconditioner,
         P_start = time.time()
         X_new, Y_new = preconditioner(R_x[:,index],
                                       R_y[:,index],
-                                    omega = omega[index])
+                                      omega = omega[index])
         P_end = time.time()
         Pcost += P_end - P_start
 
-        m = new_m
-        V_holder, W_holder, new_m = math.VW_Gram_Schmidt_fill_holder(
+        size_old = size_new
+        V_holder, W_holder, size_new = math.VW_Gram_Schmidt_fill_holder(
                                         V_holder = V_holder,
                                         W_holder = W_holder,
-                                               m = m,
+                                               m = size_old,
                                            X_new = X_new,
                                            Y_new = Y_new)
 
-        if new_m == m:
+        if size_new == size_old:
             print('All new guesses kicked out during GS orthonormalization')
             break
 
@@ -178,7 +179,7 @@ def TDDFT_solver(N_states, initial_guess, preconditioner,
                            N_itr = ii+1,
                            pcost = Pcost,
                            icost = init_time,
-                            N_mv = a.shape[0],
+                            N_mv = sub_A.shape[0],
                        wall_time = TDDFT_cost,
                   final_solution = omega.tolist(),
                 initial_solution = initial_energies.tolist(),
@@ -193,7 +194,8 @@ def TDDFT_solver(N_states, initial_guess, preconditioner,
     print(omega)
     print('Maximum residual norm = {:.2e}'.format(max_norm))
     print('Finished in {:d} steps, {:.2f} seconds'.format(ii+1, TDDFT_cost))
-    print('Final subspace size = {:d}'.format(a.shape[0]))
+    print('Final subspace size = {:d}'.format(sub_A.shape[0]))
+    print('Initial guess time : {:.2f} seconds, {:.2%}'.format(init_time, init_time/TDDFT_cost))
     print('Total precondition time: {:.2f} seconds, {:.2%}'.format(Pcost, Pcost/TDDFT_cost))
 
     show_memory_info('after TDDFT done')

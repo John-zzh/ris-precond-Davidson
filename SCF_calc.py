@@ -22,6 +22,7 @@ def show_memory_info(hint):
 
 def SCF_kernel(xyzfile = args.xyzfile,
                    mol = gto.Mole(),
+                charge = args.charge
              basis_set = args.basis_set,
                verbose = args.verbose,
             max_memory = args.memory,
@@ -39,6 +40,7 @@ def SCF_kernel(xyzfile = args.xyzfile,
     '''build geometry in PySCF'''
 
     mol.atom = atom_coordinates
+    mol.charge = charge
     mol.basis = basis_set
     mol.verbose = verbose
     mol.max_memory = max_memory
@@ -86,87 +88,154 @@ atom_coordinates, mol, mf, kernel_t = SCF_kernel()
 
 show_memory_info('after SCF')
 
-'''Collect everything needed from PySCF'''
+'''
+Collect everything needed from PySCF
+'''
 
-def gen_global_var(tddft, mf, mol, functional=args.functional):
-    '''
-    TDA_vind & TDDFT_vind are ab-initio matrix vector multiplication function
-    '''
-    td = tddft.TDA(mf)
-    TD = tddft.TDDFT(mf)
-    '''
-    hdiag is one dinension matrix, (A_size,)
-    '''
-    TDA_vind, hdiag = td.gen_vind(mf)
-    TDDFT_vind, Hdiag = TD.gen_vind(mf)
 
-    N_atm = mol.natm
-    mo_occ = mf.mo_occ
-    '''
-    mf.mo_occ is an array of occupance [2,2,2,2,2,0,0,0,0.....]
-    N_bf is the total amount of MOs
-    if no truncation, then max_vir = n_vir and n_occ + max_vir = N_bf
-    '''
+'''
+TDA_vind & TDDFT_vind are ab-initio matrix vector multiplication function
+'''
+td = tddft.TDA(mf)
+TD = tddft.TDDFT(mf)
+'''
+hdiag is one dinension matrix, (A_size,)
+'''
+TDA_vind, hdiag = td.gen_vind(mf)
+TDDFT_vind, Hdiag = TD.gen_vind(mf)
 
-    '''
-    produce orthonormalized coefficient matrix C, N_bf * N_bf
-    mf.mo_coeff is the unorthonormalized coefficient matrix
-    S = mf.get_ovlp()  is basis overlap matrix
-    S = np.dot(np.linalg.inv(c.T), np.linalg.inv(c))
+N_atm = mol.natm
+mo_occ = mf.mo_occ
+'''
+mf.mo_occ is an array of occupance [2,2,2,2,2,0,0,0,0.....]
+N_bf is the total amount of MOs
+if no truncation, then rest_vir = n_vir and n_occ + rest_vir = N_bf
+'''
 
-    C_matrix is the orthonormalized coefficient matrix
-    np.dot(C_matrix.T,C_matrix) is a an identity matrix
-    '''
-    S = mf.get_ovlp()
-    X = math.matrix_power(S, 0.5)
-    un_ortho_C_matrix = mf.mo_coeff
-    C_matrix = np.dot(X,mf.mo_coeff)
+'''
+produce orthonormalized coefficient matrix C, N_bf * N_bf
+mf.mo_coeff is the unorthonormalized coefficient matrix
+S = mf.get_ovlp()  is basis overlap matrix
+S = np.dot(np.linalg.inv(c.T), np.linalg.inv(c))
 
-    N_bf = len(mo_occ)
-    n_occ = len(np.where(mo_occ > 0)[0])
-    n_vir = len(np.where(mo_occ == 0)[0])
-    delta_hdiag = hdiag.reshape(n_occ, n_vir)
-    A_size = n_occ * n_vir
+C_matrix is the orthonormalized coefficient matrix
+np.dot(C_matrix.T,C_matrix) is a an identity matrix
+'''
+S = mf.get_ovlp()
+X = math.matrix_power(S, 0.5)
+un_ortho_C_matrix = mf.mo_coeff
+C_matrix = np.dot(X,mf.mo_coeff)
 
-    tol_eV = args.truncate_virtual/parameter.Hartree_to_eV
-    homo_vir = delta_hdiag[-1,:]
-    max_vir = len(np.where(homo_vir <= tol_eV)[0])
+N_bf = len(mo_occ)
+n_occ = len(np.where(mo_occ > 0)[0])
+n_vir = len(np.where(mo_occ == 0)[0])
+delta_hdiag = hdiag.reshape(n_occ, n_vir)
+A_size = n_occ * n_vir
 
-    max_vir_hdiag = delta_hdiag[:,:max_vir]
-    rst_vir_hdiag = delta_hdiag[:,max_vir:]
 
-    A_reduced_size = n_occ * max_vir
+'''
+N_bf:
+    trunced_occ                    rest_occ          rest_vir      truncated_vir
+n_occ*args.truncate_occupied                                          n_vir*args.truncate_virtual
+============================#======================|---------------#------------------------------
+                         n_occ                                   n_vir
+'''
 
-    '''
-    R_array is inter-particle distance array
-    unit == ’Bohr’, 5.29177210903(80)×10^(−11) m
-    '''
-    R_array = gto.mole.inter_distance(mol, coords=None)
 
-    a_x, beta, alpha = parameter.gen_alpha_beta_ax(functional)
 
-    if args.beta != None:
-        beta = args.beta
-        alpha = args.alpha
+homo_vir = delta_hdiag[-1,:]
+occ_lumo = delta_hdiag[:,0]
 
-    print('a_x =', a_x)
-    print('beta =', beta)
-    print('alpha =', alpha)
-    print('N_bf =', N_bf)
-    print('n_occ = ', n_occ)
-    print('n_vir = ', n_vir)
-    print('max_vir = ', max_vir)
-    print('A_size = ', A_size)
-    print('A_reduced_size =', A_reduced_size)
+'''
+the truncation thresholds for coulomb term must be larger than
+that of the exchange term
+'''
+vir_tol_eV = [i/parameter.Hartree_to_eV for i in args.truncate_virtual]
+cl_vir_tol_eV = vir_tol_eV[0]
+ex_vir_tol_eV = vir_tol_eV[1]
 
-    return (TDA_vind, TDDFT_vind, hdiag, delta_hdiag, max_vir_hdiag,
-        rst_vir_hdiag, N_atm, un_ortho_C_matrix, C_matrix, N_bf, n_occ, n_vir,
-        max_vir, A_size, A_reduced_size, R_array, a_x, beta, alpha)
+occ_tol_eV = [i/parameter.Hartree_to_eV for i in args.truncate_occupied]
+cl_occ_tol_eV = occ_tol_eV[0]
+ex_occ_tol_eV = occ_tol_eV[1]
 
-(TDA_vind, TDDFT_vind, hdiag, delta_hdiag, max_vir_hdiag, rst_vir_hdiag, N_atm,
-un_ortho_C_matrix, C_matrix, N_bf, n_occ, n_vir, max_vir, A_size,
-A_reduced_size, R_array, a_x, beta, alpha) = gen_global_var(tddft=tddft, mf=mf,
-mol=mol, functional=args.functional)
+'''
+cl_rest_vir, cl_truc_vir,
+cl_rest_occ, cl_truc_occ,
+ex_rest_vir, ex_truc_vir,
+ex_rest_occ, ex_truc_occ,
+cl_A_rest_size, ex_A_rest_size
+
+'''
+cl_rest_vir = len(np.where(homo_vir <= cl_vir_tol_eV)[0])
+ex_rest_vir = len(np.where(homo_vir <= ex_vir_tol_eV)[0])
+
+cl_rest_occ = len(np.where(occ_lumo <= cl_occ_tol_eV)[0])
+ex_rest_occ = len(np.where(occ_lumo <= ex_occ_tol_eV)[0])
+
+cl_truc_vir = n_vir - cl_rest_vir
+cl_truc_occ = n_occ - cl_rest_occ
+
+ex_truc_vir = n_vir - ex_rest_vir
+ex_truc_occ = n_occ - ex_rest_occ
+
+cl_A_rest_size = cl_rest_occ * cl_rest_vir
+ex_A_rest_size = ex_rest_occ * ex_rest_vir
+
+rest_occ, rest_vir = cl_rest_occ, cl_rest_vir
+reduced_occ, reduced_vir = cl_rest_occ, cl_rest_vir
+trunced_occ, trunced_vir = cl_truc_occ, cl_truc_vir
+A_reduced_size = cl_A_rest_size
+'''
+delta_hdiag:
+
+                --------------#-----------------------
+cl_truc_occ     |    hdiag1   |                      |
+                #-------------#                      |
+                |             |        hdiag3        |
+cl_rest_occ     |    hdiag2   |                      |
+                |             |                      |
+                --------------#-----------------------
+                  cl_rest_vir      cl_truc_vir
+'''
+
+delta_hdiag1 = delta_hdiag[:cl_truc_occ,:cl_rest_vir].copy()
+delta_hdiag2 = delta_hdiag[cl_truc_occ:,:cl_rest_vir].copy()
+delta_hdiag3 = delta_hdiag[:,cl_rest_vir:].copy()
+
+print('delta_hdiag2',delta_hdiag2.shape)
+
+
+'''
+R_array is inter-particle distance array
+unit == ’Bohr’, 5.29177210903(80)×10^(−11) m
+'''
+R_array = gto.mole.inter_distance(mol, coords=None)
+
+a_x, beta, alpha = parameter.gen_alpha_beta_ax(args.functional)
+
+# if args.beta != None:
+#     beta = args.beta
+#     alpha = args.alpha
+
+print('a_x =', a_x)
+# print('beta =', beta)
+# print('alpha =', alpha)
+print('N_bf =', N_bf)
+print('N_atm =', N_atm)
+
+print('n_occ =', n_occ)
+print('cl_rest_occ =', cl_rest_occ)
+print('ex_rest_occ =', ex_rest_occ)
+
+print('n_vir =', n_vir)
+print('cl_rest_vir = ', cl_rest_vir)
+print('ex_rest_vir = ', ex_rest_vir)
+
+print('A_size = ', A_size)
+print('cl_A_rest_size =', cl_A_rest_size)
+print('ex_A_rest_size =', ex_A_rest_size)
+
+print('reduced_vir =', reduced_vir)
 
 def TDA_matrix_vector(V):
     '''
@@ -194,22 +263,32 @@ def delta_fly(V):
     '''
     delta_hdiag.shape = (n_occ, n_vir)
     '''
-    delta_v = einsum("ia,iam->iam", delta_hdiag, V)
+    V = V.reshape(A_size,-1)
+    delta_v = V*hdiag.reshape(-1,1)
+    delta_v = delta_v.reshape(n_occ, n_vir, -1)
+    # delta_v = einsum("ia,iam->iam", delta_hdiag, V)
     return delta_v
 
-def delta_max_vir_fly(V):
+def delta_hdiag1_fly(V):
     '''
-    max_vir_hdiag.shape = (n_occ, max_vir)
+    hdiag3.shape = (rest_occ, rest_vir)
     '''
-    delta_max_vir_v = einsum("ia,iam->iam", max_vir_hdiag, V)
-    return delta_max_vir_v
+    delta_hdiag1_v = einsum("ia,iam->iam", delta_hdiag1, V)
+    return delta_hdiag1_v
 
-def delta_rst_vir_fly(V):
+def delta_hdiag2_fly(V):
     '''
-    max_vir_hdiag.shape = (n_occ, n_vir-max_vir)
+    rest_vir_hdiag.shape = (rest_occ, rest_vir)
     '''
-    delta_rst_vir_v = einsum("ia,iam->iam", rst_vir_hdiag, V)
-    return delta_rst_vir_v
+    delta_hdiag2_v = einsum("ia,iam->iam", delta_hdiag2, V)
+    return delta_hdiag2_v
+
+def delta_hdiag3_fly(V):
+    '''
+    rest_vir_hdiag.shape = (n_occ, trunced_vir)
+    '''
+    delta_hdiag3_v = einsum("ia,iam->iam", delta_hdiag3, V)
+    return delta_hdiag3_v
 
 def gen_P():
     mo_coeff = mf.mo_coeff
@@ -250,8 +329,4 @@ def gen_calc():
             return calc
 calc_name = gen_calc()
 
-global_var = (basename, atom_coordinates, mol, mf, kernel_t, TDA_vind,
-TDDFT_vind, hdiag, delta_hdiag, max_vir_hdiag, rst_vir_hdiag, N_atm,
-un_ortho_C_matrix, C_matrix, N_bf, n_occ, n_vir, max_vir, A_size,
-A_reduced_size, R_array, a_x, beta, alpha, TDA_matrix_vector,
-TDDFT_matrix_vector, static_polarizability_matrix_vector)
+# print(mol._basis)

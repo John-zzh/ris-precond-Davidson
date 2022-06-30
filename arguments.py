@@ -15,10 +15,11 @@ def gen_args():
     parser.add_argument('-x', '--xyzfile',          type=str,   default='methanol.xyz',  help='xyz filename (molecule.xyz)')
     parser.add_argument('-chk', '--checkfile',      type=str2bool,  default=True, help='checkpoint filename (.chk)')
     parser.add_argument('-m', '--method',           type=str,   default='RKS', help='RHF RKS UHF UKS')
-    parser.add_argument('-f', '--functional',       type=str,   default='pbe0',  help='xc functional')
+    parser.add_argument('-f', '--functional',       type=str,   default=None,  help='xc functional')
     parser.add_argument('-b', '--basis_set',        type=str,   default='def2-svp',  help='basis set')
     parser.add_argument('-df', '--density_fit',     type=str2bool,  default=True,  help='density fitting turn on')
     parser.add_argument('-g', '--grid_level',       type=int,   default='3',   help='0-9, 9 is best')
+    parser.add_argument('-c', '--charge',           type=int,   default=0,   help='molecular net charge')
 
     parser.add_argument('-n','--nstates',           type=int,   default = 5,      help='number of excited states')
     parser.add_argument('-pytd','--pytd',           type=str2bool,  default = False , help='whether to compare with PySCF TDDFT')
@@ -30,25 +31,34 @@ def gen_args():
     parser.add_argument('-spolar','--spolar',       type=str2bool,  default = False, help='perform static polarizability')
     parser.add_argument('-sTDA','--sTDA',           type=str2bool,  default = False, help='perform sTDA calculation')
     parser.add_argument('-sTDDFT','--sTDDFT',       type=str2bool,  default = False, help='perform sTDDFT calculation')
-    parser.add_argument('-TDDFT_as','--TDDFT_as',   type=str2bool,  default = False, help='perform TDDFT_as calculation')
+    parser.add_argument('-TDDFT_as','--TDDFT_as',   type=str2bool,  default = False, help='perform TDDFT_as preconditioner')
 
-    parser.add_argument('-spectra','--spectra',     type=str2bool,  default = True, help='plot excitaition spectra peaks')
+    parser.add_argument('-TDA_as_profile','--TDA_as_profile',   type=str2bool,  default = False, help='perform TDA_as enery calculation')
+    parser.add_argument('-TDDFT_as_profile','--TDDFT_as_profile',   type=str2bool,  default = False, help='perform TDDFT_as enery calculation')
+    parser.add_argument('-spolar_as_profile','--spolar_as_profile',   type=str2bool,  default = False, help='perform spolar_as calculation')
+    parser.add_argument('-dpolar_as_profile','--dpolar_as_profile',   type=str2bool,  default = False, help='perform dpolar_as calculation')
 
-    parser.add_argument('-etatune','--etatune',     type=str2bool,  default = False, help='optimize accoriding to eta')
+    parser.add_argument('-test','--test',   type=str2bool,  default = True, help='check methanol pbe0 energy')
+
+    parser.add_argument('-spectra','--spectra',     type=str2bool,  default = False, help='plot excitaition spectra peaks')
+
+    # parser.add_argument('-etatune','--etatune',     type=str2bool,  default = False, help='optimize accoriding to eta')
     parser.add_argument('-eta','--eta',             type=str2bool,  default = False, help='use the external eta set')
-    parser.add_argument('-bounds','--bounds',       type=float,  default = 0.1, help='0.9-1.1')
-    parser.add_argument('-step','--step',           type=float,  default = 1e-4, help='1e-2 - 1e-9')
-    parser.add_argument('-ftol','--ftol',           type=float,  default = 1e-3, help='1e-2 - 1e-9')
+    # parser.add_argument('-bounds','--bounds',       type=float,  default = 0.1, help='0.9-1.1')
+    # parser.add_argument('-step','--step',           type=float,  default = 1e-4, help='1e-2 - 1e-9')
+    # parser.add_argument('-ftol','--ftol',           type=float,  default = 1e-3, help='1e-2 - 1e-9')
 
+    # parser.add_argument('-Uread','--Uread',         type=str2bool,  default = False, help='read Uk value from txt file')
+    parser.add_argument('-coulomb_ex','--coulomb_ex', type=str,  default = 'coulomb', help='coulomb & exchange & all & none')
 
-    parser.add_argument('-Uread','--Uread',         type=str2bool,  default = False, help='read Uk value from txt file')
-    parser.add_argument('-coulomb_ex','--coulomb_ex', type=str,  default = 'all', help='coulomb & exchange & all & none')
-
-    parser.add_argument('-Uconst','--Uconst',       type=float,  default = 0.0, help='use a constant 0.123 as s and p orbital exponential')
+    # parser.add_argument('-Uconst','--Uconst',       type=float,  default = 0.0, help='use a constant 0.123 as s and p orbital exponential')
     parser.add_argument('-Uk','--Uk',               type=float,  default = 1.0, help='use k/R**0.5 as s orbital exponential')
     parser.add_argument('-Uk_tune','--Uk_tune',     type=str2bool,  default = False, help='tune the k parameter of k/R**0.5')
 
-    parser.add_argument('-TV','--truncate_virtual', type=float, default = 40,    help='the threshold to truncate virtual orbitals, in eV')
+    parser.add_argument('-TV','--truncate_virtual',  type=float, default = [100000,40], nargs='+', help='the threshold to truncate virtual orbitals, in eV or %')
+    parser.add_argument('-TO','--truncate_occupied', type=float, default = [100000,40], nargs='+', help='the threshold to truncate occupied orbitals, in eV or %')
+    parser.add_argument('-Tex','--truncate_exchange_only', type=str2bool, default = True,    help='only truncate the exchange integrals')
+    parser.add_argument('-GS','--GS_double',        type=str2bool, default = False, help='double filter in GS orthonormalization')
 
     parser.add_argument('-o','--ip_options',        type=int,   default = [0], nargs='+', help='0-7')
     parser.add_argument('-t','--conv_tolerance',    type=float, default= 1e-5, help='residual norm Convergence threhsold')
@@ -62,13 +72,15 @@ def gen_args():
     parser.add_argument('-M','--memory',            type=int,   default= 4000, help='max_memory')
     parser.add_argument('-v','--verbose',           type=int,   default= 3,    help='mol.verbose = 3,4,5')
 
+    parser.add_argument('-einsum','--einsum',       type=str,   default= 'pyscf',    help='pyscf, opt, parallel')
+
     parser.add_argument('-beta','--beta',           type=float, default= None,  help='beta = 4.00')
     parser.add_argument('-alpha','--alpha',         type=float, default= None,  help='alpha = 0.83')
-
-    parser.add_argument('-tuning','--tuning',       type=str2bool, default= False,    help='turn on on-the-fly tuning')
-
-    parser.add_argument('-beta_list','--beta_list',   type=float, default= [],    nargs='+', help='8 7 6 5 4 3 2')
-    parser.add_argument('-alpha_list','--alpha_list', type=float, default= [],    nargs='+', help='8 7 6 5 4 3 2 1.8 1 0.8')
+    #
+    # parser.add_argument('-tuning','--tuning',       type=str2bool, default= False,    help='turn on on-the-fly tuning')
+    #
+    # parser.add_argument('-beta_list','--beta_list',   type=float, default= [],    nargs='+', help='8 7 6 5 4 3 2')
+    # parser.add_argument('-alpha_list','--alpha_list', type=float, default= [],    nargs='+', help='8 7 6 5 4 3 2 1.8 1 0.8')
 
     args = parser.parse_args()
     if args.dpolar == True and args.dpolar_omega == []:

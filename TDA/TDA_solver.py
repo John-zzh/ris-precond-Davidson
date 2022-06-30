@@ -9,14 +9,13 @@ import time
 import numpy as np
 
 from mathlib import math, parameter
-from SCF_calc import A_size, hdiag, max_vir_hdiag, TDA_matrix_vector
+from SCF_calc import A_size, hdiag, TDA_matrix_vector
 from dump_yaml import fill_dictionary
 
 def TDA_solver(N_states, initial_guess, preconditioner,
             matrix_vector_product = TDA_matrix_vector,
                            A_size = A_size,
                             hdiag = hdiag,
-                    max_vir_hdiag = max_vir_hdiag,
                               max = 35,
                          conv_tol = 1e-5,
                      extrainitial = 8):
@@ -33,17 +32,19 @@ def TDA_solver(N_states, initial_guess, preconditioner,
     iteration_list = Davidson_dict['iteration']
 
 
-    m = 0
-    new_m = min([N_states + extrainitial, 2*N_states, A_size])
-    V = np.zeros((A_size, max*N_states + new_m))
-    W = np.zeros_like(V)
+    size_old = 0
+    size_new = min([N_states + extrainitial, 2*N_states, A_size])
 
+    max_N_mv = max*N_states + size_new
+    V_holder = np.zeros((A_size, max_N_mv))
+    W_holder = np.zeros_like(V_holder)
+    sub_A_holder = np.zeros((max_N_mv,max_N_mv))
     '''
-    generate the initial guesss and put into the basis holder V
+    generate the initial guesss and put into the basis holder V_holder
     '''
 
     init_start = time.time()
-    initial_vectors, initial_energies = initial_guess(N_states=new_m, hdiag=hdiag)
+    initial_vectors, initial_energies = initial_guess(N_states=size_new, hdiag=hdiag)
     # print('initial_vectors.shape', initial_vectors.shape)
     initial_energies = initial_energies[:N_states]
 
@@ -51,7 +52,7 @@ def TDA_solver(N_states, initial_guess, preconditioner,
     print('excitation energies:')
     print(initial_energies)
 
-    V[:,:new_m] = initial_vectors[:,:]
+    V_holder[:,:size_new] = initial_vectors[:,:]
     init_end = time.time()
     init_cost = init_end - init_start
 
@@ -65,12 +66,13 @@ def TDA_solver(N_states, initial_guess, preconditioner,
         istart = time.time()
 
         MV_start = time.time()
-        W[:, m:new_m] = matrix_vector_product(V[:,m:new_m])
+        W_holder[:, size_old:size_new] = matrix_vector_product(V_holder[:,size_old:size_new])
         MV_end = time.time()
         iMVcost = MV_end - MV_start
         MVcost += iMVcost
-        sub_A = np.dot(V[:,:new_m].T, W[:,:new_m])
-        sub_A = math.symmetrize(sub_A)
+
+        sub_A_holder = math.gen_VW(sub_A_holder, V_holder, W_holder, size_old, size_new)
+        sub_A = sub_A_holder[:size_new,:size_new]
         print('subspace size: ', sub_A.shape[0])
 
         '''
@@ -81,8 +83,8 @@ def TDA_solver(N_states, initial_guess, preconditioner,
         sub_eigenvalue = sub_eigenvalue[:N_states]
         sub_eigenket = sub_eigenket[:,:N_states]
 
-        full_guess = np.dot(V[:,:new_m], sub_eigenket)
-        AV = np.dot(W[:,:new_m], sub_eigenket)
+        full_guess = np.dot(V_holder[:,:size_new], sub_eigenket)
+        AV = np.dot(W_holder[:,:size_new], sub_eigenket)
         residual = AV - full_guess * sub_eigenvalue
 
         r_norms = np.linalg.norm(residual, axis=0).tolist()
@@ -113,9 +115,9 @@ def TDA_solver(N_states, initial_guess, preconditioner,
         P_end = time.time()
         Pcost += P_end - P_start
 
-        m = new_m
-        V, new_m = math.Gram_Schmidt_fill_holder(V, m, new_guess)
-        print('amount of newly generated guesses:', new_m - m)
+        size_old = size_new
+        V_holder, size_new = math.Gram_Schmidt_fill_holder(V_holder, size_old, new_guess)
+        print('amount of newly generated guesses:', size_new - size_old)
 
         iend = time.time()
         icost = iend - istart

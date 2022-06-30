@@ -13,7 +13,10 @@ import numpy as np
 from approx_mv import approx_TDA_mv
 
 from arguments import args
-from SCF_calc import hdiag, max_vir_hdiag, n_occ, n_vir, max_vir
+from SCF_calc import (n_occ, n_vir,
+                    cl_rest_vir, cl_truc_occ, cl_truc_vir,
+                    ex_truc_occ, cl_rest_occ,
+                    delta_hdiag2, hdiag)
 
 from mathlib import math
 from mathlib.diag_ip import TDA_diag_initial_guess, TDA_diag_preconditioner
@@ -23,16 +26,23 @@ from mathlib.diag_ip import TDA_diag_initial_guess, TDA_diag_preconditioner
 def TDA_iter_preconditioner(residual, sub_eigenvalue,
                         matrix_vector_product = approx_TDA_mv,
                                      conv_tol = args.precond_TOL,
-                                          max = 30,
-                                          hdiag = hdiag,
+                                          max = 20,
+                                        hdiag = hdiag,
                                         n_occ = n_occ,
                                         n_vir = n_vir,
-                                      max_vir = max_vir):
+                                  trunced_occ = cl_truc_occ,
+                                  reduced_occ = cl_rest_occ,
+                                  trunced_vir = cl_truc_vir,
+                                  reduced_vir = cl_rest_vir):
     '''
-    iterative TDA semi-empirical preconditioner
+    iterative preconditioner
+    [ diag1   0        0 ] [0]    [0]     [P1]
+    [  0   reduced_A   0 ] [X]  - [X] Ω = [P2]
+    [  0      0     diag3] [0]    [0]     [P3]
+
     (A - Ω*I)^-1 P = X
     AX - X*Ω = P
-    A_truunc X1 - X1*Ω = P1
+    reduced_A X2 - X1*Ω = P2
     P is residuals (in macro Davidson's loop) to be preconditioned
     '''
     p_start = time.time()
@@ -44,22 +54,31 @@ def TDA_iter_preconditioner(residual, sub_eigenvalue,
     Residuals = residual.reshape(n_occ, n_vir,-1)
 
     omega = sub_eigenvalue
-    A_reduced_size = n_occ * max_vir
-    P = Residuals[:,:max_vir,:]
+
+    A_size = n_occ * n_vir
+    A_reduced_size = reduced_occ * reduced_vir
+    P = Residuals[trunced_occ:,:reduced_vir,:].copy()
     P = P.reshape(A_reduced_size,-1)
 
     pnorm = np.linalg.norm(P, axis=0, keepdims = True)
-    P = P/pnorm
+    P /= pnorm
 
     start = time.time()
 
-    V = np.zeros((A_reduced_size, (max+1)*N_vectors))
-    W = np.zeros((A_reduced_size, (max+1)*N_vectors))
-    count = 0
 
-    '''now V and W are empty holders, 0 vectors
+    max_N_mv = (max+1)*N_vectors
+    V_holder = np.zeros((A_reduced_size, max_N_mv))
+    W_holder = np.zeros_like(V_holder)
+    sub_A_holder = np.zeros((max_N_mv,max_N_mv))
+    sub_P_holder = np.zeros((max_N_mv,N_vectors))
+    size_old = 0
+
+    sub_A_holder = np.zeros((max_N_mv,max_N_mv))
+
+
+    '''now V_holder and W_holder are empty holders, 0 vectors
        W = sTDA_mv(V)
-       count is the amount of vectors that already sit in the holder
+       size_old is the amount of vectors that already sit in the holder
        in each iteration, V and W will be filled/updated with new guess basis
        which is the preconditioned residuals
     '''
@@ -68,17 +87,21 @@ def TDA_iter_preconditioner(residual, sub_eigenvalue,
        Dp is the preconditioner
        <t: returns np.sign(D)*t; else: D
     '''
-    t = 1e-10
+    t = 1e-14
     Dp = np.repeat(hdiag.reshape(-1,1), N_vectors, axis=1) - omega
     Dp = np.where(abs(Dp)<t, np.sign(Dp)*t, Dp)
     Dp = Dp.reshape(n_occ, n_vir, -1)
-    D = Dp[:,:max_vir,:].reshape(A_reduced_size,-1)
+    # print('Dp.shape', Dp.shape)
+    D = Dp[trunced_occ:,:reduced_vir,:]
+    # print('D.shape', Dp.shape)
+    # print('A_reduced_size', A_reduced_size)
+    D = D.reshape(A_reduced_size,-1)
     inv_D = 1/D
 
     '''generate initial guess'''
     Xig = P*inv_D
-    count = 0
-    V, new_count = math.Gram_Schmidt_fill_holder(V, count, Xig)
+    size_old = 0
+    V_holder, size_new = math.Gram_Schmidt_fill_holder(V_holder, size_old, Xig, double = False)
 
     mvcost = 0
     GScost = 0
@@ -86,31 +109,35 @@ def TDA_iter_preconditioner(residual, sub_eigenvalue,
     subgencost = 0
 
     for ii in range(max):
-
+        # print('step', ii+1)
+        # print('size_old', size_old)
+        # print('size_new', size_new)
         '''
         project A matrix and vector P into subspace
         '''
         mvstart = time.time()
-        W[:, count:new_count] = matrix_vector_product(V[:, count:new_count])
+        W_holder[:, size_old:size_new] = matrix_vector_product(V_holder[:, size_old:size_new])
         mvend = time.time()
         mvcost += mvend - mvstart
 
         substart = time.time()
-        sub_P= np.dot(V[:,:new_count].T, P)
-        sub_A = np.dot(V[:,:new_count].T, W[:,:new_count])
+
+        sub_A_holder = math.gen_VW(sub_A_holder, V_holder, W_holder, size_old, size_new)
+        sub_P_holder = math.gen_VP(sub_P_holder, V_holder, P, size_old, size_new)
+
+        sub_A = sub_A_holder[:size_new,:size_new]
+        sub_P = sub_P_holder[:size_new,:]
+
         subend = time.time()
         subgencost += subend - substart
-
-        sub_A = math.symmetrize(sub_A)
-        m = np.shape(sub_A)[0]
 
         substart = time.time()
         sub_guess = math.solve_AX_Xla_B(sub_A, omega, sub_P)
         subend = time.time()
         subcost += subend - substart
 
-        full_guess = np.dot(V[:,:new_count], sub_guess)
-        residual = np.dot(W[:,:new_count], sub_guess) - full_guess*omega - P
+        full_guess = np.dot(V_holder[:,:size_new], sub_guess)
+        residual = np.dot(W_holder[:,:size_new], sub_guess) - full_guess*omega - P
 
         r_norms = np.linalg.norm(residual, axis=0).tolist()
 
@@ -129,8 +156,8 @@ def TDA_iter_preconditioner(residual, sub_eigenvalue,
         new_guess = residual[:,index]*inv_D[:,index]
 
         GSstart = time.time()
-        count = new_count
-        V, new_count = math.Gram_Schmidt_fill_holder(V, count, new_guess)
+        size_old = size_new
+        V_holder, size_new = math.Gram_Schmidt_fill_holder(V_holder, size_old, new_guess, double = False)
         GSend = time.time()
         GScost += GSend - GSstart
 
@@ -138,7 +165,7 @@ def TDA_iter_preconditioner(residual, sub_eigenvalue,
     p_cost = p_end - p_start
 
     if ii == (max-1):
-        print('=== TDA Preconditioner Failed Due to Iteration Limit ===')
+        print('=== TDA Preconditioner Hit Iteration Limit ===')
         print('current residual norms', r_norms)
     else:
         print('TDA iterative preconditioner Done')
@@ -147,7 +174,7 @@ def TDA_iter_preconditioner(residual, sub_eigenvalue,
     print('final subspace', sub_A.shape[0])
     print('max_norm = {:.2e}'.format(max_norm))
 
-    for enrty in ['subgencost', 'mvcost', 'GScost', 'subcost']:
+    for enrty in ['mvcost', 'GScost', 'subgencost', 'subcost']:
         cost = locals()[enrty]
         print("{:<10} {:<5.4f}s  {:<5.2%}".format(enrty, cost, cost/p_cost))
     full_guess = full_guess*pnorm
@@ -156,19 +183,30 @@ def TDA_iter_preconditioner(residual, sub_eigenvalue,
     return the untruncated vectors
     '''
     U = np.zeros((n_occ,n_vir,N_vectors))
-    U[:,:max_vir,:] = full_guess.reshape(n_occ,max_vir,-1)
+    U[trunced_occ:,:reduced_vir,:] = full_guess.reshape(reduced_occ,reduced_vir,-1)
 
-    if max_vir < n_vir:
-        ''' DX2 - X2*Ω = P2'''
-        P2 = Residuals[:,max_vir:,:]
-        P2 = P2.reshape(n_occ*(n_vir-max_vir),-1)
+    if reduced_occ < n_occ:
+        ''' D1*X1 - X1*Ω = P1'''
+        P1 = Residuals[:trunced_occ,:reduced_vir,:]
+        P1 = P1.reshape(trunced_occ*reduced_vir,-1)
 
-        D2 = Dp[:,max_vir:,:]
-        D2 = D2.reshape(n_occ*(n_vir-max_vir),-1)
-        X2 = (P2/D2).reshape(n_occ,n_vir-max_vir,-1)
-        U[:,max_vir:,:] = X2
+        D1 = Dp[:trunced_occ,:reduced_vir,:]
+        D1 = D1.reshape(trunced_occ*reduced_vir,-1)
+        X1 = (P1/D1).reshape(trunced_occ,reduced_vir,-1)
+        U[:trunced_occ,:reduced_vir,:] = X1
 
-    U = U.reshape(n_occ*n_vir, -1)
+    if reduced_vir < n_vir:
+        ''' D3*X3 - X3*Ω = P3'''
+        P3 = Residuals[:,reduced_vir:,:]
+        P3 = P3.reshape(n_occ*trunced_vir,-1)
+
+        D3 = Dp[:,reduced_vir:,:]
+        D3 = D3.reshape(n_occ*trunced_vir,-1)
+        X3 = (P3/D3).reshape(n_occ, trunced_vir, -1)
+        U[:,reduced_vir:,:] = X3
+
+
+    U = U.reshape(A_size, -1)
 
     '''if we want to know more about the preconditioning process,
         return the current_dic, rather than origin_dic'''
