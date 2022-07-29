@@ -374,8 +374,8 @@ def solve_AX_Xla_B(A, omega, Q):
     Q = Q/Qnorm
     N_vectors = len(omega)
     a, u = np.linalg.eigh(A)
-    print('a =',a)
-    print('omega =',omega)
+    # print('a =',a)
+    # print('omega =',omega)
     ub = np.dot(u.T, Q)
     ux = np.zeros_like(Q)
     for k in range(N_vectors):

@@ -22,7 +22,7 @@ def show_memory_info(hint):
 
 def SCF_kernel(xyzfile = args.xyzfile,
                    mol = gto.Mole(),
-                charge = args.charge
+                charge = args.charge,
              basis_set = args.basis_set,
                verbose = args.verbose,
             max_memory = args.memory,
@@ -71,6 +71,7 @@ def SCF_kernel(xyzfile = args.xyzfile,
         '''use the *.chk file as scf input'''
         mf.chkfile = basename + '_' + functional + '.chk'
         mf.init_guess = 'chkfile'
+        mf.max_cycle = 0
     mf.conv_tol = 1e-10
     print ('Molecule built')
     print ('Calculating SCF Energy...')
