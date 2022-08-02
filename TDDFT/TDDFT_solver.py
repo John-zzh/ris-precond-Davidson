@@ -68,6 +68,8 @@ def TDDFT_solver(N_states, initial_guess, preconditioner,
     initial_energies = initial_energies[:N_states]
 
     print('size_new =', size_new)
+    print('initial_energies')
+    print(initial_energies)
     print('initial guess done')
 
     Pcost = 0

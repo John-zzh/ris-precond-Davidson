@@ -11,10 +11,9 @@
 
 
 
-python ../Davidson.py -x *.xyz -b def2-TZVP -f pbe0 -n 5 -df True \
+python ../Davidson.py -x *.xyz -b def2-svp -f pbe0 -n 5 -df True \
 -v 3 -chk true -TDDFT_as True \
 -dscf true \
--coulomb_ex none \
 -cl_aux_p true -ex_aux_p False \
 -Uc 1 -Ue 1 \
 -TV 1000000 1000000 -TO 1000000 1000000 \

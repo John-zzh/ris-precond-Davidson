@@ -30,13 +30,13 @@ def main():
     # for i in range(1):
     #     start = time.time()
     # if args.test == True and args.coulomb_ex == 'coulomb':
-
+    '''
+    PBE0/def2-SVP/notruncation/columb with p, exchange no p
+    '''
     if args.TDA_as_profile == True:
         print('args.TDA_as_profile == True')
         U, current = TDA_iter_initial_guess(args.nstates, conv_tol = args.conv_tolerance)
-        '''
-        PBE0/def2-SVP/notruncation
-        '''
+
         standard = np.array([7.21125852,8.90473556,9.11320684,9.85079603,
                             10.13011112,10.62269141,10.64366598,11.53150119,
                             11.72485107,11.95051588,12.17699229,12.70232019,
