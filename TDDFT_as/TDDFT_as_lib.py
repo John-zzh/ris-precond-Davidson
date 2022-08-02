@@ -35,23 +35,21 @@ if args.functional in parameter.RSH_F:
 
 
 class TDDFT_as(object):
-    def __init__(self, Uk = args.Uk):
-        # if args.Uread == True:
-        #     '''
-        #     read Uk from txt
-        #     '''
-        #     file = os.popen('ls *_Uk.txt').readlines()[0].replace('\n', '')
-        #     self.Uk = float(np.loadtxt(file))
-        #
-        # else:
-        self.Uk = Uk
+    # def __init__(self, Uk = args.Uk):
+    #     # if args.Uread == True:
+    #     #     '''
+    #     #     read Uk from txt
+    #     #     '''
+    #     #     file = os.popen('ls *_Uk.txt').readlines()[0].replace('\n', '')
+    #     #     self.Uk = float(np.loadtxt(file))
+    #     #
+    #     # else:
+    #     self.Uk = Uk
 
-    def gen_auxmol(self, add_p = True):
-        print('asigning auxiliary basis set')
+    def gen_auxmol(self, U=1, add_p=True):
+        print('asigning auxiliary basis set, add p function =', add_p)
+        print('U =', U)
 
-        Uk = self.Uk
-
-        # print('Uk =', Uk)
 
         auxmol = gto.M(atom=atom_coordinates, parse_arg = False)
         '''
@@ -86,7 +84,7 @@ class TDDFT_as(object):
             atom_index = auxmol_basis_keys[i]
             atom = atom_index.split('^')[0]
 
-            exp = parameter.as_exp[atom]
+            exp = parameter.as_exp[atom] * U
 
             if atom != 'H' and add_p == True:
                 aux_basis[atom_index] = [[0, [exp, 1.0]],[1, [exp, 1.0]]]
@@ -142,23 +140,23 @@ class TDDFT_as(object):
 
 
         print('eri3c.shape', eri3c.shape)
-        R = np.linalg.norm(eri3c, axis = 2)
-        # print('R.shape', R.shape)
-        # print('math.check_symmetry(R)', math.check_symmetry(R))
-
-        aoslice = mol.aoslice_by_atom()
-        T = np.zeros((N_atm, N_atm))
-        # print('T.shape', T.shape)
-        for A in range(N_atm):
-            for B in range(A, N_atm):
-                A_shst, A_shend, A_atstart, A_atend = aoslice[A]
-                B_shst, B_shend, B_atstart, B_atend = aoslice[B]
-                T[A,B] = np.linalg.norm(R[A_atstart:A_atend, B_atstart:B_atend])
-
-        T = math.utriangle_symmetrize(T)
-        # print('T.shape', T.shape)
-        # print(T)
-        np.savetxt(calc+'_T.txt', T, fmt='%1.2e')
+        # R = np.linalg.norm(eri3c, axis = 2)
+        # # print('R.shape', R.shape)
+        # # print('math.check_symmetry(R)', math.check_symmetry(R))
+        #
+        # aoslice = mol.aoslice_by_atom()
+        # T = np.zeros((N_atm, N_atm))
+        # # print('T.shape', T.shape)
+        # for A in range(N_atm):
+        #     for B in range(A, N_atm):
+        #         A_shst, A_shend, A_atstart, A_atend = aoslice[A]
+        #         B_shst, B_shend, B_atstart, B_atend = aoslice[B]
+        #         T[A,B] = np.linalg.norm(R[A_atstart:A_atend, B_atstart:B_atend])
+        #
+        # T = math.utriangle_symmetrize(T)
+        # # print('T.shape', T.shape)
+        # # print(T)
+        # np.savetxt(calc+'_T.txt', T, fmt='%1.2e')
         # aoslice = mol.aoslice_by_atom()
         # q_tensors = np.zeros([N_atm, N_bf, N_bf])
         # for atom_id in range(N_atm):
@@ -323,26 +321,31 @@ class TDDFT_as(object):
 
     def build(self):
 
-        if args.coulomb_ex != 'none':
-            auxmol_with_p = self.gen_auxmol(add_p = True)
-        if args.coulomb_ex != 'all':
-            auxmol_without_p = self.gen_auxmol(add_p = False)
+        # if args.coulomb_ex != 'none':
+        #     auxmol_with_p = self.gen_auxmol(U=args.coulomb_U, add_p=True)
+        # if args.coulomb_ex != 'all':
+        #     auxmol_without_p = self.gen_auxmol(U=args.exchange_U, add_p=False)
+        #
+        # if args.coulomb_ex == 'none':
+        #     auxmol_cl = auxmol_without_p
+        #     auxmol_ex = auxmol_without_p
+        #
+        # elif args.coulomb_ex == 'all':
+        #     auxmol_cl = auxmol_with_p
+        #     auxmol_ex = auxmol_with_p
+        #
+        # elif args.coulomb_ex == 'coulomb':
+        #     auxmol_cl = auxmol_with_p
+        #     auxmol_ex = auxmol_without_p
+        #
+        # elif args.coulomb_ex == 'exchange':
+        #     auxmol_cl = auxmol_without_p
+        #     auxmol_ex = auxmol_with_p
 
-        if args.coulomb_ex == 'none':
-            auxmol_cl = auxmol_without_p
-            auxmol_ex = auxmol_without_p
 
-        elif args.coulomb_ex == 'all':
-            auxmol_cl = auxmol_with_p
-            auxmol_ex = auxmol_with_p
+        auxmol_cl = self.gen_auxmol(U=args.coulomb_U, add_p=args.coulomb_aux_add_p)
+        auxmol_ex = self.gen_auxmol(U=args.exchange_U, add_p=args.exchange_aux_add_p)
 
-        elif args.coulomb_ex == 'coulomb':
-            auxmol_cl = auxmol_with_p
-            auxmol_ex = auxmol_without_p
-
-        elif args.coulomb_ex == 'exchange':
-            auxmol_cl = auxmol_without_p
-            auxmol_ex = auxmol_with_p
 
         '''
         the 2c2e and 3c2e integrals with/without RSH

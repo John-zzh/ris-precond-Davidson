@@ -4,6 +4,7 @@
 absolute import
 '''
 import os,sys
+import numpy as np
 script_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(script_dir)
 
@@ -34,6 +35,7 @@ def main():
                               max = args.max)
 
         dump_yaml(Davidson_dict, option)
+        np.savetxt('TDDFT', Excitation_energies, fmt='%.8f')
 
 if __name__ == '__main__':
     main()

@@ -28,6 +28,7 @@ def SCF_kernel(xyzfile = args.xyzfile,
             max_memory = args.memory,
                 method = args.method,
              checkfile = args.checkfile,
+                  dscf = args.dscf,
            density_fit = args.density_fit,
             functional = args.functional,
             grid_level = args.grid_level):
@@ -71,7 +72,8 @@ def SCF_kernel(xyzfile = args.xyzfile,
         '''use the *.chk file as scf input'''
         mf.chkfile = basename + '_' + functional + '.chk'
         mf.init_guess = 'chkfile'
-        mf.max_cycle = 0
+        if args.dscf == True:
+            mf.max_cycle = 0
     mf.conv_tol = 1e-10
     print ('Molecule built')
     print ('Calculating SCF Energy...')
@@ -151,13 +153,13 @@ occ_lumo = delta_hdiag[:,0]
 the truncation thresholds for coulomb term must be larger than
 that of the exchange term
 '''
-vir_tol_eV = [i/parameter.Hartree_to_eV for i in args.truncate_virtual]
-cl_vir_tol_eV = vir_tol_eV[0]
-ex_vir_tol_eV = vir_tol_eV[1]
+vir_tol_hartree = [i/parameter.Hartree_to_eV for i in args.truncate_virtual]
+cl_vir_tol_hartree = vir_tol_hartree[0]
+ex_vir_tol_hartree = vir_tol_hartree[1]
 
-occ_tol_eV = [i/parameter.Hartree_to_eV for i in args.truncate_occupied]
-cl_occ_tol_eV = occ_tol_eV[0]
-ex_occ_tol_eV = occ_tol_eV[1]
+occ_tol_hartree = [i/parameter.Hartree_to_eV for i in args.truncate_occupied]
+cl_occ_tol_hartree = occ_tol_hartree[0]
+ex_occ_tol_hartree = occ_tol_hartree[1]
 
 '''
 cl_rest_vir, cl_truc_vir,
@@ -167,11 +169,11 @@ ex_rest_occ, ex_truc_occ,
 cl_A_rest_size, ex_A_rest_size
 
 '''
-cl_rest_vir = len(np.where(homo_vir <= cl_vir_tol_eV)[0])
-ex_rest_vir = len(np.where(homo_vir <= ex_vir_tol_eV)[0])
+cl_rest_vir = len(np.where(homo_vir <= cl_vir_tol_hartree)[0])
+ex_rest_vir = len(np.where(homo_vir <= ex_vir_tol_hartree)[0])
 
-cl_rest_occ = len(np.where(occ_lumo <= cl_occ_tol_eV)[0])
-ex_rest_occ = len(np.where(occ_lumo <= ex_occ_tol_eV)[0])
+cl_rest_occ = len(np.where(occ_lumo <= cl_occ_tol_hartree)[0])
+ex_rest_occ = len(np.where(occ_lumo <= ex_occ_tol_hartree)[0])
 
 cl_truc_vir = n_vir - cl_rest_vir
 cl_truc_occ = n_occ - cl_rest_occ

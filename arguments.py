@@ -13,7 +13,8 @@ def str2bool(str):
 def gen_args():
     parser = argparse.ArgumentParser(description='Davidson')
     parser.add_argument('-x', '--xyzfile',          type=str,   default='methanol.xyz',  help='xyz filename (molecule.xyz)')
-    parser.add_argument('-chk', '--checkfile',      type=str2bool,  default=True, help='checkpoint filename (.chk)')
+    parser.add_argument('-chk', '--checkfile',      type=str2bool,  default=True, help='use checkpoint file')
+    parser.add_argument('-dscf', '--dscf',      type=str2bool,  default=False, help='0 SCF iterations')
     parser.add_argument('-m', '--method',           type=str,   default='RKS', help='RHF RKS UHF UKS')
     parser.add_argument('-f', '--functional',       type=str,   default=None,  help='xc functional')
     parser.add_argument('-b', '--basis_set',        type=str,   default='def2-svp',  help='basis set')
@@ -51,13 +52,19 @@ def gen_args():
     # parser.add_argument('-Uread','--Uread',         type=str2bool,  default = False, help='read Uk value from txt file')
     parser.add_argument('-coulomb_ex','--coulomb_ex', type=str,  default = 'coulomb', help='coulomb & exchange & all & none')
 
+    parser.add_argument('-cl_aux_p','--coulomb_aux_add_p',  type=str2bool,  default = True, help='s or sp')
+    parser.add_argument('-ex_aux_p','--exchange_aux_add_p', type=str2bool,  default = False, help='s or sp')
+
+
     # parser.add_argument('-Uconst','--Uconst',       type=float,  default = 0.0, help='use a constant 0.123 as s and p orbital exponential')
-    parser.add_argument('-Uk','--Uk',               type=float,  default = 1.0, help='use k/R**0.5 as s orbital exponential')
+    parser.add_argument('-Uc','--coulomb_U',         type=float,  default = 1.0, help='use Uc/R**0.5 as orbital exponent for coulomb term')
+    parser.add_argument('-Ue','--exchange_U',        type=float,  default = 1.0, help='use Ue/R^2 as orbital exponent for exchange term')
+
     parser.add_argument('-Uk_tune','--Uk_tune',     type=str2bool,  default = False, help='tune the k parameter of k/R**0.5')
 
     parser.add_argument('-TV','--truncate_virtual',  type=float, default = [100000,40], nargs='+', help='the threshold to truncate virtual orbitals, in eV or %')
     parser.add_argument('-TO','--truncate_occupied', type=float, default = [100000,40], nargs='+', help='the threshold to truncate occupied orbitals, in eV or %')
-    parser.add_argument('-Tex','--truncate_exchange_only', type=str2bool, default = True,    help='only truncate the exchange integrals')
+    # parser.add_argument('-Tex','--truncate_exchange_only', type=str2bool, default = True,    help='only truncate the exchange integrals')
     parser.add_argument('-GS','--GS_double',        type=str2bool, default = False, help='double filter in GS orthonormalization')
 
     parser.add_argument('-o','--ip_options',        type=int,   default = [0], nargs='+', help='0-7')

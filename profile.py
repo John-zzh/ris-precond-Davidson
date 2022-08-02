@@ -30,9 +30,13 @@ def main():
     # for i in range(1):
     #     start = time.time()
     # if args.test == True and args.coulomb_ex == 'coulomb':
+
     if args.TDA_as_profile == True:
         print('args.TDA_as_profile == True')
         U, current = TDA_iter_initial_guess(args.nstates, conv_tol = args.conv_tolerance)
+        '''
+        PBE0/def2-SVP/notruncation
+        '''
         standard = np.array([7.21125852,8.90473556,9.11320684,9.85079603,
                             10.13011112,10.62269141,10.64366598,11.53150119,
                             11.72485107,11.95051588,12.17699229,12.70232019,
@@ -52,6 +56,7 @@ def main():
                             13.16464999,13.63114457,13.98035901,14.03851621,
                             14.24505458,14.31506715,15.22499659,15.31655733])
         profile(current, standard[:current.shape[0]])
+        np.savetxt('TDDFT-s', current, fmt='%.8f')
 
 
 
