@@ -169,7 +169,7 @@ def TDDFT_solver(N_states, initial_guess, preconditioner,
     omega = omega*parameter.Hartree_to_eV
 
 
-    energy_diff = float(np.linalg.norm(initial_energies - omega))
+    energy_diff = float(np.average((initial_energies - omega)**2)**0.5)
 
     XY_overlap = float(np.linalg.norm(np.dot(X_ig.T, X_full))
                     + np.linalg.norm(np.dot(Y_ig.T, Y_full)))

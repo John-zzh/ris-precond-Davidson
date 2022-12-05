@@ -132,7 +132,7 @@ def TDA_solver(N_states, initial_guess, preconditioner,
     D_end = time.time()
     Dcost = D_end - D_start
 
-    energy_diff = float(np.linalg.norm(initial_energies - energies))
+    energy_diff = float(np.average((initial_energies - energies)**2)**0.5)
     X_overlap = float(np.linalg.norm(np.dot(initial_vectors[:,:N_states].T, full_guess)))
 
     Davidson_dict = fill_dictionary(Davidson_dict,
