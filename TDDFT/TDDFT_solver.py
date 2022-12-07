@@ -194,6 +194,7 @@ def TDDFT_solver(N_states, initial_guess, preconditioner,
         print('============= TDDFT Calculation Done ==============')
     print('energies:')
     print(omega)
+    print('initial guess RMSE = {:.4f} eV'.format(energy_diff))
     print('Maximum residual norm = {:.2e}'.format(max_norm))
     print('Finished in {:d} steps, {:.2f} seconds'.format(ii+1, TDDFT_cost))
     print('Final subspace size = {:d}'.format(sub_A.shape[0]))

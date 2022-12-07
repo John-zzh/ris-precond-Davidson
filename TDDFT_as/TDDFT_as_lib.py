@@ -166,7 +166,7 @@ class TDDFT_as(object):
         '''
         N_bf:
             truc_occ                    rest_occ                rest_vir      truc_vir
-        ============================#======================|---------------#------------------------------
+      ==============#======================|---------------#------------------------------
                                  n_occ                                   n_vir
 
                     truc_occ     rest_occ       rest_vir    truc_vir
@@ -177,12 +177,12 @@ class TDDFT_as(object):
                 |            |             ||             |            |
                 -------------|-------------||-------------|-------------
                 |            |             ||             |            |
-        rest_occ|            |             ||             |            |
+        rest_occ|            |   GAMMA_ij  ||  GAMMA_ia   |            |
                 |            |             ||             |            |
                 |            |             ||             |            |
         n_occ   =============|=============||=============|=============-
                 |            |             ||             |            |
-        rest_vir|            |             ||             |            |
+        rest_vir|            |             ||  GAMMA_ab   |            |
                 |            |             ||             |            |
                 |            |             ||             |            |
                 -------------|-------------||-------------|-------------
@@ -193,19 +193,22 @@ class TDDFT_as(object):
                 -------------|-------------||-------------|-------------
 
         '''
+
+        GAMMA_ia = math.copy_array(GAMMA[truc_occ:n_occ,n_occ:n_occ+rest_vir,:])
+        GAMMA_J_ia = einsum("iaA,AB->iaB", GAMMA_ia, eri2c)
+
         if calc == 'coulomb':
             '''(ia|jb) columb term'''
-            'no truncation'
-            GAMMA_ia = math.copy_array(GAMMA[truc_occ:n_occ,n_occ:n_occ+rest_vir,:])
-            GAMMA_J_ia = einsum("iaA,AB->iaB", GAMMA_ia, eri2c)
             return GAMMA_ia, GAMMA_J_ia
 
         if calc == 'exchange':
             '''(ij|ab) exchange term '''
-            GAMMA_ia = math.copy_array(GAMMA[truc_occ:n_occ,n_occ:n_occ+rest_vir,:])
-            GAMMA_J_ia = einsum("iaA,AB->iaB", GAMMA_ia, eri2c)
+
             GAMMA_ij = math.copy_array(GAMMA[truc_occ:n_occ, truc_occ:n_occ,:])
             GAMMA_ab = math.copy_array(GAMMA[n_occ:n_occ+rest_vir,n_occ:n_occ+rest_vir,:])
+            if args.woodbury:
+                GAMMA_ij = math.grep_diagonal(GAMMA_ij)
+                GAMMA_ab = math.grep_diagonal(GAMMA_ab)
             GAMMA_J_ij = einsum("ijA,AB->ijB", GAMMA_ij, eri2c)
             return GAMMA_ia, GAMMA_J_ia, GAMMA_ab, GAMMA_J_ij
 
