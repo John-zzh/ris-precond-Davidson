@@ -46,7 +46,7 @@ class TDDFT_as(object):
     #     # else:
     #     self.Uk = Uk
 
-    def gen_auxmol(self, U=1, add_p=True):
+    def gen_auxmol(self, U=1, add_p=True, full_fitting=False):
         print('asigning auxiliary basis set, add p function =', add_p)
         print('U =', U)
 
@@ -91,8 +91,12 @@ class TDDFT_as(object):
             else:
                 aux_basis[atom_index] = [[0, [exp, 1.0]]]
 
+        if full_fitting:
+            print('full aux_basis')
+            aux_basis = args.basis_set+"-ri"
         auxmol.basis = aux_basis
         auxmol.build()
+        print(auxmol.basis)
         # [print(k, v) for k, v in auxmol.basis.items()]
 
         return auxmol
@@ -206,10 +210,34 @@ class TDDFT_as(object):
 
             GAMMA_ij = math.copy_array(GAMMA[truc_occ:n_occ, truc_occ:n_occ,:])
             GAMMA_ab = math.copy_array(GAMMA[n_occ:n_occ+rest_vir,n_occ:n_occ+rest_vir,:])
+
+            # full_ijab = einsum("ijA,AB,abB->ijab", GAMMA_ij, eri2c, GAMMA_ab)
+            # print('full_ijab')
+            # list = [0,5,8]
+            # for i in list:
+            #     for a in list:
+            #         print(full_ijab[i,i,a,a])
+
             if args.woodbury:
                 GAMMA_ij = math.grep_diagonal(GAMMA_ij)
                 GAMMA_ab = math.grep_diagonal(GAMMA_ab)
+
+                # wood_ijab = einsum("ijA,AB,abB->ijab", GAMMA_ij, eri2c, GAMMA_ab)
+                # print('wood_ijab')
+                # for i in list:
+                #     for a in list:
+                #         print(wood_ijab[i,i,a,a])
+                # print('wood_ijab off diagonal')
+                # for i in [0,1]:
+                #     for j in [2,3,4,5,6,7,8]:
+                #         for a in [0,1]:
+                #             for b in [2,3,4,5,6,10]:
+                #                 print(wood_ijab[i,j,a,b])
+
             GAMMA_J_ij = einsum("ijA,AB->ijB", GAMMA_ij, eri2c)
+
+
+
             return GAMMA_ia, GAMMA_J_ia, GAMMA_ab, GAMMA_J_ij
 
     '''
@@ -347,7 +375,7 @@ class TDDFT_as(object):
 
 
         auxmol_cl = self.gen_auxmol(U=args.coulomb_U, add_p=args.coulomb_aux_add_p)
-        auxmol_ex = self.gen_auxmol(U=args.exchange_U, add_p=args.exchange_aux_add_p)
+        auxmol_ex = self.gen_auxmol(U=args.exchange_U, add_p=args.exchange_aux_add_p, full_fitting=args.full_fitting)
 
 
         '''
