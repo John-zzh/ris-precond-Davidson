@@ -257,9 +257,9 @@ class TDDFT_as(object):
             '''(ij|ab)'''
             GAMMA_ab_V = einsum("abA,jbm->jAam", GAMMA_ab, V)
             ijab_V  = einsum("ijA,jAam->iam", GAMMA_J_ij, GAMMA_ab_V)
-
-            if args.woodbury:
-                ijab_V  = einsum("iiA,aaA,iam ->iam", GAMMA_J_ij, GAMMA_ab, V)
+            # 
+            # if args.woodbury:
+            #     ijab_V  = einsum("iiA,aaA,iam ->iam", GAMMA_J_ij, GAMMA_ab, V)
             return ijab_V
         def ibja_fly(V):
             '''
@@ -268,8 +268,8 @@ class TDDFT_as(object):
             '''
             GAMMA_ja_V = einsum("ibA,jbm->Ajim", GAMMA_ia, V)
             ibja_V = einsum("jaA,Ajim->iam", GAMMA_J_ia, GAMMA_ja_V)
-            if args.woodbury:
-                ibja_V = einsum("iaA,iaA,iam -> iam", GAMMA_J_ia, GAMMA_ia, V)
+            # if args.woodbury:
+            #     ibja_V = einsum("iaA,iaA,iam -> iam", GAMMA_J_ia, GAMMA_ia, V)
             return ibja_V
         return ijab_fly, ibja_fly
 
