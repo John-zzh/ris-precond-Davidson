@@ -93,10 +93,10 @@ class TDDFT_as(object):
 
         if full_fitting:
             print('full aux_basis')
-            aux_basis = args.basis_set+"-ri"
+            aux_basis = args.basis_set+"-jkfit"
         auxmol.basis = aux_basis
         auxmol.build()
-        print(auxmol.basis)
+        print(auxmol._basis)
         # [print(k, v) for k, v in auxmol.basis.items()]
 
         return auxmol
@@ -257,6 +257,9 @@ class TDDFT_as(object):
             '''(ij|ab)'''
             GAMMA_ab_V = einsum("abA,jbm->jAam", GAMMA_ab, V)
             ijab_V  = einsum("ijA,jAam->iam", GAMMA_J_ij, GAMMA_ab_V)
+
+            if args.woodbury:
+                ijab_V  = einsum("iiA,aaA,iam ->iam", GAMMA_J_ij, GAMMA_ab, V)
             return ijab_V
         def ibja_fly(V):
             '''
@@ -265,6 +268,8 @@ class TDDFT_as(object):
             '''
             GAMMA_ja_V = einsum("ibA,jbm->Ajim", GAMMA_ia, V)
             ibja_V = einsum("jaA,Ajim->iam", GAMMA_J_ia, GAMMA_ja_V)
+            if args.woodbury:
+                ibja_V = einsum("iaA,iaA,iam -> iam", GAMMA_J_ia, GAMMA_ia, V)
             return ibja_V
         return ijab_fly, ibja_fly
 
