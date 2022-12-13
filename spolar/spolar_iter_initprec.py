@@ -53,8 +53,8 @@ def spolar_iter_initprec(Pr, conv_tol,
     P = Pr[trunced_occ:,:reduced_vir,:].copy()
     P = P.reshape(A_reduced_size,-1)
     pnorm = np.linalg.norm(P, axis=0, keepdims = True)
-    print('iter ip solar pnorm =', pnorm)
-    print('iter ip solar pnorm.shape =', pnorm.shape)
+    print('iter ip spolar pnorm =', pnorm)
+    print('iter ip spolar pnorm.shape =', pnorm.shape)
     P /= pnorm
 
     V_holder = np.zeros((A_reduced_size, (max+1)*npvec))

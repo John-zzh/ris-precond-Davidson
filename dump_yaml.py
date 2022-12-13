@@ -57,7 +57,6 @@ def dump_yaml(dict, option):
 
     curpath = os.getcwd()
     yamlpath = os.path.join(curpath,
-                        basename + '_' + calc_name \
-                        + '_i_' + i_name + '_p_' + p_name + '.yaml')
+                        basename + '_' + calc_name + '_i_' + i_name + '_p_' + p_name + '.yaml')
     with open(yamlpath, "w", encoding="utf-8") as f:
         yaml.dump(dict, f)

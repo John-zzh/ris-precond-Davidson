@@ -30,6 +30,7 @@ def gen_args():
     parser.add_argument('-dpolar','--dpolar',       type=str2bool,  default = False, help='perform dynamic polarizability')
     parser.add_argument('-omega','--dpolar_omega',  type=float, default = [], nargs='+', help='dynamic polarizability with perurbation omega, a list')
     parser.add_argument('-spolar','--spolar',       type=str2bool,  default = False, help='perform static polarizability')
+    parser.add_argument('-CPKS','--CPKS',           type=str2bool,  default = False, help='perform CPKS')
     parser.add_argument('-sTDA','--sTDA',           type=str2bool,  default = False, help='perform sTDA calculation')
     parser.add_argument('-sTDDFT','--sTDDFT',       type=str2bool,  default = False, help='perform sTDDFT calculation')
     parser.add_argument('-TDDFT_as','--TDDFT_as',   type=str2bool,  default = False, help='perform TDDFT_as preconditioner')

@@ -12,11 +12,11 @@ import numpy as np
 
 from mathlib import math, parameter
 from SCF_calc import (static_polarizability_matrix_vector, A_size,
-                    hdiag, delta_hdiag2, n_occ, n_vir, trunced_vir, gen_P)
+                    hdiag, delta_hdiag2, n_occ, n_vir, trunced_vir, gen_P, calc_name)
 from dump_yaml import fill_dictionary
 
-
-
+P = gen_P()
+P = P.reshape(-1,3)
 
 def spolar_solver(initial_guess, preconditioner,
             matrix_vector_product = static_polarizability_matrix_vector,
@@ -25,16 +25,15 @@ def spolar_solver(initial_guess, preconditioner,
                             hdiag = hdiag,
                      delta_hdiag2 = delta_hdiag2,
                       initial_TOL = 1e-3,
-                      precond_TOL = 1e-2):
+                      precond_TOL = 1e-2,
+                                P = P,
+                        calc_name = calc_name):
     '''
     (A+B)X = -P
     residual = (A+B)X + P
     '''
-    print('=== Static polarizability Calculation Starts ===')
+    print('===' + calc_name +' Calculation Starts ===')
     sp_start = time.time()
-
-    P = gen_P()
-    P = P.reshape(-1,3)
 
     P_origin = P.copy()
 
@@ -138,10 +137,11 @@ def spolar_solver(initial_guess, preconditioner,
     print(tensor_alpha)
 
     if ii == (max -1):
-        print('=== Static polarizability Failed Due to Iteration Limit ===')
+        '===' + calc_name +' Calculation Starts ==='
+        print('===' + calc_name +' Calculation Failed Due to Iteration Limit ===')
         print('current residual norms', r_norms)
     else:
-        print('=== Static polarizability Converged ===')
+        print('===' + calc_name +'Converged ===')
 
     print('Finished in {:d} steps, {:.2f} seconds'.format(ii+1, sp_cost))
     print('final subspace', a_p_b.shape)
@@ -165,4 +165,4 @@ def spolar_solver(initial_guess, preconditioner,
                   final_solution = [i.tolist() for i in tensor_alpha],
                       difference = tensor_alpha_difference,
                          overlap = X_overlap)
-    return tensor_alpha, Davidson_dict
+    return tensor_alpha, X_full, Davidson_dict

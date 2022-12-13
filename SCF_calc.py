@@ -323,9 +323,11 @@ def gen_calc():
     dict['TDDFT'] = args.TDDFT
     dict['dpolar'] = args.dpolar
     dict['spolar'] = args.spolar
+    dict['CPKS'] = args.CPKS
     dict['sTDA'] = args.sTDA
     dict['sTDDFT'] = args.sTDDFT
     dict['PySCF_TDDFT'] = args.pytd
+
     for calc in dict.keys():
         if dict[calc] == True:
             print(calc)

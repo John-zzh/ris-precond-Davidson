@@ -14,6 +14,7 @@ from TDA import TDA
 from TDDFT import TDDFT
 from dpolar import dpolar
 from spolar import spolar
+from CPKS import CPKS
 import TDA_as_Uk, spectra
 np.set_printoptions(linewidth=220, precision=5)
 print('curpath', os.getcwd())
@@ -28,8 +29,8 @@ if __name__ == "__main__":
             print(key,'=', vars(args)[key])
     print('|-------- In-house Developed {0} Starts ---------|'.format(calc_name))
 
-    a = [args.TDA, args.TDDFT, args.dpolar, args.spolar, args.spectra, args.Uk_tune]
-    b = [TDA, TDDFT, dpolar, spolar, spectra, TDA_as_Uk]
+    a = [args.TDA, args.TDDFT, args.dpolar, args.spolar, args.spectra, args.CPKS]
+    b = [TDA, TDDFT, dpolar, spolar, spectra, CPKS]
     # print(a,b)
     for i in range(len(a)):
         if a[i] == True:
