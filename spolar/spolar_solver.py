@@ -160,6 +160,7 @@ def spolar_solver(initial_guess, preconditioner,
         initial_tr, initial_anis = math.gen_anisotropy(alpha_init)
         final_tr, final_anis = math.gen_anisotropy(tensor_alpha)
         anisotropy_difference = abs((initial_anis-final_anis)/final_anis)
+        # print(type(anisotropy_difference))
         print('initial_anisotropy = {:.2f}'.format(initial_anis))
         print('final_anisotropy= {:.2f}'.format(final_anis))
         print('anisotropy_difference = {:.2f}'.format(anisotropy_difference))

@@ -114,7 +114,9 @@ def gen_anisotropy(a):
     # anis = anis**0.5
     a = 0.5*(a.T + a)
     tr = (1.0/3.0)*np.trace(a)
+    # print('type(tr)', type(tr))
     xx = a[0,0]
+    # print('type(xx)', type(xx))
     yy = a[1,1]
     zz = a[2,2]
 
@@ -124,7 +126,7 @@ def gen_anisotropy(a):
 
     ssum = xx**2 + yy**2 + zz**2 + 2*(xy**2 + xz**2 + yz**2)
     anis = (1.5 * abs(ssum - 3*tr**2))**0.5
-    return tr, anis
+    return float(tr), float(anis)
 
 def utriangle_symmetrize(A):
     upper = np.triu_indices(n=A.shape[0], k=1)
