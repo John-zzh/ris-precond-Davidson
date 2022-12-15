@@ -93,9 +93,38 @@ def VW_Gram_Schmidt(x, y, V, W):
 #
 #     return VW_new
 
+
 def block_symmetrize(A,m,n):
     A[m:n,:m] = A[:m,m:n].T
     return A
+
+def gen_anisotropy(a):
+
+    # a = 0.5*(a.T + a)
+    # tr = (1.0/3.0)*np.trace(a)
+    # xx = a[0,0]
+    # yy = a[1,1]
+    # zz = a[2,2]
+
+    # xy = a[0,1]
+    # xz = a[0,2]
+    # yz = a[1,2]
+    # anis = (xx-yy)**2 + (yy-zz)**2 + (zz-xx)**2 + 6*(xz**2 + xy**2 + yz**2)
+    # anis = 0.5*anis
+    # anis = anis**0.5
+    a = 0.5*(a.T + a)
+    tr = (1.0/3.0)*np.trace(a)
+    xx = a[0,0]
+    yy = a[1,1]
+    zz = a[2,2]
+
+    xy = a[0,1]
+    xz = a[0,2]
+    yz = a[1,2]
+
+    ssum = xx**2 + yy**2 + zz**2 + 2*(xy**2 + xz**2 + yz**2)
+    anis = (1.5 * abs(ssum - 3*tr**2))**0.5
+    return tr, anis
 
 def utriangle_symmetrize(A):
     upper = np.triu_indices(n=A.shape[0], k=1)

@@ -74,9 +74,9 @@ def TDDFT_diag_preconditioner(R_x, R_y, omega, hdiag = hdiag, conv_tol = None):
 
     return X_new, Y_new
 
-def spolar_diag_initprec(Pr, hdiag=delta_hdiag2, conv_tol=None):
+def spolar_diag_initprec(RHS, hdiag=delta_hdiag2, conv_tol=None):
 
     d = hdiag.reshape(-1,1)
-    Pr = -Pr/d
+    RHS = RHS/d
 
-    return Pr
+    return RHS

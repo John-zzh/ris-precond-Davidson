@@ -26,20 +26,21 @@ def spolar_solver(initial_guess, preconditioner,
                      delta_hdiag2 = delta_hdiag2,
                       initial_TOL = 1e-3,
                       precond_TOL = 1e-2,
-                                P = P,
+                              RHS = -P,
                         calc_name = calc_name):
     '''
-    (A+B)X = -P
-    residual = (A+B)X + P
+    (A+B)X = RHS
+    RHS = -P
+    residual = (A+B)X - RHS
     '''
     print('===' + calc_name +' Calculation Starts ===')
     sp_start = time.time()
 
-    P_origin = P.copy()
+    RHS_origin = RHS.copy()
 
-    pnorm = np.linalg.norm(P, axis=0, keepdims = True)
-    print('solver pnorm.shape =', pnorm.shape)
-    P /= pnorm
+    RHS_norm = np.linalg.norm(RHS, axis=0, keepdims = True)
+    print('solver RHS_norm.shape =', RHS_norm.shape)
+    RHS /= RHS_norm
 
     Davidson_dict = {}
     Davidson_dict['iteration'] = []
@@ -51,9 +52,9 @@ def spolar_solver(initial_guess, preconditioner,
     U_holder = np.zeros_like(V_holder)
 
     init_start = time.time()
-    X_ig = initial_guess(P, conv_tol = initial_TOL, hdiag = hdiag)
+    X_ig = initial_guess(RHS, conv_tol = initial_TOL, hdiag = hdiag)
 
-    alpha_init = np.dot((X_ig*pnorm).T, P_origin)*-4
+    alpha_init = np.dot((X_ig*RHS_norm).T, RHS_origin)*4
     print('initial guess tensor_alpha')
     print(alpha_init)
 
@@ -77,18 +78,21 @@ def spolar_solver(initial_guess, preconditioner,
         U = U_holder[:,:new_m]
 
         subgenstart = time.time()
-        p = np.dot(V.T, P)
+        p = np.dot(V.T, RHS)
         a_p_b = np.dot(V.T,U)
         a_p_b = math.symmetrize(a_p_b)
         subgenend = time.time()
 
         '''solve the x in the subspace'''
-        x = np.linalg.solve(a_p_b, -p)
+        x = np.linalg.solve(a_p_b, p)
 
         '''compute the residual
-           R = Ux + P'''
+           R = AX - RHS
+           = AVx - RHS
+           = Ux - RHS
+        '''
         Ux = np.dot(U,x)
-        residual = Ux + P
+        residual = Ux - RHS
 
         r_norms = np.linalg.norm(residual, axis=0).tolist()
 
@@ -108,9 +112,9 @@ def spolar_solver(initial_guess, preconditioner,
         '''preconditioning step'''
         Pstart = time.time()
 
-        X_new = preconditioner(Pr = -residual[:,index],
-                         conv_tol = precond_TOL,
-                            hdiag = hdiag)
+        X_new = preconditioner(RHS = residual[:,index],
+                          conv_tol = precond_TOL,
+                             hdiag = hdiag)
         Pend = time.time()
         Pcost += Pend - Pstart
 
@@ -125,11 +129,11 @@ def spolar_solver(initial_guess, preconditioner,
             break
 
     X_full = np.dot(V,x)
-    X_overlap = float(np.linalg.norm(np.dot(X_ig.T, X_full)))
 
-    X_full = X_full*pnorm
+    X_full = X_full*RHS_norm
 
-    tensor_alpha = np.dot(X_full.T, P_origin)*-4
+    X_overlap = float(np.linalg.norm(np.dot((X_ig*RHS_norm).T, X_full)))
+    tensor_alpha = np.dot(X_full.T, RHS_origin)*4
     sp_end = time.time()
     sp_cost = sp_end - sp_start
 
@@ -150,7 +154,15 @@ def spolar_solver(initial_guess, preconditioner,
         cost = locals()[enrty]
         print("{:<10} {:<5.4f}s {:<5.2%}".format(enrty, cost, cost/sp_cost))
 
-    tensor_alpha_difference = float(np.linalg.norm(alpha_init - tensor_alpha))
+    anisotropy_difference = None
+
+    if alpha_init.shape[0] > 1:
+        initial_tr, initial_anis = math.gen_anisotropy(alpha_init)
+        final_tr, final_anis = math.gen_anisotropy(tensor_alpha)
+        anisotropy_difference = abs((initial_anis-final_anis)/final_anis)
+        print('initial_anisotropy = {:.2f}'.format(initial_anis))
+        print('final_anisotropy= {:.2f}'.format(final_anis))
+        print('anisotropy_difference = {:.2f}'.format(anisotropy_difference))
 
     sp_end = time.time()
     spcost = sp_end - sp_start
@@ -163,6 +175,6 @@ def spolar_solver(initial_guess, preconditioner,
                        wall_time = sp_cost,
                 initial_solution = [i.tolist() for i in alpha_init],
                   final_solution = [i.tolist() for i in tensor_alpha],
-                      difference = tensor_alpha_difference,
+                      difference = anisotropy_difference,
                          overlap = X_overlap)
     return tensor_alpha, X_full, Davidson_dict
