@@ -421,7 +421,7 @@ class TDDFT_as(object):
                 make sure no trunction on the coulomb, so that delta_hdiag2 = delta_hdiag
                 delta_hdiag2 is KS orbital energy diff
                 '''
-                hidag_merge = delta_hdiag + diag_cl_correction - diag_ex_correction
+                hidag_merge = delta_hdiag + diag_cl_correction - a_x*diag_ex_correction
                 hidag_merge_v = einsum("ia,iam->iam", hidag_merge, V)
                 return hidag_merge_v
 
