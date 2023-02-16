@@ -37,16 +37,6 @@ def copy_array(A):
         B[:,:,:] = A[:,:,:]
     return B
 
-def grep_diagonal(A):
-    ''' A is a 3d matrix in shape (N_occ, N_occ, N_atm)
-        we want  each A[:,:,i] only keeps diagonal elements
-    '''
-    zeros_A = np.zeros_like(A)
-    for i in range(zeros_A.shape[2]):
-        np.fill_diagonal(zeros_A[:,:,i], A.diagonal(0,0,1)[i,:])
-    return zeros_A
-
-
 def Gram_Schmidt_bvec(A, bvec):
     '''orthonormalize vector b against all vectors in A
        b = b - A*(A.T*b)
