@@ -50,49 +50,48 @@ class TDDFT_as(object):
     def gen_auxmol(self, U=1, add_p=True, full_fitting=False):
         print('asigning auxiliary basis set, add p function =', add_p)
         print('U =', U)
-
-
-        auxmol = gto.M(atom=atom_coordinates, parse_arg = False)
         '''
         parse_arg = False turns off PySCF built-in output file
         '''
+        auxmol = gto.M(atom=atom_coordinates, parse_arg = False)
 
-        atom_count = Counter(auxmol.elements)
+        if not full_fitting:
+            atom_count = Counter(auxmol.elements)
 
-        '''
-        auxmol_basis_keys = ['C', 'H', 'H^2', 'H^3', 'H^4', 'O'}
-        '''
-        auxmol_basis_keys = []
-        for key in atom_count:
-            for i in range(atom_count[key]):
-                if i > 0:
-                    auxmol_basis_keys.append(key+'^'+str(i+1))
+            '''
+            auxmol_basis_keys = ['C', 'H', 'H^2', 'H^3', 'H^4', 'O'}
+            '''
+            auxmol_basis_keys = []
+            for key in atom_count:
+                for i in range(atom_count[key]):
+                    if i > 0:
+                        auxmol_basis_keys.append(key+'^'+str(i+1))
+                    else:
+                        auxmol_basis_keys.append(key)
+            # print('auxmol_basis_keys', auxmol_basis_keys)
+            '''
+            aux_basis = {
+            'C': [[0, [0.123, 1.0]], [1, [0.123, 1.0]]],
+            'H': [[0, [0.123, 1.0]]],
+            'H^2': [[0, [0.123, 1.0]]],
+            'H^3': [[0, [0.123, 1.0]]],
+            'H^4': [[0, [0.123, 1.0]]],
+            'O': [[0, [0.123, 1.0]], [1, [0.123, 1.0]]]
+            }
+            '''
+            aux_basis = {}
+            for i in range(len(auxmol_basis_keys)):
+                atom_index = auxmol_basis_keys[i]
+                atom = atom_index.split('^')[0]
+
+                exp = parameter.as_exp[atom] * U
+
+                if atom != 'H' and add_p == True:
+                    aux_basis[atom_index] = [[0, [exp, 1.0]],[1, [exp, 1.0]]]
                 else:
-                    auxmol_basis_keys.append(key)
-        # print('auxmol_basis_keys', auxmol_basis_keys)
-        '''
-        aux_basis = {
-        'C': [[0, [0.123, 1.0]], [1, [0.123, 1.0]]],
-        'H': [[0, [0.123, 1.0]]],
-        'H^2': [[0, [0.123, 1.0]]],
-        'H^3': [[0, [0.123, 1.0]]],
-        'H^4': [[0, [0.123, 1.0]]],
-        'O': [[0, [0.123, 1.0]], [1, [0.123, 1.0]]]
-        }
-        '''
-        aux_basis = {}
-        for i in range(len(auxmol_basis_keys)):
-            atom_index = auxmol_basis_keys[i]
-            atom = atom_index.split('^')[0]
+                    aux_basis[atom_index] = [[0, [exp, 1.0]]]
 
-            exp = parameter.as_exp[atom] * U
-
-            if atom != 'H' and add_p == True:
-                aux_basis[atom_index] = [[0, [exp, 1.0]],[1, [exp, 1.0]]]
-            else:
-                aux_basis[atom_index] = [[0, [exp, 1.0]]]
-
-        if full_fitting:
+        else:
             print('full aux_basis')
             aux_basis = args.basis_set+"-jkfit"
         auxmol.basis = aux_basis
@@ -400,7 +399,7 @@ class TDDFT_as(object):
             rebuild the auxmol and rebuild the 3c2e and 2c2e with full auxbasis
             and grep the diagonal elements
             '''
-            auxmol_full = self.gen_auxmol(U=args.exchange_U, add_p=args.exchange_aux_add_p, full_fitting=True)
+            auxmol_full = self.gen_auxmol(full_fitting=True)
             eri2c_full, eri3c_full = self.gen_electron_int(mol=mol, auxmol=auxmol_full, RS_omega=0)
 
             *_, diag_cl_full = self.gen_GAMMA(eri2c=eri2c_full, eri3c=eri3c_full,
