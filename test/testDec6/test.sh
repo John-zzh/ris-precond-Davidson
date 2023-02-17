@@ -11,10 +11,18 @@
 
 
 
-python ../Davidson.py -x *.xyz -b def2-svp -f pbe0 -n 5 -df True \
+# python ../../Davidson.py -x *.xyz -b def2-svp -f pbe0 -n 5 -df True \
+# -v 3 -chk false -TDDFT_as True \
+# -cl_aux_p true -ex_aux_p False \
+# -Uc 1 -Ue 1 \
+# -TV 1000000 1000000 -TO 1000000 1000000 \
+# -TDA true  -TDDFT_as_profile true \
+# -w true -FK true
+
+python ../../Davidson.py -x *.xyz -b def2-svp -f pbe0 -n 5 -ei 2 -df True \
 -v 3 -chk false -TDDFT_as True \
 -cl_aux_p true -ex_aux_p False \
 -Uc 1 -Ue 1 \
 -TV 1000000 1000000 -TO 1000000 1000000 \
--TDA true  -TDDFT_as_profile true \
+-TDA true  -TDA_as_profile true \
 -w true -FK true

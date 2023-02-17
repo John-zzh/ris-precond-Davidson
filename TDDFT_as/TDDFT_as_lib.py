@@ -31,21 +31,12 @@ if args.functional in parameter.RSH_F:
     wb97x
     '''
     a_x = 1
+    print('RSH, a_x = 1')
     alpha_RSH = 0.157706
     beta_RSH = 0.842294
 
 
 class TDDFT_as(object):
-    # def __init__(self, Uk = args.Uk):
-    #     # if args.Uread == True:
-    #     #     '''
-    #     #     read Uk from txt
-    #     #     '''
-    #     #     file = os.popen('ls *_Uk.txt').readlines()[0].replace('\n', '')
-    #     #     self.Uk = float(np.loadtxt(file))
-    #     #
-    #     # else:
-    #     self.Uk = Uk
 
     def gen_auxmol(self, U=1, add_p=True, full_fitting=False):
         print('asigning auxiliary basis set, add p function =', add_p)
@@ -102,14 +93,13 @@ class TDDFT_as(object):
         return auxmol
 
 
-    def gen_electron_int(self, mol, auxmol, RS_omega=0):
+    def gen_2c_3c(self, mol, auxmol, RSH_omega=0):
 
         nao = mol.nao_nr()
         naux = auxmol.nao_nr()
 
-        auxmol.set_range_coulomb(RS_omega)
-        mol.set_range_coulomb(RS_omega)
-
+        mol.set_range_coulomb(RSH_omega)
+        auxmol.set_range_coulomb(RSH_omega)
 
         '''
         (pq|rs) = Σ_PQ (pq|P)(P|Q)^-1(Q|rs)
@@ -122,66 +112,39 @@ class TDDFT_as(object):
         N_bf * N_bf * N_auxbf
         '''
         pmol = mol + auxmol
-
         eri3c = pmol.intor('int3c2e_sph',
                             shls_slice=(0,mol.nbas,0,mol.nbas,
                             mol.nbas,mol.nbas+auxmol.nbas))
 
         return eri2c, eri3c
-    #
-    # def gen_diag_iajb(self, GAMMA_J_ia, GAMMA_ia, n_occ=n_occ,n_vir=n_vir):
-    #     '''
-    #     generate the diagonal elements of (ia|jb), utilizing the RIJK
-    #     '''
-    #
-    #     diag = einsum("iaA,iaA->ia", GAMMA_J_ia, GAMMA_ia)
-    #     #
-    #     # full_ijab = einsum("iaA,jbA-> iajb", GAMMA_J_ia, GAMMA_ia)
-    #     # standard_diag = np.zeros((n_occ,n_vir))
-    #     # for i in range(n_occ):
-    #     #     for a in range(n_vir):
-    #     #         standard_diag[i][a] = full_ijab[i][a][i][a]
-    #     #
-    #     # check = np.linalg.norm(standard_diag - diag)
-    #     # print('check diag iajb accuracy', check)
-    #
-    #     return diag
-    #
-    # def gen_diag_ijab(self, GAMMA_J_ij, GAMMA_ab, n_occ=n_occ,n_vir=n_vir):
-    #     '''
-    #     generate the diagonal elements of (ij|ab),utilizing the RIJK
-    #     '''
-    #
-    #     diag = einsum("iiA,aaA->ia", GAMMA_J_ij, GAMMA_ab)
-    #     #
-    #     # full_ijab = einsum("ijA,abA-> ijab", GAMMA_J_ij, GAMMA_ab)
-    #     # standard_diag = np.zeros((n_occ,n_vir))
-    #     # for i in range(n_occ):
-    #     #     for a in range(n_vir):
-    #     #         standard_diag[i][a] = full_ijab[i][i][a][a]
-    #     #
-    #     # check = np.linalg.norm(standard_diag - diag)
-    #     # print('check diag ijab accuracy', check)
-    #
-    #     return diag
 
+    def gen_electron_int(self, mol, auxmol_cl, auxmol_ex):
+
+        eri2c_cl, eri3c_cl = self.gen_2c_3c(mol=mol, auxmol=auxmol_cl, RSH_omega=0)
+        eri2c_ex, eri3c_ex = self.gen_2c_3c(mol=mol, auxmol=auxmol_ex, RSH_omega=0)
+
+        if args.functional in parameter.RSH_F:
+            print('2c2e and 2c2e for RSH (ij|ab)')
+            eri2c_erf, eri3c_erf = self.gen_2c_3c(mol=mol, auxmol=auxmol_ex, RSH_omega=parameter.RSH_omega)
+
+            eri2c_ex = alpha_RSH*eri2c_ex + beta_RSH*eri2c_erf
+            eri3c_ex = alpha_RSH*eri3c_ex + beta_RSH*eri3c_erf
+        else:
+            print('2c2e and 2c2e for (ia|jb)')
+
+        return eri2c_cl, eri3c_cl, eri2c_ex, eri3c_ex
 
 
     def gen_GAMMA(self, eri2c, eri3c, truc_occ, rest_vir, calc, n_occ=n_occ):
 
         N_auxbf = eri2c.shape[0]
 
-        eri2c_inv = np.linalg.inv(eri2c)
-
         '''
         PQ is eri2c shape, N_auxbf
         GAMMA.shape = N_bf, N_bf, N_auxbf
         '''
-        Delta = einsum("PQ,uvQ->uvP", eri2c_inv, eri3c)
+        Delta = einsum("PQ,uvQ->uvP", np.linalg.inv(eri2c), eri3c)
         GAMMA = einsum("up,vq,uvP->pqP", un_ortho_C_matrix, un_ortho_C_matrix, Delta)
-
-
-        print('eri3c.shape', eri3c.shape)
 
         '''
         N_bf:
@@ -220,10 +183,7 @@ class TDDFT_as(object):
         if calc == 'coulomb':
             '''(ia|jb) coulomb term'''
 
-            diag_cl = None
-            if args.woodbury:
-                # diag_cl = self.gen_diag_iajb(GAMMA_J_ia=GAMMA_J_ia, GAMMA_ia=GAMMA_ia)
-                diag_cl = einsum("iaA,iaA->ia", GAMMA_J_ia, GAMMA_ia)
+            diag_cl = einsum("iaA,iaA->ia", GAMMA_J_ia, GAMMA_ia)
 
             return GAMMA_ia, GAMMA_J_ia, diag_cl
 
@@ -236,10 +196,7 @@ class TDDFT_as(object):
             GAMMA_J_ij = einsum("ijA,AB->ijB", GAMMA_ij, eri2c)
             # print('eri2c.shape in buiding Gamma', eri2c.shape)
 
-            diag_ex = None
-            if args.woodbury:
-                # diag_ex = self.gen_diag_ijab(GAMMA_J_ij=GAMMA_J_ij, GAMMA_ab=GAMMA_ab)
-                diag_ex = einsum("iiA,aaA->ia", GAMMA_J_ij, GAMMA_ab)
+            diag_ex = einsum("iiA,aaA->ia", GAMMA_J_ij, GAMMA_ab)
 
             return GAMMA_ia, GAMMA_J_ia, GAMMA_ab, GAMMA_J_ij, diag_ex
 
@@ -282,6 +239,7 @@ class TDDFT_as(object):
                 for RSH, a_x = 1
                 AV = delta_fly(V) + 2*iajb_fly(V) - a_x*ijab_fly(V)
             '''
+            # print('a_x=', a_x)
             X_cl = X.reshape(cl_rest_occ, cl_rest_vir, -1)
             X_ex = X_cl[ex_truc_occ-cl_truc_occ:,:ex_rest_vir,:]
 
@@ -332,14 +290,14 @@ class TDDFT_as(object):
 
             A_p_B_X_p_Y = delta_hdiag2_fly(X_p_Y_cl)
             A_p_B_X_p_Y += 4*iajb_fly(X_p_Y_cl)
-            A_p_B_X_p_Y[ex_truc_occ-cl_truc_occ:,:ex_rest_vir,:] -= a_x*(ibja_fly(X_p_Y_ex) + ijab_fly(X_p_Y_ex))
+            A_p_B_X_p_Y[ex_truc_occ-cl_truc_occ:,:ex_rest_vir,:] -= ( a_x*(ibja_fly(X_p_Y_ex) + ijab_fly(X_p_Y_ex)) )
 
             A_m_B_X_m_Y = delta_hdiag2_fly(X_m_Y_cl)
-            A_m_B_X_m_Y[ex_truc_occ-cl_truc_occ:,:ex_rest_vir,:] += a_x*(ibja_fly(X_m_Y_ex) - ijab_fly(X_m_Y_ex))
+            A_m_B_X_m_Y[ex_truc_occ-cl_truc_occ:,:ex_rest_vir,:] += ( a_x*(ibja_fly(X_m_Y_ex) - ijab_fly(X_m_Y_ex)) )
 
             if diag_cl_correct and diag_ex_correct:
-                A_p_B_X_p_Y += (4-a_x)*diag_cl_correct(X_p_Y_cl) - a_x*diag_ex_correct(X_p_Y_cl)
-                A_m_B_X_m_Y += a_x*(diag_cl_correct(X_m_Y_cl) - diag_ex_correct(X_m_Y_cl))
+                A_p_B_X_p_Y += ( (4-a_x)*diag_cl_correct(X_p_Y_cl) - a_x*diag_ex_correct(X_p_Y_cl) )
+                A_m_B_X_m_Y += ( a_x*(diag_cl_correct(X_m_Y_cl) - diag_ex_correct(X_m_Y_cl)) )
 
             U1 = (A_p_B_X_p_Y + A_m_B_X_m_Y)/2
             U2 = (A_p_B_X_p_Y - A_m_B_X_m_Y)/2
@@ -352,7 +310,7 @@ class TDDFT_as(object):
         def TDDFT_spolar_mv(X):
 
             ''' for RSH, a_x=1
-                (A+B)X = delta_fly(V) + 4*iajb_fly(V) - a_x*ijab_fly(V) - a_x*ibja_fly(V)
+                (A+B)X = delta_fly(V) + 4*iajb_fly(V) - a_x*[ijab_fly(V) + ibja_fly(V)]
             '''
             X_cl = X.reshape(cl_rest_occ, cl_rest_vir, -1)
             X_ex = X_cl[ex_truc_occ-cl_truc_occ:,:ex_rest_vir,:]
@@ -360,7 +318,9 @@ class TDDFT_as(object):
 
             ABX = delta_hdiag2_fly(X_cl)
             ABX +=  4*iajb_fly(X_cl)
-            ABX[ex_truc_occ-cl_truc_occ:,:ex_rest_vir,:] -= a_x*ijab_fly(X_ex) - a_x*ibja_fly(X_ex)
+            ABX[ex_truc_occ-cl_truc_occ:,:ex_rest_vir,:] -= ( a_x* (ibja_fly(X_ex) + ijab_fly(X_ex)) )
+            if diag_cl_correct and diag_ex_correct:
+                ABX += ( (4 - a_x)*diag_cl_correct(X_cl) - a_x*diag_ex_correct(X_cl) )
             ABX = ABX.reshape(cl_A_rest_size, -1)
             return ABX
 
@@ -375,20 +335,23 @@ class TDDFT_as(object):
         the 2c2e and 3c2e integrals with/without RSH
         (ij|ab) -> alpha*(ij|1/r|ab)  + beta*(ij|erf(oemga)/r|ab)
         '''
-        eri2c_cl, eri3c_cl = self.gen_electron_int(mol=mol, auxmol=auxmol_cl, RS_omega=0)
-        eri2c_ex, eri3c_ex = self.gen_electron_int(mol=mol, auxmol=auxmol_ex, RS_omega=0)
+        # eri2c_cl, eri3c_cl = self.gen_electron_int(mol=mol, auxmol=auxmol_cl)
+        # eri2c_ex, eri3c_ex = self.gen_electron_int(mol=mol, auxmol=auxmol_ex)
 
-        if args.functional in parameter.RSH_F:
-            eri2c_erf, eri3c_erf = self.gen_electron_int(mol=mol, auxmol=auxmol_ex, RS_omega=parameter.RSH_omega)
-            eri2c_ex = alpha_RSH*eri2c_ex + beta_RSH*eri2c_erf
-            eri3c_ex = alpha_RSH*eri3c_ex + beta_RSH*eri3c_erf
+        eri2c_cl, eri3c_cl, eri2c_ex, eri3c_ex = self.gen_electron_int(mol=mol,
+                                                                 auxmol_cl=auxmol_cl,
+                                                                 auxmol_ex=auxmol_ex)
+        # if args.functional in parameter.RSH_F:
+        #     eri2c_erf, eri3c_erf = self.gen_electron_int(mol=mol, auxmol=auxmol_ex, RS_omega=parameter.RSH_omega)
+        #     eri2c_ex = alpha_RSH*eri2c_ex + beta_RSH*eri2c_erf
+        #     eri3c_ex = alpha_RSH*eri3c_ex + beta_RSH*eri3c_erf
 
         print('eri2c_cl.shape', eri2c_cl.shape)
         print('eri2c_ex.shape', eri2c_ex.shape)
 
         '''
-        (ia|jb) tensors for coulomb always have no RSH, might have s/p orbit
-        (ij|ab) tensors for exchange might have RSH, might have s/p orbit
+        (ia|jb) tensors for coulomb always have no RSH,  have sp orbit
+        (ij|ab) tensors for exchange might have RSH, might have sp orbit
         '''
         GAMMA_ia_cl, GAMMA_J_ia_cl,diag_cl_risp = self.gen_GAMMA(
                                 eri2c=eri2c_cl, eri3c=eri3c_cl,
@@ -410,37 +373,25 @@ class TDDFT_as(object):
             and grep the diagonal elements
             '''
             auxmol_full = self.gen_auxmol(full_fitting=True)
-            eri2c_full, eri3c_full = self.gen_electron_int(mol=mol, auxmol=auxmol_full, RS_omega=0)
-            if args.functional in parameter.RSH_F:
-                eri2c_erf, eri3c_erf = self.gen_electron_int(mol=mol, auxmol=auxmol_full, RS_omega=parameter.RSH_omega)
-                eri2c_full = alpha_RSH*eri2c_full + beta_RSH*eri2c_erf
-                eri3c_full = alpha_RSH*eri3c_full + beta_RSH*eri3c_erf
 
-            *_, diag_cl_full = self.gen_GAMMA(eri2c=eri2c_full, eri3c=eri3c_full,
+            eri2c_cl_full, eri3c_cl_full, eri2c_ex_full, eri3c_ex_full = self.gen_electron_int(mol=mol,
+                                                                                         auxmol_cl=auxmol_full,
+                                                                                         auxmol_ex=auxmol_full)
+
+            *_, diag_cl_full = self.gen_GAMMA(eri2c=eri2c_cl_full, eri3c=eri3c_cl_full,
                                                 truc_occ=0,
                                                 rest_vir=n_vir,
                                                 calc='coulomb')
-            *_, diag_ex_full = self.gen_GAMMA(eri2c=eri2c_full, eri3c=eri3c_full,
+            *_, diag_ex_full = self.gen_GAMMA(eri2c=eri2c_ex_full, eri3c=eri3c_ex_full,
                                                 truc_occ=0,
                                                 rest_vir=n_vir,
                                                 calc='exchange')
 
             def diag_cl_correct(V):
-                return einsum("ia,iam->iam", diag_cl_full - diag_cl_risp, V)
+                return einsum("ia,iam->iam", args.mix_c*(diag_cl_full - diag_cl_risp), V)
 
             def diag_ex_correct(V):
-                return einsum("ia,iam->iam", diag_ex_full - diag_ex_risp, V)
-
-
-            # def delta_hdiag2_fly(V):
-            #     '''
-            #     make sure no trunction on the coulomb, so that delta_hdiag2 = delta_hdiag
-            #     delta_hdiag2 is KS orbital energy diff
-            #     '''
-            #     hidag_merge = delta_hdiag + diag_cl_correction - a_x*diag_ex_correction
-            #     hidag_merge_v = einsum("ia,iam->iam", hidag_merge, V)
-            #     return hidag_merge_v
-            #
+                return einsum("ia,iam->iam", args.mix_c*(diag_ex_full - diag_ex_risp), V)
 
 
         '''(pq|rs)V'''

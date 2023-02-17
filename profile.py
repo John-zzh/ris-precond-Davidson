@@ -26,10 +26,6 @@ def profile(current, standard):
 
 
 def main():
-    # cost = 0
-    # for i in range(1):
-    #     start = time.time()
-    # if args.test == True and args.coulomb_ex == 'coulomb':
     '''
     PBE0/def2-SVP/notruncation/columb with p, exchange no p
     '''
@@ -64,10 +60,10 @@ def main():
     if args.spolar_as_profile == True or args.dpolar_as_profile == True:
         P_origin = gen_P().reshape(-1,3)
         pnorm = np.linalg.norm(P_origin, axis=0, keepdims = True)
+        print('pnorm', pnorm)
 
     if args.spolar_as_profile == True:
-
-        X_full = spolar_iter_initprec(Pr = P_origin,
+        X_full = spolar_iter_initprec(RHS = -P_origin,
                                 conv_tol = args.conv_tolerance)
 
         current = np.dot((X_full).T, P_origin)*-4

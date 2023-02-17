@@ -53,8 +53,8 @@ def spolar_iter_initprec(RHS, conv_tol,
     RHS_2 = RHS_2.reshape(A_reduced_size,-1)
     RHS_2_norm = np.linalg.norm(RHS_2, axis=0, keepdims = True)
     print('iter ip spolar RHS_2_norm =', RHS_2_norm)
-    print('iter ip spolar RHS_2_norm.shape =', RHS_2_norm.shape)
-    RHS_2 /= RHS_2_norm
+    # print('iter ip spolar RHS_2_norm.shape =', RHS_2_norm.shape)
+    RHS_2 = RHS_2/RHS_2_norm
 
     V_holder = np.zeros((A_reduced_size, (max+1)*npvec))
     U_holder = np.zeros_like(V_holder)
@@ -85,7 +85,7 @@ def spolar_iter_initprec(RHS, conv_tol,
         subgenstart = time.time()
         p = np.dot(V.T, RHS_2)
         a_p_b = np.dot(V.T,U)
-        a_p_b = math.symmetrize(a_p_b)
+        # a_p_b = math.symmetrize(a_p_b)
 
         subgenend = time.time()
         subgencost += subgenend - subgenstart
@@ -125,6 +125,7 @@ def spolar_iter_initprec(RHS, conv_tol,
             print('All new guesses kicked out during GS orthonormalization')
             break
     X_full = np.dot(V,x)
+    X_full = X_full*RHS_2_norm
     '''alpha = np.dot(X_full.T, RHS_2)*-4'''
 
     ssp_end = time.time()
@@ -144,29 +145,31 @@ def spolar_iter_initprec(RHS, conv_tol,
         cost = locals()[enrty]
         print("{:<10} {:<5.4f}s  {:<5.2%}".format(enrty, cost, cost/ssp_cost))
 
-    X_full = X_full*RHS_2_norm
+
 
     U = np.zeros((n_occ,n_vir,npvec))
     U[trunced_occ:,:reduced_vir,:] = X_full.reshape(reduced_occ,reduced_vir,-1)
 
     if reduced_occ < n_occ:
-        ''' D1*X1 = -RHS_1 '''
+        print('reduced_occ < n_occ')
+        ''' D1*X1 = RHS_1 '''
         RHS_1 = RHS.reshape(n_occ,n_vir,-1)[:trunced_occ,:reduced_vir,:]
         RHS_1 = RHS_1.reshape(trunced_occ*reduced_vir,-1)
 
         D1 = delta_hdiag[:trunced_occ,:reduced_vir]
         D1 = D1.reshape(trunced_occ*reduced_vir,-1)
-        X1 = (-RHS_1/D1).reshape(trunced_occ*reduced_vir,-1)
+        X1 = (RHS_1/D1).reshape(trunced_occ*reduced_vir,-1)
         U[:trunced_occ,:reduced_vir,:] = X1
 
 
     if reduced_vir < n_vir:
-        ''' D3*X3 = -RHS_3 '''
+        print('reduced_vir < n_vir')
+        ''' D3*X3 = RHS_3 '''
         RHS_3 = RHS.reshape(n_occ,n_vir,-1)[:,reduced_vir:,:]
         RHS_3 = RHS_3.reshape(n_occ*trunced_vir,-1)
         D3 = delta_hdiag[:,reduced_vir:]
         D3 = D3.reshape(n_occ*trunced_vir,-1)
-        X3 = (-RHS_3/D3).reshape(n_occ,trunced_vir,-1)
+        X3 = (RHS_3/D3).reshape(n_occ,trunced_vir,-1)
         U[:,reduced_vir:,:] = X3
     U = U.reshape(A_size, npvec)
     return U

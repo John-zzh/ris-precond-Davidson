@@ -24,7 +24,7 @@ print('lib.num_threads() = ', lib.num_threads())
 show_memory_info('at beginning')
 
 if __name__ == "__main__":
-    if args.verbose >= 3:
+    if args.verbose >= 5:
         for key in vars(args):
             print(key,'=', vars(args)[key])
     print('|-------- In-house Developed {0} Starts ---------|'.format(calc_name))

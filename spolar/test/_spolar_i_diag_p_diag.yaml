@@ -1,0 +1,96 @@
+A matrix size: 351
+N_itr: 7
+N_mv: 20
+N_states: 5
+SCF time: 1.5142409801483154
+dynamic polarizability wavelength: []
+ex_reduced_occ: 9
+ex_reduced_vir: 39
+final solution:
+- - 16.773247616346893
+  - -1.3849442296038679
+  - -0.36897544748720623
+- - -1.3849442296038679
+  - 16.67651600630164
+  - 0.49281976466713945
+- - -0.3689754474872061
+  - 0.49281976466713895
+  - 14.957481240526164
+functional: pbe0
+initial guess threshold: 0.001
+initial guess time: 0.0006940364837646484
+initial solution:
+- - 19.863415807086714
+  - -1.216601928942963
+  - -0.32415087441069884
+- - -1.2166019289429628
+  - 20.46974883130986
+  - 0.8437240924383071
+- - -0.3241508744106989
+  - 0.8437240924383069
+  - 17.526743093435346
+initial-final difference: !!python/object/apply:numpy.core.multiarray.scalar
+- !!python/object/apply:numpy.dtype
+  args:
+  - f8
+  - false
+  - true
+  state: !!python/tuple
+  - 3
+  - <
+  - null
+  - null
+  - null
+  - -1
+  - -1
+  - 0
+- !!binary |
+  lEBr4ksEyD8=
+initial-final overlap: 5.741401758789214
+initial_guess: diag
+iteration:
+- residual norms:
+  - 0.37574029426477595
+  - 0.31898676402878257
+  - 0.23487981021491552
+- residual norms:
+  - 0.09023109061674879
+  - 0.05965877702046148
+  - 0.03775037771344706
+- residual norms:
+  - 0.015237973896036289
+  - 0.01431154105927378
+  - 0.004969732379914456
+- residual norms:
+  - 0.0019656892573774527
+  - 0.001289841702339112
+  - 0.0005438821434530231
+- residual norms:
+  - 0.00025518696347375447
+  - 0.00012110198701395896
+  - 6.263963090825139e-05
+- residual norms:
+  - 2.889396752471994e-05
+  - 1.8436127801380882e-05
+  - 7.429626351651205e-06
+- residual norms:
+  - 3.96012172197335e-06
+  - 2.4417689401113493e-06
+  - 5.695730646209409e-06
+method: RKS
+molecule: ''
+n_occ: 9
+n_vir: 39
+precondition time: 0.0001494884490966797
+preconditioner: diag
+preconditioner threshold: 0.01
+reduced_occ: 9
+reduced_vir: 39
+sTDA_alpha: 1.54
+sTDA_ax: 0.25
+sTDA_beta: 0.6575
+threshold: 1.0e-05
+virtual truncation tol:
+- 1000000.0
+- 1000000.0
+wall time: 1.3545103073120117

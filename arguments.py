@@ -61,6 +61,8 @@ def gen_args():
     # parser.add_argument('-Uconst','--Uconst',       type=float,  default = 0.0, help='use a constant 0.123 as s and p orbital exponential')
     parser.add_argument('-Uc','--coulomb_U',         type=float,  default = 1.0, help='use Uc/R^2 as orbital exponent for coulomb term')
     parser.add_argument('-Ue','--exchange_U',        type=float,  default = 1.0, help='use Ue/R^2 as orbital exponent for exchange term')
+    parser.add_argument('-mix_c','--mix_c',         type=float,  default = 1.0, help='use Ue/R^2 as orbital exponent for exchange term')
+
 
     parser.add_argument('-Uk_tune','--Uk_tune',     type=str2bool,  default = False, help='tune the k parameter of k/R**0.5')
 

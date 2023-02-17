@@ -1,0 +1,450 @@
+curpath /Users/zehaozhou/repo/project/davidson/davidson/RHS_maker
+lib.num_threads() =  1
+Namespace(basis_set='def2-tzvp', checkfile=True, density_fit=True, functional='pbe0', grad=True, grid_level=3, memory=4000, method='RKS', verbose=5, xyzfile='methanol.xyz')
+svmem(total=8589934592, available=1858244608, percent=78.4, used=4876673024, free=113123328, active=1749528576, inactive=1718370304, wired=3127144448)
+at beginning memory used: 35.44921875 MB
+mol.max_memory 4000
+#INFO: **** input file is /Users/zehaozhou/repo/project/davidson/davidson/RHS_maker/PySCF_grad.py ****
+import time
+import pyscf
+import tempfile
+from pyscf import lib, gto, scf, dft, tddft, grad
+import argparse
+import os
+import psutil
+
+import numpy
+
+def str2bool(str):
+    if str.lower() in ('yes', 'true', 't', 'y', '1'):
+        return True
+    elif str.lower() in ('no', 'false', 'f', 'n', '0'):
+        return False
+    else:
+        raise argparse.ArgumentTypeError('Unsupported value encountered.')
+
+print('curpath', os.getcwd())
+print('lib.num_threads() = ', lib.num_threads())
+
+parser = argparse.ArgumentParser(description='Davidson')
+parser.add_argument('-x', '--xyzfile',                      type=str,   default='NA', help='xyz filename (molecule.xyz)')
+parser.add_argument('-chk', '--checkfile',                  type=str2bool,  default=True, help='checkpoint filename (.chk)')
+parser.add_argument('-m', '--method',                       type=str,   default='RKS', help='RHF RKS UHF UKS')
+parser.add_argument('-f', '--functional',                   type=str,   default=None,  help='xc functional')
+parser.add_argument('-b', '--basis_set',                    type=str,   default='def2-TZVP',  help='basis set')
+parser.add_argument('-df', '--density_fit',                 type=str2bool,  default='True', help='density fitting turn on')
+parser.add_argument('-g', '--grid_level',                   type=int,   default=3,   help='0-9, 9 is best')
+
+parser.add_argument('-M',  '--memory',                      type=int,   default= 4000, help='max_memory')
+parser.add_argument('-v',  '--verbose',                     type=int,   default= 5,    help='mol.verbose = 3,4,5')
+parser.add_argument('-grad',  '--grad',                     type=str2bool,   default= 'False', help='perform S1 grad calculation')
+
+args = parser.parse_args()
+################################################
+
+print(args)
+
+
+
+
+########################################################
+def show_memory_info(hint):
+    pid = os.getpid()
+    p = psutil.Process(pid)
+    info = p.memory_full_info()
+    memory = info.uss / 1024 / 1024
+    print('{} memory used: {} MB'.format(hint, memory))
+########################################################
+
+info = psutil.virtual_memory()
+print(info)
+
+show_memory_info('at beginning')
+
+# read xyz file and delete its first two lines
+basename = args.xyzfile.split('.',1)[0]
+
+with open(args.xyzfile) as f:
+    coordinate = f.read().splitlines()[2:]
+    atom_coordinates = [i for i in coordinate if i != '']
+###########################################################################
+# build geometry in PySCF
+mol = gto.Mole()
+mol.atom = atom_coordinates
+mol.basis = args.basis_set
+mol.verbose = args.verbose
+mol.max_memory = args.memory
+print('mol.max_memory', mol.max_memory)
+mol.build(parse_arg = False)
+###########################################################################
+###################################################
+#DFT or HF?
+if args.method == 'RKS':
+    mf = dft.RKS(mol)
+elif args.method == 'UKS':
+    mf = dft.UKS(mol)
+elif args.method == 'RHF':
+    mf = scf.RHF(mol)
+elif args.method == 'UHF':
+    mf = scf.UHF(mol)
+
+if 'KS' in args.method:
+    print('RKS')
+    mf.xc = args.functional
+    mf.grids.level = args.grid_level
+    # 0-9, big number for large mesh grids, default is 3
+else:
+    print('HF')
+
+if args.density_fit:
+    mf = mf.density_fit()
+    print('Density fitting turned on')
+
+if args.checkfile:
+    mf.chkfile = basename + '_' + args.functional + '.chk'
+    mf.init_guess = 'chkfile'
+
+mf.conv_tol = 1e-10
+
+#
+# Save the density matrix as the initial guess for the next calculation
+#
+
+
+
+# mf.init_guess = 'chkfile' # to use the chk file as input
+
+
+print ('Molecule built')
+print ('Calculating SCF Energy...')
+kernel_0 = time.time()
+mf.kernel()
+kernel_1 = time.time()
+scf_time = kernel_1 - kernel_0
+print ('SCF Done after ', round(scf_time, 4), 'seconds')
+
+show_memory_info('after SCF')
+
+if args.grad:
+    TD_start = time.time()
+    td = tddft.TDA(mf)
+    td.nstates = 3
+    e, z = td.kernel()
+    # z = numpy.array(z)
+    X = z[0][0]
+    X = numpy.array(X)
+    print('X.shape',X.shape)
+    print('e.shape',' z.shape')
+    print(len(e), type(z[0][0]))
+    # print(z)
+
+    TD_end = time.time()
+    TD_time = TD_end - TD_start
+
+    # z = grad_elec(mf, (X, numpy.zeros_like(X)))
+    # attrs = vars(td)
+    # for key in attrs:
+    #     print(key, attrs[key])
+    # tdg = td.nuc_grad_method()
+    TDG_start = time.time()
+    tdg = td.Gradients()
+    g1 = tdg.kernel(state=1)
+    TDG_end = time.time()
+    TDG_time = TDG_end - TDG_start
+    print(g1)
+
+    print('scf_time = {:.2f}'.format(scf_time))
+    print('TD_time = {:.2f}'.format(TD_time))
+    print('TDG_time = {:.2f}'.format(TDG_time))
+#INFO: ******************** input file end ********************
+
+
+System: uname_result(system='Darwin', node='Quantum', release='22.1.0', version='Darwin Kernel Version 22.1.0: Sun Oct  9 20:14:54 PDT 2022; root:xnu-8792.41.9~2/RELEASE_X86_64', machine='x86_64', processor='i386')  Threads 1
+Python 3.7.4 (default, Aug 13 2019, 15:17:50) 
+[Clang 4.0.1 (tags/RELEASE_401/final)]
+numpy 1.21.4  scipy 1.1.0
+Date: Tue Dec 13 19:52:44 2022
+PySCF version 1.7.0
+PySCF path  /Users/zehaozhou/opt/anaconda3/lib/python3.7/site-packages/pyscf
+
+[CONFIG] conf_file None
+[INPUT] verbose = 5
+[INPUT] max_memory = 4000 
+[INPUT] num. atoms = 6
+[INPUT] num. electrons = 18
+[INPUT] charge = 0
+[INPUT] spin (= nelec alpha-beta = 2S) = 0
+[INPUT] symmetry False subgroup None
+[INPUT] Mole.unit = angstrom
+[INPUT]  1 C     -4.891260000000   3.297700000000   0.000290000000 AA   -9.243141804040   6.231749840978   0.000548020576 Bohr
+[INPUT]  2 H     -5.282130000000   3.054940000000  -1.011610000000 AA   -9.981779054349   5.772999926979  -1.911665844871 Bohr
+[INPUT]  3 O     -3.493070000000   3.284290000000  -0.003280000000 AA   -6.600945633934   6.206408613648  -0.006198301689 Bohr
+[INPUT]  4 H     -5.282130000000   2.583740000000   0.757360000000 AA   -9.981779054349   4.882560977084   1.431202977701 Bohr
+[INPUT]  5 H     -5.239980000000   4.315400000000   0.271380000000 AA   -9.902127098198   8.154924117948   0.512833875684 Bohr
+[INPUT]  6 H     -3.229590000000   2.359810000000  -0.249530000000 AA   -6.103040594634   4.459394606010  -0.471543359863 Bohr
+[INPUT] ---------------- BASIS SET ---------------- 
+[INPUT] l, kappa, [nprim/nctr], expnt,             c_1 c_2 ...
+[INPUT] O
+[INPUT] 0    0    [6    /1   ]  27032.382631      0.00021726302465
+                                4052.3871392      0.0016838662199
+                                922.3272271       0.0087395616265
+                                261.24070989      0.035239968808
+                                85.354641351      0.11153519115
+                                31.035035245      0.25588953961
+[INPUT] 0    0    [2    /1   ]  12.260860728      0.39768730901
+                                4.9987076005      0.2462784943
+[INPUT] 0    0    [1    /1   ]  1.1703108158         1
+[INPUT] 0    0    [1    /1   ]  0.46474740994        1
+[INPUT] 0    0    [1    /1   ]  0.18504536357        1
+[INPUT] 1    0    [4    /1   ]  63.274954801      0.0060685103418
+                                14.627049379      0.041912575824
+                                4.4501223456      0.16153841088
+                                1.5275799647      0.35706951311
+[INPUT] 1    0    [1    /1   ]  0.52935117943        1
+[INPUT] 1    0    [1    /1   ]  0.1747842127         1
+[INPUT] 2    0    [1    /1   ]  2.314                1
+[INPUT] 2    0    [1    /1   ]  0.645                1
+[INPUT] 3    0    [1    /1   ]  1.428                1
+[INPUT] C
+[INPUT] 0    0    [6    /1   ]  13575.349682      0.00022245814352
+                                2035.233368       0.0017232738252
+                                463.22562359      0.0089255715314
+                                131.20019598      0.035727984502
+                                42.853015891      0.11076259931
+                                15.584185766      0.24295627626
+[INPUT] 0    0    [2    /1   ]  6.2067138508      0.41440263448
+                                2.5764896527      0.23744968655
+[INPUT] 0    0    [1    /1   ]  0.57696339419        1
+[INPUT] 0    0    [1    /1   ]  0.22972831358        1
+[INPUT] 0    0    [1    /1   ]  0.095164440028       1
+[INPUT] 1    0    [4    /1   ]  34.697232244      0.0053333657805
+                                7.9582622826      0.035864109092
+                                2.3780826883      0.14215873329
+                                0.81433208183     0.34270471845
+[INPUT] 1    0    [1    /1   ]  0.28887547253        1
+[INPUT] 1    0    [1    /1   ]  0.10056823671        1
+[INPUT] 2    0    [1    /1   ]  1.097                1
+[INPUT] 2    0    [1    /1   ]  0.318                1
+[INPUT] 3    0    [1    /1   ]  0.761                1
+[INPUT] H
+[INPUT] 0    0    [3    /1   ]  34.061341         0.0060251978
+                                5.1235746         0.045021094
+                                1.1646626         0.20189726
+[INPUT] 0    0    [1    /1   ]  0.32723041           1
+[INPUT] 0    0    [1    /1   ]  0.10307241           1
+[INPUT] 1    0    [1    /1   ]  0.8                  1
+
+nuclear repulsion = 40.3453758822416
+number of shells = 38
+number of NR pGTOs = 124
+number of NR cGTOs = 86
+basis = def2-tzvp
+ecp = {}
+CPU time:         0.80
+RKS
+Density fitting turned on
+Molecule built
+Calculating SCF Energy...
+
+
+******** <class 'pyscf.df.df_jk.density_fit.<locals>.DFHF'> ********
+method = DFHF-RKS-RHF
+initial guess = chkfile
+damping factor = 0
+level_shift factor = 0
+DIIS = <class 'pyscf.scf.diis.CDIIS'>
+diis_start_cycle = 1
+diis_space = 8
+SCF conv_tol = 1e-10
+SCF conv_tol_grad = None
+SCF max_cycles = 50
+direct_scf = True
+direct_scf_tol = 1e-13
+chkfile to save SCF result = methanol_pbe0.chk
+max_memory 4000 MB (current use 0 MB)
+XC functionals = pbe0
+small_rho_cutoff = 1e-07
+radial grids: 
+    Treutler-Ahlrichs (JCP 102, 346 (M4)) radial grids
+    
+becke partition: Becke, JCP, 88, 2547 (1988)
+pruning grids: <function nwchem_prune at 0x7f8fff3c6d40>
+grids dens level: 3
+symmetrized grids: False
+atomic radii adjust function: <function treutler_atomic_radii_adjust at 0x7f8fff3c6cb0>
+Set gradient conv threshold to 1e-05
+cond(S) = 3910.8541456424186
+atom C rad-grids = 75, ang-grids = [ 50  50  50  50  50  50  50  50  50  50  50  50  50  50  50  50  50  50
+  50  50  50  50  50  86  86  86  86  86  86  86  86  86  86 266 266 266
+ 266 266 266 266 302 302 302 302 302 302 302 302 302 302 302 302 302 302
+ 302 302 302 302 302 302 266 266 266 266 266 266 266 266 266 266 266 266
+ 266 266 266]
+atom H rad-grids = 50, ang-grids = [ 50  50  50  50  50  50  50  50  50  50  50  50  50  50  86  86  86  86
+ 266 266 266 266 302 302 302 302 302 302 302 302 302 302 302 302 302 266
+ 266 266 266 266 266 266 266 266 266 266 266 266 266 266]
+atom O rad-grids = 75, ang-grids = [ 50  50  50  50  50  50  50  50  50  50  50  50  50  50  50  50  50  50
+  50  50  50  50  86  86  86  86  86  86  86  86  86 266 266 266 266 266
+ 266 266 302 302 302 302 302 302 302 302 302 302 302 302 302 302 302 302
+ 302 302 302 266 266 266 266 266 266 266 266 266 266 266 266 266 266 266
+ 266 266 266]
+tot grids = 68260
+Drop grids 9309
+    CPU time for setting up grids      0.23 sec, wall time      0.13 sec
+nelec by numeric integration = 18.00000300803275
+    CPU time for vxc      0.45 sec, wall time      0.29 sec
+******** <class 'pyscf.df.df.DF'> ********
+auxbasis = None
+max_memory = 4000
+_cderi_to_save = /var/folders/yv/2d0zlq3j1dq04l1tjz4qgg800000gn/T/tmp3kjlb3gq
+Default auxbasis def2-tzvp-jkfit is used for O def2-tzvp
+Default auxbasis def2-tzvp-jkfit is used for C def2-tzvp
+Default auxbasis def2-tzvp-jkfit is used for H def2-tzvp
+num shells = 74, num cGTOs = 224
+size of aux basis 224
+int3c2e [1/1], AO [0:38], nrow = 3741
+    CPU time for cholesky_eri      0.16 sec, wall time      0.07 sec
+    CPU time for df vj and vk      0.22 sec, wall time      0.10 sec
+E1 = -237.1127682547476  Ecoul = 96.49347340851078  Exc = -15.36120938160616
+init E= -115.635128345601
+    CPU time for initialize scf      0.93 sec, wall time      0.57 sec
+  HOMO = -0.287262661511494  LUMO = 0.0350072265018109
+  mo_energy =
+[-1.92055438e+01 -1.02629843e+01 -1.04944972e+00 -6.93457109e-01
+ -5.20522597e-01 -4.56619529e-01 -4.41343006e-01 -3.47396078e-01
+ -2.87262662e-01  3.50072265e-02  8.14316563e-02  1.26744757e-01
+  1.27678028e-01  1.46321239e-01  2.30951854e-01  2.34811209e-01
+  3.26102932e-01  3.74039494e-01  3.92392414e-01  4.53108638e-01
+  4.56862407e-01  4.78418700e-01  5.12212437e-01  5.16834274e-01
+  5.84979180e-01  7.00636901e-01  7.34961662e-01  7.85905966e-01
+  9.03124012e-01  9.29754433e-01  1.03208513e+00  1.28150933e+00
+  1.41177657e+00  1.47039173e+00  1.51544869e+00  1.51916396e+00
+  1.54147079e+00  1.57440225e+00  1.60307481e+00  1.69423626e+00
+  1.87220852e+00  1.93308616e+00  1.95976809e+00  2.00630678e+00
+  2.02318769e+00  2.15848378e+00  2.25732859e+00  2.26465821e+00
+  2.29632045e+00  2.30852297e+00  2.40454707e+00  2.48124611e+00
+  2.54305626e+00  2.59511887e+00  2.73669929e+00  2.76919020e+00
+  2.81288204e+00  2.90352886e+00  3.01347591e+00  3.08587793e+00
+  3.20555361e+00  3.31342941e+00  3.33628122e+00  3.37708053e+00
+  3.55416815e+00  3.55730090e+00  3.57072315e+00  3.89323383e+00
+  4.09288696e+00  4.15883953e+00  4.34888443e+00  4.46269748e+00
+  5.27242720e+00  5.36220159e+00  5.44135691e+00  5.72117409e+00
+  5.76589835e+00  5.92197835e+00  6.19494209e+00  6.45479630e+00
+  6.67077216e+00  6.74444125e+00  6.95121060e+00  7.11486209e+00
+  2.23485974e+01  4.36913193e+01]
+nelec by numeric integration = 18.000003008040867
+    CPU time for vxc      0.40 sec, wall time      0.23 sec
+    CPU time for df vj and vk      0.05 sec, wall time      0.03 sec
+E1 = -237.11277759463425  Ecoul = 96.49348399944077  Exc = -15.361210632648419
+cycle= 1 E= -115.6351283456  delta_E= 1.08e-12  |g|= 2.74e-06  |ddm|= 2.09e-06
+    CPU time for cycle= 1      0.46 sec, wall time      0.27 sec
+  HOMO = -0.287261899246453  LUMO = 0.0350073310896525
+  mo_energy =
+[-1.92055410e+01 -1.02629852e+01 -1.04944882e+00 -6.93457089e-01
+ -5.20522133e-01 -4.56619482e-01 -4.41342678e-01 -3.47395626e-01
+ -2.87261899e-01  3.50073311e-02  8.14316390e-02  1.26744699e-01
+  1.27677929e-01  1.46321314e-01  2.30951810e-01  2.34811202e-01
+  3.26103090e-01  3.74039496e-01  3.92392606e-01  4.53108562e-01
+  4.56862517e-01  4.78418713e-01  5.12212779e-01  5.16834282e-01
+  5.84979574e-01  7.00636855e-01  7.34961680e-01  7.85906247e-01
+  9.03124031e-01  9.29754350e-01  1.03208508e+00  1.28150959e+00
+  1.41177665e+00  1.47039167e+00  1.51544852e+00  1.51916379e+00
+  1.54147067e+00  1.57440234e+00  1.60307498e+00  1.69423633e+00
+  1.87220886e+00  1.93308624e+00  1.95976808e+00  2.00630700e+00
+  2.02318778e+00  2.15848406e+00  2.25732886e+00  2.26465842e+00
+  2.29632052e+00  2.30852285e+00  2.40454739e+00  2.48124601e+00
+  2.54305616e+00  2.59511921e+00  2.73669941e+00  2.76919062e+00
+  2.81288256e+00  2.90352940e+00  3.01347575e+00  3.08587785e+00
+  3.20555369e+00  3.31342919e+00  3.33628141e+00  3.37708048e+00
+  3.55416815e+00  3.55730080e+00  3.57072304e+00  3.89323435e+00
+  4.09288675e+00  4.15883936e+00  4.34888424e+00  4.46269799e+00
+  5.27242818e+00  5.36220256e+00  5.44135790e+00  5.72117498e+00
+  5.76589928e+00  5.92197923e+00  6.19494324e+00  6.45479777e+00
+  6.67077355e+00  6.74444263e+00  6.95121195e+00  7.11486332e+00
+  2.23485966e+01  4.36913220e+01]
+nelec by numeric integration = 18.000003008028614
+    CPU time for vxc      0.43 sec, wall time      0.24 sec
+    CPU time for df vj and vk      0.05 sec, wall time      0.03 sec
+E1 = -237.1127621248882  Ecoul = 96.49346649351018  Exc = -15.361208596462314
+Extra cycle  E= -115.635128345599  delta_E= 1.53e-12  |g|= 4.18e-06  |ddm|= 3.21e-06
+    CPU time for scf_cycle      1.88 sec, wall time      1.12 sec
+    CPU time for SCF      1.88 sec, wall time      1.13 sec
+converged SCF energy = -115.635128345599
+SCF Done after  1.1255 seconds
+after SCF memory used: 46.15625 MB
+Converting <class 'pyscf.df.df_jk.density_fit.<locals>.DFHF'> to RHF
+
+
+******** <class 'pyscf.tdscf.rks.TDA'> for <class 'pyscf.df.df_jk.density_fit.<locals>.DFHF'> ********
+nstates = 3 singlet
+wfnsym = None
+conv_tol = 1e-09
+eigh lindep = 1e-12
+eigh level_shift = 0
+eigh max_space = 50
+eigh max_cycle = 100
+chkfile = methanol_pbe0.chk
+max_memory 4000 MB (current use 0 MB)
+
+
+    CPU time for df vj and vk      0.13 sec, wall time      0.07 sec
+davidson 0 3  |r|= 0.0761  e= [0.25803348 0.31766015 0.32788308]  max|de|= 0.328  lindep=    1
+    CPU time for df vj and vk      0.13 sec, wall time      0.07 sec
+davidson 1 6  |r|= 0.0204  e= [0.2561231  0.31640301 0.32405248]  max|de|= -0.00383  lindep= 0.858
+    CPU time for df vj and vk      0.13 sec, wall time      0.07 sec
+davidson 2 9  |r|= 0.00869  e= [0.25604534 0.31633288 0.32341719]  max|de|= -0.000635  lindep= 0.863
+    CPU time for df vj and vk      0.13 sec, wall time      0.07 sec
+davidson 3 12  |r|= 0.00287  e= [0.25604307 0.31633042 0.32334298]  max|de|= -7.42e-05  lindep= 0.799
+    CPU time for df vj and vk      0.14 sec, wall time      0.07 sec
+davidson 4 15  |r|= 0.00151  e= [0.25604292 0.31633025 0.32333001]  max|de|= -1.3e-05  lindep= 0.755
+    CPU time for df vj and vk      0.13 sec, wall time      0.07 sec
+davidson 5 18  |r|= 0.000658  e= [0.25604292 0.31633022 0.32332707]  max|de|= -2.94e-06  lindep= 0.728
+    CPU time for df vj and vk      0.14 sec, wall time      0.07 sec
+root 0 converged  |r|= 4.54e-07  e= 0.2560429155143995  max|de|= -2.13e-11
+davidson 6 21  |r|= 0.000322  e= [0.25604292 0.31633021 0.32332637]  max|de|= -6.92e-07  lindep= 0.837
+    CPU time for df vj and vk      0.09 sec, wall time      0.05 sec
+root 1 converged  |r|= 3.39e-06  e= 0.316330210807904  max|de|= -2.55e-10
+davidson 7 23  |r|= 9.25e-05  e= [0.25604292 0.31633021 0.32332629]  max|de|= -8.71e-08  lindep=  0.8
+    CPU time for df vj and vk      0.04 sec, wall time      0.02 sec
+davidson 8 24  |r|= 3.33e-05  e= [0.25604292 0.31633021 0.32332628]  max|de|= -9.72e-09  lindep= 0.866
+    CPU time for df vj and vk      0.05 sec, wall time      0.03 sec
+davidson 9 25  |r|= 1.6e-05  e= [0.25604292 0.31633021 0.32332628]  max|de|= -1.34e-09  lindep=  0.8
+    CPU time for df vj and vk      0.05 sec, wall time      0.02 sec
+root 2 converged  |r|= 6.53e-06  e= 0.32332627469710185  max|de|= -3.76e-10
+converged 10 26  |r|= 6.53e-06  e= [0.25604292 0.31633021 0.32332627]  max|de|= -3.76e-10
+    CPU time for TDA      9.84 sec, wall time      5.24 sec
+Excited State energies (eV)
+[6.96728261 8.60778348 8.79815607]
+X.shape (9, 77)
+e.shape  z.shape
+3 <class 'numpy.ndarray'>
+
+
+******** LR <class 'pyscf.tdscf.rks.TDA'> gradients for <class 'pyscf.df.df_jk.density_fit.<locals>.DFHF'> ********
+cphf_conv_tol = 1e-08
+cphf_max_cycle = 20
+chkfile = methanol_pbe0.chk
+State ID = 1
+max_memory 4000 MB (current use 0 MB)
+
+
+type(x_y) <class 'tuple'>
+x.shape (9, 77)
+nvir,nocc 77 9
+    CPU time for df vj and vk      0.14 sec, wall time      0.07 sec
+wvo.shape (77, 9)
+solve_nos1
+krylov tol = 1e-08
+krylov cycle = 0
+    CPU time for df vj and vk      0.05 sec, wall time      0.03 sec
+krylov cycle = 1
+    CPU time for df vj and vk      0.06 sec, wall time      0.03 sec
+krylov cycle = 2
+    CPU time for df vj and vk      0.05 sec, wall time      0.02 sec
+krylov cycle = 3
+    CPU time for df vj and vk      0.05 sec, wall time      0.03 sec
+krylov cycle = 4
+    CPU time for df vj and vk      0.05 sec, wall time      0.03 sec
+krylov cycle = 5
+    CPU time for df vj and vk      0.05 sec, wall time      0.03 sec
+krylov cycle = 6
+    CPU time for df vj and vk      0.05 sec, wall time      0.03 sec

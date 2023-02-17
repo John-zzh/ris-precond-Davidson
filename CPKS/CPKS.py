@@ -23,9 +23,9 @@ def main():
                           iter_p = spolar_iter_initprec)
 
     '''wvo.txt is the actually the negative RHS, but P is also negative, just trust the sign'''
-    RHS = np.loadtxt('wvo.txt')
-    print('RHS.shape', RHS.shape)
-    RHS = RHS.T.reshape(-1,1)
+    wvo = np.loadtxt('wvo.txt')
+    print('wvo.shape', wvo.shape)
+    wvo = -wvo.T.reshape(-1,1)
     for option in args.ip_options:
         initial_guess, preconditioner = ip_dict[option]
         (tensor_alpha, X_full, Davidson_dict) = spolar_solver(
@@ -33,7 +33,7 @@ def main():
                                preconditioner = preconditioner,
                                      conv_tol = args.conv_tolerance,
                                           max = args.max,
-                                          P = RHS,
+                                          RHS = wvo,
                                   calc_name = 'CPKS')
         toy_z = X_full.reshape(n_occ, n_vir).T
         np.savetxt('X_full.txt', toy_z)
