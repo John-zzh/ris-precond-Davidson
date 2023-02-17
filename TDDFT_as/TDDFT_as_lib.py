@@ -275,7 +275,7 @@ class TDDFT_as(object):
         return ijab_fly, ibja_fly
 
 
-    def gen_mv_fly(self, iajb_fly, ijab_fly, ibja_fly, a_x=a_x, delta_hdiag2_fly=delta_hdiag2_fly):
+    def gen_mv_fly(self, iajb_fly, ijab_fly, ibja_fly, a_x=a_x, diag_cl_correct=None, diag_ex_correct=None):
 
         def TDA_mv(X):
             ''' return AX
@@ -288,6 +288,12 @@ class TDDFT_as(object):
             AX = delta_hdiag2_fly(X_cl)
             AX += 2*iajb_fly(X_cl)
             AX[ex_truc_occ-cl_truc_occ:,:ex_rest_vir,:] -= a_x*ijab_fly(X_ex)
+
+            if diag_cl_correct and diag_ex_correct:
+                # pass
+                # print('diag correction')
+                AX += 2*diag_cl_correct(X_cl) - a_x*diag_ex_correct(X_cl)
+
             AX = AX.reshape(cl_A_rest_size, -1)
             return AX
 
@@ -331,6 +337,10 @@ class TDDFT_as(object):
             A_m_B_X_m_Y = delta_hdiag2_fly(X_m_Y_cl)
             A_m_B_X_m_Y[ex_truc_occ-cl_truc_occ:,:ex_rest_vir,:] += a_x*(ibja_fly(X_m_Y_ex) - ijab_fly(X_m_Y_ex))
 
+            if diag_cl_correct and diag_ex_correct:
+                A_p_B_X_p_Y += (4-a_x)*diag_cl_correct(X_p_Y_cl) - a_x*diag_ex_correct(X_p_Y_cl)
+                A_m_B_X_m_Y += a_x*(diag_cl_correct(X_m_Y_cl) - diag_ex_correct(X_m_Y_cl))
+
             U1 = (A_p_B_X_p_Y + A_m_B_X_m_Y)/2
             U2 = (A_p_B_X_p_Y - A_m_B_X_m_Y)/2
 
@@ -356,7 +366,7 @@ class TDDFT_as(object):
 
         return TDA_mv, TDDFT_mv, TDDFT_spolar_mv
 
-    def build(self, delta_hdiag2_fly=delta_hdiag2_fly):
+    def build(self):
 
         auxmol_cl = self.gen_auxmol(U=args.coulomb_U, add_p=args.coulomb_aux_add_p, full_fitting=False)
         auxmol_ex = self.gen_auxmol(U=args.exchange_U, add_p=args.exchange_aux_add_p, full_fitting=False)
@@ -392,8 +402,8 @@ class TDDFT_as(object):
                                 rest_vir=ex_rest_vir,
                                 calc='exchange')
 
-        print('type(delta_hdiag2_fly)',type(delta_hdiag2_fly))
-        delta_hdiag2_fly = delta_hdiag2_fly
+        diag_cl_correct = None
+        diag_ex_correct = None
         if args.woodbury and args.full_fitting:
             '''
             rebuild the auxmol and rebuild the 3c2e and 2c2e with full auxbasis
@@ -401,6 +411,10 @@ class TDDFT_as(object):
             '''
             auxmol_full = self.gen_auxmol(full_fitting=True)
             eri2c_full, eri3c_full = self.gen_electron_int(mol=mol, auxmol=auxmol_full, RS_omega=0)
+            if args.functional in parameter.RSH_F:
+                eri2c_erf, eri3c_erf = self.gen_electron_int(mol=mol, auxmol=auxmol_full, RS_omega=parameter.RSH_omega)
+                eri2c_full = alpha_RSH*eri2c_full + beta_RSH*eri2c_erf
+                eri3c_full = alpha_RSH*eri3c_full + beta_RSH*eri3c_erf
 
             *_, diag_cl_full = self.gen_GAMMA(eri2c=eri2c_full, eri3c=eri3c_full,
                                                 truc_occ=0,
@@ -411,22 +425,25 @@ class TDDFT_as(object):
                                                 rest_vir=n_vir,
                                                 calc='exchange')
 
-            diag_cl_correction = diag_cl_full - diag_cl_risp
-            diag_ex_correction = diag_ex_full - diag_ex_risp
+            def diag_cl_correct(V):
+                return einsum("ia,iam->iam", diag_cl_full - diag_cl_risp, V)
+
+            def diag_ex_correct(V):
+                return einsum("ia,iam->iam", diag_ex_full - diag_ex_risp, V)
 
 
-            def delta_hdiag2_fly(V):
-                '''
-                make sure no trunction on the coulomb, so that delta_hdiag2 = delta_hdiag
-                delta_hdiag2 is KS orbital energy diff
-                '''
-                hidag_merge = delta_hdiag + diag_cl_correction - a_x*diag_ex_correction
-                hidag_merge_v = einsum("ia,iam->iam", hidag_merge, V)
-                return hidag_merge_v
+            # def delta_hdiag2_fly(V):
+            #     '''
+            #     make sure no trunction on the coulomb, so that delta_hdiag2 = delta_hdiag
+            #     delta_hdiag2 is KS orbital energy diff
+            #     '''
+            #     hidag_merge = delta_hdiag + diag_cl_correction - a_x*diag_ex_correction
+            #     hidag_merge_v = einsum("ia,iam->iam", hidag_merge, V)
+            #     return hidag_merge_v
+            #
 
 
-
-        '''(pq|rs)'''
+        '''(pq|rs)V'''
 
         iajb_fly = self.gen_coulomb(GAMMA_ia=GAMMA_ia_cl,
                                   GAMMA_J_ia=GAMMA_J_ia_cl)
@@ -442,6 +459,7 @@ class TDDFT_as(object):
                             iajb_fly=iajb_fly,
                             ijab_fly=ijab_fly,
                             ibja_fly=ibja_fly,
-                    delta_hdiag2_fly=delta_hdiag2_fly)
+                     diag_cl_correct=diag_cl_correct,
+                     diag_ex_correct=diag_ex_correct)
 
         return TDA_mv, TDDFT_mv, TDDFT_spolar_mv

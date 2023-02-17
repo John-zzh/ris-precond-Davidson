@@ -153,6 +153,7 @@ def TDA_solver(N_states, initial_guess, preconditioner,
         print('========== TDA Calculation Done==========')
     print('energies:')
     print(energies)
+    print('initial-final RMSE = {:.3f}'.format(energy_diff))
     print('Maximum residual norm = {:.2e}'.format(max_norm))
     print('Finished in {:d} steps, {:.2f} seconds'.format(ii+1, Dcost))
     print('Final subspace size = {:d}'.format(sub_A.shape[0]))
