@@ -40,7 +40,7 @@ def spolar_solver(initial_guess, preconditioner,
 
     RHS_norm = np.linalg.norm(RHS, axis=0, keepdims = True)
     print('solver RHS_norm.shape =', RHS_norm.shape)
-    RHS /= RHS_norm
+    RHS = RHS/RHS_norm
 
     Davidson_dict = {}
     Davidson_dict['iteration'] = []
