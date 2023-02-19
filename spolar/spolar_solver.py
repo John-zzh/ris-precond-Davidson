@@ -133,6 +133,10 @@ def spolar_solver(initial_guess, preconditioner,
     X_full = X_full*RHS_norm
 
     X_overlap = float(np.linalg.norm(np.dot((X_ig*RHS_norm).T, X_full)))
+    print('initial-final overlap', X_overlap)
+    X_overlap = float(np.linalg.norm(np.dot((X_ig/np.linalg.norm(X_ig, axis=0)).T, X_full/np.linalg.norm(X_full, axis=0))))
+    print('np.linalg.norm(X_ig, axis=0)', np.linalg.norm(X_ig, axis=0))
+    print('initial-final overlap', X_overlap)
     tensor_alpha = np.dot(X_full.T, RHS_origin)*4
     sp_end = time.time()
     sp_cost = sp_end - sp_start
