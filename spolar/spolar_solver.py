@@ -158,7 +158,7 @@ def spolar_solver(initial_guess, preconditioner,
         cost = locals()[enrty]
         print("{:<10} {:<5.4f}s {:<5.2%}".format(enrty, cost, cost/sp_cost))
 
-    anisotropy_difference = None
+
 
     if alpha_init.shape[0] > 1:
         initial_tr, initial_anis = math.gen_anisotropy(alpha_init)
@@ -168,6 +168,8 @@ def spolar_solver(initial_guess, preconditioner,
         print('initial_anisotropy = {:.2f}'.format(initial_anis))
         print('final_anisotropy= {:.2f}'.format(final_anis))
         print('anisotropy_difference = {:.2f}'.format(anisotropy_difference))
+    else:
+        anisotropy_difference = float(np.linalg.norm(X_ig*RHS_norm - X_full))
 
     sp_end = time.time()
     spcost = sp_end - sp_start
