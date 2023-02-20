@@ -7,4 +7,4 @@ python ../../Davidson.py -x methanol.xyz -b def2-svp -f pbe0 -df True \
 -TV 1000000 1000000 -TO 1000000 1000000 \
 -spolar_as_profile true \
 -spolar true -o 0 -t 1e-5 \
--w true -FK true
+-w false -FK false

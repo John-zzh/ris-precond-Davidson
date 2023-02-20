@@ -23,10 +23,11 @@ def main():
                           iter_p = spolar_iter_initprec)
 
     '''wvo.txt is the actually the negative RHS, but P is also negative, just trust the sign'''
-    wvo = np.loadtxt('wvo.txt')
-    print('wvo.shape', wvo.shape)
-    wvo = -wvo.T.reshape(-1,1)
+
     for option in args.ip_options:
+        wvo = np.loadtxt('wvo.txt')
+        print('wvo.shape', wvo.shape)
+        wvo = -wvo.T.reshape(-1,1)
         initial_guess, preconditioner = ip_dict[option]
         (tensor_alpha, X_full, Davidson_dict) = spolar_solver(
                                 initial_guess = initial_guess,
@@ -40,7 +41,7 @@ def main():
         dump_yaml(Davidson_dict, option)
 
         standard_z = np.loadtxt('z1.txt')
-        print('difference = ', np.linalg.norm(toy_z-standard_z))
+        print('compare to pyscf difference = ', np.linalg.norm(toy_z-standard_z))
 
 if __name__ == '__main__':
     main()

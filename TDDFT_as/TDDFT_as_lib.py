@@ -38,7 +38,7 @@ if args.functional in parameter.RSH_F:
 
 class TDDFT_as(object):
 
-    def gen_auxmol(self, U=1, add_p=True, full_fitting=False):
+    def gen_auxmol(self, U=1, add_p=False, add_d=False, full_fitting=False):
         print('asigning auxiliary basis set, add p function =', add_p)
         print('U =', U)
         '''
@@ -77,18 +77,24 @@ class TDDFT_as(object):
 
                 exp = parameter.as_exp[atom] * U
 
-                if atom != 'H' and add_p == True:
-                    aux_basis[atom_index] = [[0, [exp, 1.0]],[1, [exp, 1.0]]]
-                else:
-                    aux_basis[atom_index] = [[0, [exp, 1.0]]]
+                aux_basis[atom_index] = [[0, [exp, 1.0]]]
+
+
+                if atom != 'H':
+                    if add_p:
+                        aux_basis[atom_index].append([1, [exp, 1.0]])
+                    if add_d:
+                        aux_basis[atom_index].append([2, [exp, 1.0]])
+
+
 
         else:
             print('full aux_basis')
             aux_basis = args.basis_set+"-jkfit"
         auxmol.basis = aux_basis
         auxmol.build()
-        print(auxmol._basis)
-        # [print(k, v) for k, v in auxmol.basis.items()]
+        # print(auxmol._basis)
+        [print(k, v) for k, v in auxmol.basis.items()]
 
         return auxmol
 
@@ -328,7 +334,7 @@ class TDDFT_as(object):
 
     def build(self):
 
-        auxmol_cl = self.gen_auxmol(U=args.coulomb_U, add_p=args.coulomb_aux_add_p, full_fitting=False)
+        auxmol_cl = self.gen_auxmol(U=args.coulomb_U, add_p=args.coulomb_aux_add_p, add_d=args.coulomb_aux_add_d, full_fitting=False)
         auxmol_ex = self.gen_auxmol(U=args.exchange_U, add_p=args.exchange_aux_add_p, full_fitting=False)
 
         '''

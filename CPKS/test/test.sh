@@ -14,7 +14,7 @@
 python ../../Davidson.py -x *.xyz -b def2-svp -f pbe0 -n 5 -df True \
 -v 3 -chk false -TDDFT_as True \
 -dscf false \
--cl_aux_p True -ex_aux_p False \
+-cl_aux_p True -cl_aux_d true -ex_aux_p False \
 -Uc 1 -Ue 1 \
 -TV 1000000 1000000 -TO 1000000 1000000 \
 -TDDFT_as_profile False \

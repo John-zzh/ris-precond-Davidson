@@ -40,6 +40,7 @@ def spolar_solver(initial_guess, preconditioner,
 
     RHS_norm = np.linalg.norm(RHS, axis=0, keepdims = True)
     print('solver RHS_norm.shape =', RHS_norm.shape)
+    print('RHS_norm =', RHS_norm)
     RHS = RHS/RHS_norm
 
     Davidson_dict = {}
@@ -159,17 +160,17 @@ def spolar_solver(initial_guess, preconditioner,
         print("{:<10} {:<5.4f}s {:<5.2%}".format(enrty, cost, cost/sp_cost))
 
 
-
     if alpha_init.shape[0] > 1:
         initial_tr, initial_anis = math.gen_anisotropy(alpha_init)
         final_tr, final_anis = math.gen_anisotropy(tensor_alpha)
         anisotropy_difference = abs((initial_anis-final_anis)/final_anis)
-        # print(type(anisotropy_difference))
         print('initial_anisotropy = {:.2f}'.format(initial_anis))
         print('final_anisotropy= {:.2f}'.format(final_anis))
-        print('anisotropy_difference = {:.2f}'.format(anisotropy_difference))
+
     else:
         anisotropy_difference = float(np.linalg.norm(X_ig*RHS_norm - X_full))
+
+    print('anisotropy_difference = {:.2f}'.format(anisotropy_difference))
 
     sp_end = time.time()
     spcost = sp_end - sp_start
