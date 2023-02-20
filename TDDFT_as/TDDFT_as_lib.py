@@ -94,7 +94,7 @@ class TDDFT_as(object):
         auxmol.basis = aux_basis
         auxmol.build()
         # print(auxmol._basis)
-        [print(k, v) for k, v in auxmol.basis.items()]
+        [print(k, v) for k, v in auxmol._basis.items()]
 
         return auxmol
 
