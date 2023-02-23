@@ -1,0 +1,53 @@
+# -*- coding: utf-8 -*-
+
+
+import os,sys
+script_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(script_dir)
+import time
+import numpy as np
+from arguments import args
+
+from TDA.TDA_iter_preconditioner import TDA_iter_preconditioner
+from mathlib.diag_ip import TDA_diag_preconditioner
+
+def Jacobi_preconditioner(residual, sub_eigenvalue, hdiag = None, misc=[], approx_K=args.approx_p):
+    '''(1-uu*)(A-Ω*I)t = -B
+        u is full guess
+
+        (1-uu*)Kz = y
+        Kz - uu*Kz = y
+        Kz + αu = y
+        z =  K^-1y - αK^-1u
+       B is residual, we want to solve t (approximately)
+       z approximates t
+       z = (A-Ω*I)^(-1)*(-B) - α(A-Ω*I)^(-1)*u
+        let K_inv_r = (A-Ω*I)^(-1)*(-B)
+        and K_inv_u = (A-Ω*I)^(-1)*u
+       z = K_inv_r - α*K_inv_u
+       where α = [u*(A-Ω*I)^(-1)y]/[u*(A-Ω*I)^(-1)u]  (using uz = 0)
+       first, solve (A-Ω*I)^(-1)y and (A-Ω*I)^(-1)u
+
+       misc = [full_guess, W_H, V_H, sub_A]
+    '''
+
+    full_guess = misc[0]
+
+    if approx_K:
+        precond = TDA_iter_preconditioner
+    else:
+        precond = TDA_diag_preconditioner
+
+    K_inv_r = precond(residual=residual, sub_eigenvalue=sub_eigenvalue)
+    K_inv_u = precond(residual=full_guess, sub_eigenvalue=sub_eigenvalue)
+
+    n = np.multiply(full_guess, K_inv_r).sum(axis=0)
+    d = np.multiply(full_guess, K_inv_u).sum(axis=0)
+    Alpha = n/d
+    print('N in Jacobi =', np.average(n))
+    print('D in Jacobi =', np.average(d))
+    print('Alpha in Jacobi =', np.average(Alpha))
+
+    z = Alpha*K_inv_u - K_inv_r
+
+    return z

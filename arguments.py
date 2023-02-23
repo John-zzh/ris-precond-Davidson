@@ -77,6 +77,9 @@ def gen_args():
 
     parser.add_argument('-it','--initial_TOL',      type=float, default= 1e-3, help='conv for the inital guess')
     parser.add_argument('-pt','--precond_TOL',      type=float, default= 1e-2, help='conv for TDA preconditioner')
+    parser.add_argument('-jacobi','--jacobi',       type=str2bool, default= False, help='turn on jacobi preconditioner')
+    parser.add_argument('-projector','--projector', type=str2bool, default= False, help='turn on projector preconditioner')
+    parser.add_argument('-approx_p','--approx_p',   type=str2bool, default= True, help='turn on semiempirical appriximation in projector&jacobi preconditioner')
 
     parser.add_argument('-ei','--extrainitial',     type=int,   default= 8,    help='number of extral TDA initial guess vectors, 0-8')
     parser.add_argument('-max','--max',             type=int,   default= 35,   help='max iterations')

@@ -12,11 +12,11 @@
 
 
 python ../../Davidson.py -x *.xyz -b def2-svp -f pbe0 -n 5 -df True \
--v 3 -chk false -TDDFT_as True \
+-v 3 -chk false -sTDA True \
 -dscf false \
--cl_aux_p True -cl_aux_d true -ex_aux_p False \
+-cl_aux_p True -cl_aux_d true -ex_aux_p true \
 -Uc 1 -Ue 1 \
 -TV 1000000 1000000 -TO 1000000 1000000 \
 -TDDFT_as_profile False \
 -CPKS true -o 0 -t 1e-8 \
--w true -FK true -mix_c 1
+-w false -FK false -mix_c 0

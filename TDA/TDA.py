@@ -12,6 +12,7 @@ import spectra
 from TDA.TDA_solver import TDA_solver
 from TDA.TDA_iter_initial_guess import TDA_iter_initial_guess
 from TDA.TDA_iter_preconditioner import TDA_iter_preconditioner
+from TDA.Jacobi_preconditioner import Jacobi_preconditioner
 
 from arguments import args
 from mathlib.diag_ip import TDA_diag_initial_guess, TDA_diag_preconditioner
@@ -37,6 +38,11 @@ def main():
                               iter_i = TDA_iter_initial_guess,
                               diag_p = TDA_diag_preconditioner,
                               iter_p = TDA_iter_preconditioner)
+    if args.jacobi:
+        TDA_ip_dict[0] = (TDA_iter_initial_guess, Jacobi_preconditioner)
+    if args.projector:
+        pass
+        # TDA_ip_dict[0] = (TDA_iter_initial_guess, Jacobi_preconditioner)
 
     for option in args.ip_options:
         initial_guess, preconditioner = TDA_ip_dict[option]

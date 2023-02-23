@@ -2,40 +2,40 @@ A matrix size: 351
 N_itr: 7
 N_mv: 7
 N_states: 5
-SCF time: 2.697234869003296
+SCF time: 2.759873867034912
 dynamic polarizability wavelength: []
 ex_reduced_occ: 9
 ex_reduced_vir: 39
 final solution:
-- - 1.4512163102755693
+- - 1.4512163102955644
 functional: pbe0
 initial guess threshold: 0.001
-initial guess time: 0.00018286705017089844
+initial guess time: 0.0037958621978759766
 initial solution:
-- - 3.2907628739647654
-initial-final difference: 0.5332817068860785
-initial-final overlap: 0.9810853428187493
-initial_guess: diag
+- - 1.3600910646260886
+initial-final difference: 0.06511156921481578
+initial-final overlap: 0.9912982041564798
+initial_guess: iter
 iteration:
 - residual norms:
-  - 0.12748950719162444
+  - 0.0764062631981779
 - residual norms:
-  - 0.039940303079113504
+  - 0.012484667100600534
 - residual norms:
-  - 0.007407165119691965
+  - 0.00355677004480342
 - residual norms:
-  - 0.001599116704092557
+  - 0.0007647044944112289
 - residual norms:
-  - 0.00020092553107597307
+  - 0.00011901391931377454
 - residual norms:
-  - 3.416368746689039e-05
+  - 1.226461058423721e-05
 - residual norms:
-  - 3.8834041197339026e-06
+  - 1.9716471252411097e-06
 method: RKS
 molecule: methanol
 n_occ: 9
 n_vir: 39
-precondition time: 0.00010466575622558594
+precondition time: 0.00010275840759277344
 preconditioner: diag
 preconditioner threshold: 0.01
 reduced_occ: 9
@@ -47,4 +47,4 @@ threshold: 1.0e-05
 virtual truncation tol:
 - 1000000.0
 - 1000000.0
-wall time: 1.410437822341919
+wall time: 1.4231553077697754

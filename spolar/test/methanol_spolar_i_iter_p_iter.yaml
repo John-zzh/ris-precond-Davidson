@@ -2,7 +2,7 @@ A matrix size: 351
 N_itr: 5
 N_mv: 15
 N_states: 5
-SCF time: 2.608200788497925
+SCF time: 2.9038279056549072
 dynamic polarizability wavelength: []
 ex_reduced_occ: 9
 ex_reduced_vir: 39
@@ -18,7 +18,7 @@ final solution:
   - 14.95748294172812
 functional: pbe0
 initial guess threshold: 0.001
-initial guess time: 0.01168513298034668
+initial guess time: 0.01269984245300293
 initial solution:
 - - 17.84620284172762
   - -1.1290641886744757
@@ -57,7 +57,7 @@ method: RKS
 molecule: methanol
 n_occ: 9
 n_vir: 39
-precondition time: 0.03921151161193848
+precondition time: 0.042299747467041016
 preconditioner: iter
 preconditioner threshold: 0.01
 reduced_occ: 9
@@ -69,4 +69,4 @@ threshold: 1.0e-05
 virtual truncation tol:
 - 1000000.0
 - 1000000.0
-wall time: 2.4402239322662354
+wall time: 2.620145797729492

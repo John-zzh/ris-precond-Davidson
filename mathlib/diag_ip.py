@@ -24,7 +24,7 @@ def TDA_diag_initial_guess(N_states, hdiag=hdiag):
         V[Dsort[j], j] = 1.0
     return V, energies
 
-def TDA_diag_preconditioner(residual, sub_eigenvalue, hdiag = hdiag):
+def TDA_diag_preconditioner(residual, sub_eigenvalue, hdiag = hdiag, misc = None):
     '''
     DX - XΩ = r
     '''

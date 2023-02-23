@@ -111,7 +111,11 @@ def TDA_solver(N_states, initial_guess, preconditioner,
         P_start = time.time()
         new_guess = preconditioner(residual = residual[:,index],
                              sub_eigenvalue = sub_eigenvalue[index],
-                                      hdiag = hdiag)
+                                      hdiag = hdiag,
+                                       misc = [full_guess[:,index],
+                                               W_holder[:,:size_new],
+                                               V_holder[:,:size_new],
+                                               sub_A])
         P_end = time.time()
         Pcost += P_end - P_start
 

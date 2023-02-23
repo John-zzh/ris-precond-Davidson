@@ -33,7 +33,8 @@ def TDA_iter_preconditioner(residual, sub_eigenvalue,
                                   trunced_occ = cl_truc_occ,
                                   reduced_occ = cl_rest_occ,
                                   trunced_vir = cl_truc_vir,
-                                  reduced_vir = cl_rest_vir):
+                                  reduced_vir = cl_rest_vir,
+                                         misc = None):
     '''
     iterative preconditioner
     [ diag1   0        0 ] [0]    [0]     [P1]
