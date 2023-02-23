@@ -12,17 +12,17 @@ from TDA.TDA_iter_preconditioner import TDA_iter_preconditioner
 from mathlib.diag_ip import TDA_diag_preconditioner
 
 def Jacobi_preconditioner(residual, sub_eigenvalue, hdiag = None, misc=[], approx_K=args.approx_p):
-    '''(1-uu*)(A-Ω*I)t = -B
+    '''(1-uu*)(A-Ω*I)t = -r
         u is full guess
 
         (1-uu*)Kz = y
         Kz - uu*Kz = y
         Kz + αu = y
         z =  K^-1y - αK^-1u
-       B is residual, we want to solve t (approximately)
+       r is residual, we want to solve t (approximately)
        z approximates t
-       z = (A-Ω*I)^(-1)*(-B) - α(A-Ω*I)^(-1)*u
-        let K_inv_r = (A-Ω*I)^(-1)*(-B)
+       z = (A-Ω*I)^(-1)*r - α(A-Ω*I)^(-1)*u
+        let K_inv_r = (A-Ω*I)^(-1)*r
         and K_inv_u = (A-Ω*I)^(-1)*u
        z = K_inv_r - α*K_inv_u
        where α = [u*(A-Ω*I)^(-1)y]/[u*(A-Ω*I)^(-1)u]  (using uz = 0)
@@ -32,6 +32,7 @@ def Jacobi_preconditioner(residual, sub_eigenvalue, hdiag = None, misc=[], appro
     '''
 
     full_guess = misc[0]
+    # print('full_guess norm', np.linalg.norm(full_guess, axis=0))
 
     if approx_K:
         precond = TDA_iter_preconditioner
@@ -49,5 +50,11 @@ def Jacobi_preconditioner(residual, sub_eigenvalue, hdiag = None, misc=[], appro
     print('Alpha in Jacobi =', np.average(Alpha))
 
     z = Alpha*K_inv_u - K_inv_r
+    # z = K_inv_r
+
+    print('K_inv_u norm =', np.linalg.norm(K_inv_u, axis=0))
+    print('Alpha*K_inv_u norm =', np.linalg.norm(Alpha*K_inv_u, axis=0))
+    print('K_inv_r norm =', np.linalg.norm(K_inv_r, axis=0))
+    print('z norm =', np.linalg.norm(z, axis=0))
 
     return z
