@@ -75,7 +75,7 @@ def projector_preconditioner(misc,
 
     full_guess, current_energy = TDA_iter_initial_guess(N_states=args.nstates,
                                            matrix_vector_product=on_the_fly_Hx,
-                                                      conv_tol = 1e-5,
-                                                            max = 35)
+                                                      conv_tol = args.precond_TOL,
+                                                            max = 45)
     print('projector energy', current_energy)
     return full_guess[:,return_index]
