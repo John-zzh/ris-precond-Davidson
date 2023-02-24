@@ -13,6 +13,7 @@ from TDA.TDA_solver import TDA_solver
 from TDA.TDA_iter_initial_guess import TDA_iter_initial_guess
 from TDA.TDA_iter_preconditioner import TDA_iter_preconditioner
 from TDA.Jacobi_preconditioner import Jacobi_preconditioner
+from TDA.projector_preconditioner import projector_preconditioner
 
 from arguments import args
 from mathlib.diag_ip import TDA_diag_initial_guess, TDA_diag_preconditioner
@@ -41,8 +42,7 @@ def main():
     if args.jacobi:
         TDA_ip_dict[0] = (TDA_iter_initial_guess, Jacobi_preconditioner)
     if args.projector:
-        pass
-        # TDA_ip_dict[0] = (TDA_iter_initial_guess, Jacobi_preconditioner)
+        TDA_ip_dict[0] = (TDA_iter_initial_guess, projector_preconditioner)
 
     for option in args.ip_options:
         initial_guess, preconditioner = TDA_ip_dict[option]

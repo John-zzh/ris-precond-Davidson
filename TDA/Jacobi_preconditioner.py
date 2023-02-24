@@ -11,7 +11,16 @@ from arguments import args
 from TDA.TDA_iter_preconditioner import TDA_iter_preconditioner
 from mathlib.diag_ip import TDA_diag_preconditioner
 
-def Jacobi_preconditioner(residual, sub_eigenvalue, hdiag = None, misc=[], approx_K=args.approx_p):
+
+
+if args.approx_p:
+    print('using semiempirical approximation to K')
+    K_inv = TDA_iter_preconditioner
+else:
+    print('using diagonal approximation to K')
+    K_inv = TDA_diag_preconditioner
+
+def Jacobi_preconditioner(residual, sub_eigenvalue, hdiag = None, misc=[]):
     '''(1-uu*)(A-Ω*I)t = -r
         u is full guess
 
@@ -34,13 +43,10 @@ def Jacobi_preconditioner(residual, sub_eigenvalue, hdiag = None, misc=[], appro
     full_guess = misc[0]
     # print('full_guess norm', np.linalg.norm(full_guess, axis=0))
 
-    if approx_K:
-        precond = TDA_iter_preconditioner
-    else:
-        precond = TDA_diag_preconditioner
 
-    K_inv_r = precond(residual=residual, sub_eigenvalue=sub_eigenvalue)
-    K_inv_u = precond(residual=full_guess, sub_eigenvalue=sub_eigenvalue)
+
+    K_inv_r = K_inv(residual=residual, sub_eigenvalue=sub_eigenvalue)
+    K_inv_u = K_inv(residual=full_guess, sub_eigenvalue=sub_eigenvalue)
 
     n = np.multiply(full_guess, K_inv_r).sum(axis=0)
     d = np.multiply(full_guess, K_inv_u).sum(axis=0)
@@ -50,7 +56,6 @@ def Jacobi_preconditioner(residual, sub_eigenvalue, hdiag = None, misc=[], appro
     print('Alpha in Jacobi =', np.average(Alpha))
 
     z = Alpha*K_inv_u - K_inv_r
-    # z = K_inv_r
 
     print('K_inv_u norm =', np.linalg.norm(K_inv_u, axis=0))
     print('Alpha*K_inv_u norm =', np.linalg.norm(Alpha*K_inv_u, axis=0))

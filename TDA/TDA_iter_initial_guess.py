@@ -27,7 +27,8 @@ def TDA_iter_initial_guess(N_states,
                         n_vir = n_vir,
                 truncated_occ = cl_truc_occ,
                   reduced_occ = cl_rest_occ,
-                  reduced_vir = cl_rest_vir):
+                  reduced_vir = cl_rest_vir,
+                          max = 15):
     '''
     [ diag1   0        0 ] [0]   [0]
     [  0   rest_A   0 ] [X] = [X] Ω
@@ -39,7 +40,7 @@ def TDA_iter_initial_guess(N_states,
     '''
 
     Davidson_start = time.time()
-    max = 15
+
     A_size = n_occ * n_vir
     A_rest_size = reduced_occ * reduced_vir
     '''size_new is size of subspace'''

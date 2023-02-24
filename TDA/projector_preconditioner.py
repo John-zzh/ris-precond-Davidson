@@ -10,63 +10,72 @@ sys.path.append(script_dir)
 import time
 import numpy as np
 
-from approx_mv import approx_TDA_mv
+from pyscf import lib
 
 from arguments import args
-from SCF_calc import (n_occ, n_vir,
-                    cl_rest_vir, cl_truc_occ, cl_truc_vir,
-                    ex_truc_occ, cl_rest_occ,
-                    delta_hdiag2, hdiag)
+from TDA.TDA_iter_initial_guess import TDA_iter_initial_guess
+from SCF_calc import delta_fly, A_size, hdiag
 
-from mathlib import math
-from mathlib.diag_ip import TDA_diag_initial_guess, TDA_diag_preconditioner
+einsum = lib.einsum
 
+if args.approx_p:
+    from approx_mv import approx_TDA_mv
+    print('using semiempirical approximation to K')
+else:
+    print('using diagonal approximation to K')
+    def approx_TDA_mv(V):
+        '''
+        delta_hdiag.shape = (n_occ, n_vir)
+        '''
+        V = V.reshape(A_size,-1)
+        delta_v = V*hdiag.reshape(-1,1)
+        # delta_v = delta_v.reshape(n_occ, n_vir, -1)
+        # delta_v = einsum("ia,iam->iam", delta_hdiag, V)
+        return delta_v
 
+def projector_preconditioner(misc,
+                        residual = None,
+                  sub_eigenvalue = None,
+                           hdiag = None):
 
-def projector_preconditioner(full_guess, return_index, W_H, V_H, sub_A_H,
-                        residual=None, sub_eigenvalue=None, current_dic=None):
     '''new eigenvalue solver, to diagonalize the H'(an approximation to H)
        use the traditional Davidson to diagonalize the H' matrix
-       W_H, V_H, sub_A_H are from the exact H
+       W, V, sub_A are from the exact H
+       misc = [full_guess[:,index],
+           W_holder[:,:size_new],
+           V_holder[:,:size_new],
+           sub_A,
+           index]
     '''
-    new_ES_start = time.time()
-    tol = args.eigensolver_tol
-    max = 30
+    W = misc[1]
+    V = misc[2]
+    sub_A = misc[3]
+    return_index = misc[4]
 
-    k = args.nstates
-    m = min([k+8, 2*k, A_size])
 
-    V = np.zeros((A_size, max*k + m))
-    W = np.zeros_like(V)
 
-    '''sTDA as initial guess'''
-    V = sTDA_eigen_solver(m, V)
-    W[:,:m] = on_the_fly_Hx(W_H, V_H, sub_A_H, V[:, :m])
+    def on_the_fly_Hx(x, V=V, W=W, sub_A=sub_A):
+        def Qx(x, V=V):
+            '''Qx = (1 - V*V.T)*x = x - V*V.T*x'''
+            VX = np.dot(V.T,x)
+            x = x - np.dot(V,VX)
+            return x
+        '''on-the-fly compute H'x
+           H′ ≡ W*V.T + V*W.T − V*a*V.T + Q*K*Q
+           K approximates H, here K = A^se
+           H′ ≡ W*V.T + V*W.T − V*a*V.T + (1-V*V.T)K(1-V*V.T)
+           H′x ≡ a + b − c + d
+        '''
+        a = einsum('ij, jk, kl -> il', W, V.T, x)
+        b = einsum('ij, jk, kl -> il', V, W.T, x)
+        c = einsum('ij, jk, kl, lm -> im', V, sub_A, V.T, x)
+        d = Qx(approx_TDA_mv(Qx(x,V=V)),V=V)
+        Hx = a + b - c + d
+        return Hx
 
-    for i in range(max):
-        sub_A = np.dot(V[:,:m].T, W[:,:m])
-        sub_eigenvalue, sub_eigenket = np.linalg.eigh(sub_A)
-        residual = np.dot(W[:,:m], sub_eigenket[:,:k])
-        residual -= np.dot(V[:,:m], sub_eigenket[:,:k] * sub_eigenvalue[:k])
-
-        r_norms = np.linalg.norm(residual, axis=0).tolist()
-        max_norm = np.max(r_norms)
-        if max_norm < tol or i == (max-1):
-            break
-        index = [r_norms.index(i) for i in r_norms if i > tol]
-
-        new_guess = TDA_A_diag_preconditioner(
-                                          residual=residual[:,index],
-                                    sub_eigenvalue=sub_eigenvalue[:k][index],
-                                             hdiag=hdiag)
-        V, new_m = mathlib.Gram_Schmidt_fill_holder(V, m, new_guess)
-        W[:, m:new_m] = on_the_fly_Hx(W_H, V_H, sub_A_H, V[:, m:new_m])
-        m = new_m
-
-    full_guess = np.dot(V[:,:m], sub_eigenket[:,:k])
-
-    new_ES_end = time.time()
-    new_ES_cost = new_ES_end - new_ES_start
-    print('H_app diagonalization done in',i,'steps; ','%.2f'%new_ES_cost, 's')
-    print('threshold =', tol)
-    return full_guess[:,return_index], current_dic
+    full_guess, current_energy = TDA_iter_initial_guess(N_states=args.nstates,
+                                           matrix_vector_product=on_the_fly_Hx,
+                                                      conv_tol = 1e-5,
+                                                            max = 35)
+    print('projector energy', current_energy)
+    return full_guess[:,return_index]
