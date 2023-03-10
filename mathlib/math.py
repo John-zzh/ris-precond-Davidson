@@ -304,8 +304,9 @@ def S_symmetry_orthogonal(x,y):
     return new_x, new_y
 
 def symmetrize(A):
-    A = (A + A.T)/2
-    return A
+    B = (A + A.T)/2
+    print('degree of unsymmetry:',np.linalg.norm(B - A))
+    return B
 
 def anti_symmetrize(A):
     A = (A - A.T)/2
@@ -313,12 +314,15 @@ def anti_symmetrize(A):
 
 def check_orthonormal(A):
     '''
+    A: vectors
     define the orthonormality of a matrix A as the norm of (A.T*A - I)
     '''
     n = np.shape(A)[1]
     B = np.dot(A.T, A)
     c = np.linalg.norm(B - np.eye(n))
     return c
+
+
 
 def check_symmetry(A):
     '''

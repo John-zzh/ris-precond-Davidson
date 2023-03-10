@@ -71,12 +71,16 @@ def spolar_solver(initial_guess, preconditioner,
         print()
         print('Iteration', ii+1)
         MV_start = time.time()
+        print('subspace size:', new_m)
         U_holder[:, m:new_m] = matrix_vector_product(V_holder[:,m:new_m])
         MV_end = time.time()
         MVcost += MV_end - MV_start
 
         V = V_holder[:,:new_m]
         U = U_holder[:,:new_m]
+
+        check_orthonormal = math.check_orthonormal(V)
+        print('check_orthonormal of V:', check_orthonormal)
 
         subgenstart = time.time()
         p = np.dot(V.T, RHS)
@@ -107,15 +111,15 @@ def spolar_solver(initial_guess, preconditioner,
         max_norm = np.max(r_norms)
         print('max_norm = {:.2e}'.format(max_norm))
         if max_norm < conv_tol or ii == (max -1):
-            # print('static polarizability precodure aborted\n')
             break
 
         '''preconditioning step'''
         Pstart = time.time()
-
+        print('preconditioning statrs')
         X_new = preconditioner(RHS = residual[:,index],
                           conv_tol = precond_TOL,
                              hdiag = hdiag)
+        print('preconditioning ends')
         Pend = time.time()
         Pcost += Pend - Pstart
 
@@ -146,7 +150,6 @@ def spolar_solver(initial_guess, preconditioner,
     print(tensor_alpha)
 
     if ii == (max -1):
-        '===' + calc_name +' Calculation Starts ==='
         print('===' + calc_name +' Calculation Failed Due to Iteration Limit ===')
         print('current residual norms', r_norms)
     else:

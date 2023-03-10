@@ -11,8 +11,8 @@
 
 
 
-python ../../Davidson.py -x *.xyz -b def2-svp -f pbe0 -n 5 -df True \
--v 3 -chk false -sTDA True \
+python ../../Davidson.py -x *.xyz -b def2-svp -f pbe0 -df True \
+-v 3 -chk false -TDDFT_as True \
 -dscf false \
 -cl_aux_p True -cl_aux_d true -ex_aux_p true \
 -Uc 1 -Ue 1 \

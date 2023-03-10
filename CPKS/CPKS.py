@@ -40,8 +40,9 @@ def main():
         np.savetxt('X_full.txt', toy_z)
         dump_yaml(Davidson_dict, option)
 
-        standard_z = np.loadtxt('z1.txt')
-        print('compare to pyscf difference = ', np.linalg.norm(toy_z-standard_z))
+        if args.cpks_test:
+            standard_z = np.loadtxt('z1.txt')
+            print('compare to pyscf difference = ', np.linalg.norm(toy_z-standard_z))
 
 if __name__ == '__main__':
     main()

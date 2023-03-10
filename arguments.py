@@ -20,6 +20,7 @@ def gen_args():
     parser.add_argument('-b', '--basis_set',        type=str,   default='def2-svp',  help='basis set')
     parser.add_argument('-df', '--density_fit',     type=str2bool,  default=True,  help='density fitting turn on')
     parser.add_argument('-g', '--grid_level',       type=int,   default='3',   help='0-9, 9 is best')
+    parser.add_argument('-st', '--scf_tolerence',   type=float,  default=1e-10,   help='SCF convergence tolerence')
     parser.add_argument('-c', '--charge',           type=int,   default=0,   help='molecular net charge')
 
     parser.add_argument('-n','--nstates',           type=int,   default = 5,      help='number of excited states')
@@ -34,6 +35,8 @@ def gen_args():
     parser.add_argument('-sTDA','--sTDA',           type=str2bool,  default = False, help='perform sTDA calculation')
     parser.add_argument('-sTDDFT','--sTDDFT',       type=str2bool,  default = False, help='perform sTDDFT calculation')
     parser.add_argument('-TDDFT_as','--TDDFT_as',   type=str2bool,  default = False, help='perform TDDFT_as preconditioner')
+
+    parser.add_argument('-cpks_test','--cpks_test',  type=str2bool,  default = False, help='compare to pyscf CPKS z1 solution')
 
     parser.add_argument('-TDA_as_profile','--TDA_as_profile',   type=str2bool,  default = False, help='perform TDA_as enery calculation')
     parser.add_argument('-TDDFT_as_profile','--TDDFT_as_profile',   type=str2bool,  default = False, help='perform TDDFT_as enery calculation')

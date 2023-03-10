@@ -29,6 +29,7 @@ def SCF_kernel(xyzfile = args.xyzfile,
                 method = args.method,
              checkfile = args.checkfile,
                   dscf = args.dscf,
+         scf_tolerence = args.scf_tolerence
            density_fit = args.density_fit,
             functional = args.functional,
             grid_level = args.grid_level):
@@ -74,7 +75,7 @@ def SCF_kernel(xyzfile = args.xyzfile,
         mf.init_guess = 'chkfile'
         if args.dscf == True:
             mf.max_cycle = 0
-    mf.conv_tol = 1e-10
+    mf.conv_tol = scf_tolerence
     print ('Molecule built')
     print ('Calculating SCF Energy...')
     mf.kernel()

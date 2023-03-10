@@ -13,12 +13,7 @@ from mathlib.diag_ip import TDA_diag_preconditioner
 
 
 
-if args.approx_p:
-    print('using semiempirical approximation to K')
-    K_inv = TDA_iter_preconditioner
-else:
-    print('using diagonal approximation to K')
-    K_inv = TDA_diag_preconditioner
+
 
 def Jacobi_preconditioner(residual, sub_eigenvalue, hdiag = None, misc=[]):
     '''(1-uu*)(A-Ω*I)t = -r
@@ -42,7 +37,12 @@ def Jacobi_preconditioner(residual, sub_eigenvalue, hdiag = None, misc=[]):
 
     full_guess = misc[0]
     # print('full_guess norm', np.linalg.norm(full_guess, axis=0))
-
+    if args.approx_p:
+        print('using semiempirical approximation to K')
+        K_inv = TDA_iter_preconditioner
+    else:
+        print('using diagonal approximation to K')
+        K_inv = TDA_diag_preconditioner
 
 
     K_inv_r = K_inv(residual=residual, sub_eigenvalue=sub_eigenvalue)
