@@ -141,6 +141,8 @@ if args.grad:
     # tdg = td.nuc_grad_method()
     TDG_start = time.time()
     tdg = td.Gradients()
+    tdg.cphf_max_cycle=50
+    tdg.cphf_conv_tol=1e-8
     g1 = tdg.kernel(state=1)
     TDG_end = time.time()
     TDG_time = TDG_end - TDG_start
