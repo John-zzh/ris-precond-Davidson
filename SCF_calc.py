@@ -76,6 +76,19 @@ def SCF_kernel(xyzfile = args.xyzfile,
         if args.dscf == True:
             mf.max_cycle = 0
     mf.conv_tol = scf_tolerence
+
+    if args.singular:
+        def eig(h, s):
+            d, t = np.linalg.eigh(s)
+        # Removing the eigenvectors assoicated to the smallest eigenvalue, the new
+        # basis defined by x matrix has 139 vectors.
+            x = t[:,d>1e-8] / np.sqrt(d[d>1e-8])
+            xhx = np.dot(np.dot(x.T, h), x)
+            e, c = np.linalg.eigh(xhx)
+            c = np.dot(x, c)
+            return e, c
+        mf.eig = eig
+
     print ('Molecule built')
     print ('Calculating SCF Energy...')
     mf.kernel()

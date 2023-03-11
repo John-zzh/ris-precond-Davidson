@@ -22,6 +22,8 @@ def gen_args():
     parser.add_argument('-g', '--grid_level',       type=int,   default='3',   help='0-9, 9 is best')
     parser.add_argument('-st', '--scf_tolerence',   type=float,  default=1e-10,   help='SCF convergence tolerence')
     parser.add_argument('-c', '--charge',           type=int,   default=0,   help='molecular net charge')
+    parser.add_argument('-sg', '--singular',        type=str2bool,   default=False,   help='remove singularirty')
+
 
     parser.add_argument('-n','--nstates',           type=int,   default = 5,      help='number of excited states')
     parser.add_argument('-pytd','--pytd',           type=str2bool,  default = False , help='whether to compare with PySCF TDDFT')
