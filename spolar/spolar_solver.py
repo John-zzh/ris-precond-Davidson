@@ -85,7 +85,7 @@ def spolar_solver(initial_guess, preconditioner,
         subgenstart = time.time()
         p = np.dot(V.T, RHS)
         a_p_b = np.dot(V.T,U)
-        a_p_b = math.symmetrize(a_p_b)
+        a_p_b = math.utriangle_symmetrize(a_p_b)
         subgenend = time.time()
 
         '''solve the x in the subspace'''

@@ -122,6 +122,7 @@ def utriangle_symmetrize(A):
     upper = np.triu_indices(n=A.shape[0], k=1)
     lower = (upper[1], upper[0])
     A[lower] = A[upper]
+    print('degree of unsymmetry:',np.linalg.norm(A - A.T))
     return A
 
 def anti_block_symmetrize(A,m,n):
@@ -303,10 +304,10 @@ def S_symmetry_orthogonal(x,y):
 
     return new_x, new_y
 
-def symmetrize(A):
-    B = (A + A.T)/2
-    print('degree of unsymmetry:',np.linalg.norm(B - A))
-    return B
+# def symmetrize(A):
+#     B = (A + A.T)/2
+#     print('degree of unsymmetry:',np.linalg.norm(B - A))
+#     return B
 
 def anti_symmetrize(A):
     A = (A - A.T)/2

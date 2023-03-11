@@ -274,7 +274,7 @@ def static_polarizability_matrix_vector(X):
     this is not the optimum way, but the only way in PySCF
     '''
     U1, U2 = TDDFT_matrix_vector(X,X)
-    return U1
+    return (U1+U2)/2.0
 
 def delta_fly(V):
     '''
