@@ -27,7 +27,7 @@ parser.add_argument('-f', '--functional',                   type=str,   default=
 parser.add_argument('-b', '--basis_set',                    type=str,   default='def2-TZVP',  help='basis set')
 parser.add_argument('-df', '--density_fit',                 type=str2bool,  default='True', help='density fitting turn on')
 parser.add_argument('-g', '--grid_level',                   type=int,   default=3,   help='0-9, 9 is best')
-
+parser.add_argument('-st', '--scf_tolerence',               type=float,  default=1e-10,   help='SCF convergence tolerence')
 parser.add_argument('-M',  '--memory',                      type=int,   default= 4000, help='max_memory')
 parser.add_argument('-v',  '--verbose',                     type=int,   default= 5,    help='mol.verbose = 3,4,5')
 parser.add_argument('-grad',  '--grad',                     type=str2bool,   default= 'False', help='perform S1 grad calculation')
@@ -36,8 +36,6 @@ args = parser.parse_args()
 ################################################
 
 print(args)
-
-
 
 
 ########################################################
@@ -97,7 +95,7 @@ if args.checkfile:
     mf.chkfile = basename + '_' + args.functional + '.chk'
     mf.init_guess = 'chkfile'
 
-mf.conv_tol = 1e-10
+mf.conv_tol = args.scf_tolerence
 
 #
 # Save the density matrix as the initial guess for the next calculation
