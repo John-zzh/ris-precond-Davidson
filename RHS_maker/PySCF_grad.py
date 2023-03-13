@@ -23,14 +23,16 @@ parser = argparse.ArgumentParser(description='Davidson')
 parser.add_argument('-x', '--xyzfile',                      type=str,   default='NA', help='xyz filename (molecule.xyz)')
 parser.add_argument('-chk', '--checkfile',                  type=str2bool,  default=True, help='checkpoint filename (.chk)')
 parser.add_argument('-m', '--method',                       type=str,   default='RKS', help='RHF RKS UHF UKS')
-parser.add_argument('-f', '--functional',                   type=str,   default=None,  help='xc functional')
+parser.add_argument('-f', '--functional',                   type=str,   default='pbe0',  help='xc functional')
 parser.add_argument('-b', '--basis_set',                    type=str,   default='def2-TZVP',  help='basis set')
-parser.add_argument('-df', '--density_fit',                 type=str2bool,  default='True', help='density fitting turn on')
+parser.add_argument('-df', '--density_fit',                 type=str2bool,  default=True, help='density fitting turn on')
 parser.add_argument('-g', '--grid_level',                   type=int,   default=3,   help='0-9, 9 is best')
 parser.add_argument('-st', '--scf_tolerence',               type=float,  default=1e-10,   help='SCF convergence tolerence')
+parser.add_argument('-ct', '--cphf_tolerence',             type=float,  default=1e-8,   help='SCF convergence tolerence')
+parser.add_argument('-cmax', '--cphf_max_cycle',             type=float,  default=50,   help='SCF convergence tolerence')
 parser.add_argument('-M',  '--memory',                      type=int,   default= 4000, help='max_memory')
 parser.add_argument('-v',  '--verbose',                     type=int,   default= 5,    help='mol.verbose = 3,4,5')
-parser.add_argument('-grad',  '--grad',                     type=str2bool,   default= 'False', help='perform S1 grad calculation')
+parser.add_argument('-grad',  '--grad',                     type=str2bool,   default=False, help='perform S1 grad calculation')
 
 args = parser.parse_args()
 ################################################
@@ -139,8 +141,8 @@ if args.grad:
     # tdg = td.nuc_grad_method()
     TDG_start = time.time()
     tdg = td.Gradients()
-    tdg.cphf_max_cycle=50
-    tdg.cphf_conv_tol=1e-8
+    tdg.cphf_max_cycle=args.cphf_max_cycle
+    tdg.cphf_conv_tol=args.cphf_tolerence
     g1 = tdg.kernel(state=1)
     TDG_end = time.time()
     TDG_time = TDG_end - TDG_start
