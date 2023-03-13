@@ -29,7 +29,7 @@ parser.add_argument('-df', '--density_fit',                 type=str2bool,  defa
 parser.add_argument('-g', '--grid_level',                   type=int,   default=3,   help='0-9, 9 is best')
 parser.add_argument('-st', '--scf_tolerence',               type=float,  default=1e-10,   help='SCF convergence tolerence')
 parser.add_argument('-ct', '--cphf_tolerence',             type=float,  default=1e-8,   help='SCF convergence tolerence')
-parser.add_argument('-cmax', '--cphf_max_cycle',             type=float,  default=50,   help='SCF convergence tolerence')
+parser.add_argument('-cmax', '--cphf_max_cycle',             type=int,  default=50,   help='maximum iterations in CPHF')
 parser.add_argument('-M',  '--memory',                      type=int,   default= 4000, help='max_memory')
 parser.add_argument('-v',  '--verbose',                     type=int,   default= 5,    help='mol.verbose = 3,4,5')
 parser.add_argument('-grad',  '--grad',                     type=str2bool,   default=False, help='perform S1 grad calculation')
