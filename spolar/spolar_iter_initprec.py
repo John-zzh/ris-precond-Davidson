@@ -33,9 +33,9 @@ def spolar_iter_initprec(RHS, conv_tol,
                        A_reduced_size = A_reduced_size,
                                A_size = A_size):
 
-    ''' [ diag1   0        0 ] [0]    [RHS_1]
-        [  0   reduced_A   0 ] [X]  = [RHS_2]
-        [  0      0     diag3] [0]    [RHS_3]
+    ''' [ diag1   0        0 ] [X1]    [RHS_1]
+        [  0   reduced_A   0 ] [X2]  = [RHS_2]
+        [  0      0     diag3] [X3]    [RHS_3]
        (A' + B')X = RHS
        residual = (A' + B')X - RHS
        X_ig = RHS/d

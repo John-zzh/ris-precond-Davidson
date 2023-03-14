@@ -18,5 +18,5 @@ python ../../Davidson.py -x *.xyz -b def2-svp -f pbe0 -df True \
 -Uc 1 -Ue 1 \
 -TV 1000000 1000000 -TO 1000000 1000000 \
 -TDDFT_as_profile False \
--CPKS true -o 0 -t 1e-8 \
--w false -FK false -mix_c 0 -sg true
+-CPKS true -o 1 -t 1e-8 \
+-w false -FK false -mix_c 0 -sg false
