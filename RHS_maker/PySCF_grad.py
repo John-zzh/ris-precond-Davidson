@@ -22,6 +22,7 @@ print('lib.num_threads() = ', lib.num_threads())
 parser = argparse.ArgumentParser(description='Davidson')
 parser.add_argument('-x', '--xyzfile',                      type=str,   default='NA', help='xyz filename (molecule.xyz)')
 parser.add_argument('-chk', '--checkfile',                  type=str2bool,  default=True, help='checkpoint filename (.chk)')
+parser.add_argument('-dscf', '--dscf',                      type=str2bool,  default=False, help='0 SCF iterations')
 parser.add_argument('-m', '--method',                       type=str,   default='RKS', help='RHF RKS UHF UKS')
 parser.add_argument('-f', '--functional',                   type=str,   default='pbe0',  help='xc functional')
 parser.add_argument('-b', '--basis_set',                    type=str,   default='def2-TZVP',  help='basis set')
@@ -96,7 +97,8 @@ if args.density_fit:
 if args.checkfile:
     mf.chkfile = basename + '_' + args.functional + '.chk'
     mf.init_guess = 'chkfile'
-
+if args.dscf == True:
+    mf.max_cycle = 0
 mf.conv_tol = args.scf_tolerence
 
 #
