@@ -268,34 +268,43 @@ def TDDFT_matrix_vector(X, Y):
     U2 = -U[:,A_size:].T
     return U1, U2
 
-def static_polarizability_matrix_vector(X):
-    '''
-    return (A+B)X
-    this is not the optimum way, but the only way in PySCF
-    '''
-    U1, U2 = TDDFT_matrix_vector(X,X)
-    return U1
+# def static_polarizability_matrix_vector(X):
+#     '''
+#     return (A+B)X
+#     this is not the optimum way, but the only way in PySCF
+#     '''
+#     U1, U2 = TDDFT_matrix_vector(X,X)
+#     return U1
 
+
+from functools import reduce
 vresp = mf.gen_response(singlet=None, hermi=1)
 orbv = mf.mo_coeff[:,n_occ:]
 orbo = mf.mo_coeff[:,:n_occ]
-from functools import reduce
-def static_polarizability_matrix_vector2(X):
+
+def fvind(x):
+    x = x.reshape(-1,n_occ,n_vir)
+    # x = lib.einsum('Nai->Nia',x)
+    # dm = reduce(np.dot, (orbv, 2*x.reshape(:,n_vir,n_occ), orbo.T))
+    dm = lib.einsum('pa,Nia,iq->Nqp',orbv,2*x,orbo.T)
+    dmT = lib.einsum('Nqp->Npq',dm)
+    v1ao = vresp(dm+dmT)
+    # v1vo = reduce(np.dot, (orbv.T, v1ao, orbo)).reshape(n_vir, n_occ)
+    v1vo = lib.einsum('ap,Npq,qi->Nia',orbv.T, v1ao, orbo)
+    diag = lib.einsum("ia,Nia->Nia", delta_hdiag, x)
+    ans = v1vo + diag
+    ''' Nia -> iaN '''
+    ans = ans.reshape(-1,A_size)
+    return ans
+
+def static_polarizability_matrix_vector(X):
     '''
     return (A+B)X
     '''
-    origin_X = X.copy()
-    X = X.T[0,:]
-    dm = reduce(np.dot, (orbv, 2*X.reshape(n_vir,n_occ), orbo.T))
-    v1ao = vresp(dm+dm.T)
-    A_p_B_X = reduce(np.dot, (orbv.T, v1ao, orbo)).reshape(n_occ*n_vir,1)
-
-    A_p_B_X_standard = static_polarizability_matrix_vector(origin_X)
-    print('diff = ', np.linalg.norm(A_p_B_X-A_p_B_X_standard))
-
+    A_p_B_X = fvind(X.T).T
     return A_p_B_X
 
-
+cphf_matrix_vector = static_polarizability_matrix_vector
 
 def delta_fly(V):
     '''

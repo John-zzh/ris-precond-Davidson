@@ -1,97 +1,47 @@
 A matrix size: 351
-N_itr: 35
-N_mv: 35
+N_itr: 10
+N_mv: 10
 N_states: 5
-SCF time: 2.845973014831543
+SCF time: 2.6866931915283203
 dynamic polarizability wavelength: []
 ex_reduced_occ: 9
 ex_reduced_vir: 39
 final solution:
-- - -42.07217087891972
+- - 1.4512163103021538
 functional: pbe0
 initial guess threshold: 0.001
-initial guess time: 0.00018405914306640625
+initial guess time: 0.0002110004425048828
 initial solution:
 - - 3.2907628739647654
-initial-final difference: 15.46364035376713
-initial-final overlap: 0.6726778762979378
+initial-final difference: 0.5332818169022399
+initial-final overlap: 0.9810853377715743
 initial_guess: diag
 iteration:
 - residual norms:
-  - 2.943190109300493
+  - 0.12748950719162427
 - residual norms:
-  - 1.0618095532709477
+  - 0.039940303079113476
 - residual norms:
-  - 8.549715280256136
+  - 0.007407165119691907
 - residual norms:
-  - 1.2739645179734453
+  - 0.0015991167040924933
 - residual norms:
-  - 1.4241879410050442
+  - 0.00020092553107587926
 - residual norms:
-  - 1.562138378525671
+  - 3.416368746685896e-05
 - residual norms:
-  - 1.3942726810109676
+  - 3.8834041198434044e-06
 - residual norms:
-  - 1.5748116122902573
+  - 4.316579049840212e-07
 - residual norms:
-  - 1.7083065364434777
+  - 5.02740909495504e-08
 - residual norms:
-  - 1.9256759753981918
-- residual norms:
-  - 1.3511188487264918
-- residual norms:
-  - 4.074987354426137
-- residual norms:
-  - 1.154663145735239
-- residual norms:
-  - 6.0076502963298735
-- residual norms:
-  - 0.7600810285939312
-- residual norms:
-  - 1.3997615372493446
-- residual norms:
-  - 1.4518394333744598
-- residual norms:
-  - 1.5421250913316573
-- residual norms:
-  - 0.9477912633990933
-- residual norms:
-  - 0.46991860134512153
-- residual norms:
-  - 0.4621866276990089
-- residual norms:
-  - 4.247308486365574
-- residual norms:
-  - 0.6406716591174895
-- residual norms:
-  - 0.4811080899584747
-- residual norms:
-  - 1.4215853304908554
-- residual norms:
-  - 0.6424562828922387
-- residual norms:
-  - 0.40821204169323977
-- residual norms:
-  - 0.4485805392889541
-- residual norms:
-  - 1.4611182762525694
-- residual norms:
-  - 0.7429583415178388
-- residual norms:
-  - 0.4058158788443351
-- residual norms:
-  - 0.7815943763679175
-- residual norms:
-  - 0.8484540446966741
-- residual norms:
-  - 0.35023460392308364
-- residual norms:
-  - 0.389857786308857
+  - 5.715534750851848e-09
 method: RKS
 molecule: methanol
 n_occ: 9
 n_vir: 39
-precondition time: 0.0012183189392089844
+precondition time: 0.0002722740173339844
 preconditioner: diag
 preconditioner threshold: 0.01
 reduced_occ: 9
@@ -103,4 +53,4 @@ threshold: 1.0e-08
 virtual truncation tol:
 - 1000000.0
 - 1000000.0
-wall time: 14.278351068496704
+wall time: 1.9512441158294678

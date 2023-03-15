@@ -80,7 +80,7 @@ def spolar_solver(initial_guess, preconditioner,
         U = U_holder[:,:new_m]
 
         check_orthonormal = math.check_orthonormal(V)
-        print('check_orthonormal of V:', check_orthonormal)
+        print('check_orthonormal of V = {:.2e}'.format(check_orthonormal))
 
         subgenstart = time.time()
         p = np.dot(V.T, RHS)
@@ -138,10 +138,10 @@ def spolar_solver(initial_guess, preconditioner,
     X_full = X_full*RHS_norm
 
     X_overlap = float(np.linalg.norm(np.dot((X_ig*RHS_norm).T, X_full)))
-    print('initial-final overlap', X_overlap)
+    print('initial-final overlap: {:.4f}'.format(X_overlap))
     X_overlap = float(np.linalg.norm(np.dot((X_ig/np.linalg.norm(X_ig, axis=0)).T, X_full/np.linalg.norm(X_full, axis=0))))
-    print('np.linalg.norm(X_ig, axis=0)', np.linalg.norm(X_ig, axis=0))
-    print('initial-final overlap', X_overlap)
+    # print('norm if X_ig: {:.2e}'.format(np.linalg.norm(X_ig, axis=0)))
+    print('initial-final overlap (after normalization): {:.4f}'.format(X_overlap))
     tensor_alpha = np.dot(X_full.T, RHS_origin)*4
     sp_end = time.time()
     sp_cost = sp_end - sp_start
