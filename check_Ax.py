@@ -1,7 +1,7 @@
 import numpy as np
 import pyscf
-from pyscf import gto, scf, dft, tddft
-
+from pyscf import gto, scf, dft, tddft, lib
+from functools import reduce
 
 mol = pyscf.gto.M(
     atom='''
@@ -16,12 +16,9 @@ H         -3.22959        2.35981       -0.24953
     verbose=3,
 )
 
-tol      = 1e-8
-max_iter = 100
 
-mf = pyscf.scf.RHF(mol)
-mf.max_cycle = max_iter
-mf.conv_tol  = tol
+mf = dft.RKS(mol)
+mf.xc = 'pbe0'
 mf.kernel()
 
 mo_occ = mf.mo_occ
@@ -58,32 +55,52 @@ def static_polarizability_matrix_vector(X):
     return U1
 
 
-vresp = mf.gen_response(singlet=None, hermi=1)
-orbv = mf.mo_coeff[:,n_occ:]
-orbo = mf.mo_coeff[:,:n_occ]
-from functools import reduce
 
-def static_polarizability_matrix_vector2(X):
+
+
+def fvind(x):
+    vresp = mf.gen_response(singlet=None, hermi=1)
+    orbv = mf.mo_coeff[:,n_occ:]
+    orbo = mf.mo_coeff[:,:n_occ]
+
+    e_a = mf.mo_energy[mo_occ==0]
+    e_i = mf.mo_energy[mo_occ>0]
+
+    evo = lib.direct_sum('a-i->ai', e_a, e_i)
+
+    dm = reduce(np.dot, (orbv, 2*x.reshape(n_vir,n_occ), orbo.T))
+    v1ao = vresp(dm+dm.T)
+    v1vo = reduce(np.dot, (orbv.T, v1ao, orbo)).reshape(n_vir, n_occ)
+    diag = np.einsum("ai,ai->ai", evo, x.reshape(n_vir,n_occ))
+    ans = (v1vo + diag).T
+    return ans
+
+def CPHF(X):
     '''
     return (A+B)X ?
     '''
-    origin_X = X.copy()
-    # X = X.reshape(n_occ,n_vir,1)[:,:,0].T
-    print('X.shape',X.shape)
-    dm = reduce(np.dot, (orbv, 2*X.reshape(n_vir,n_occ), orbo.T))
-    v1ao = vresp(dm+dm.T)
-    A_p_B_X = reduce(np.dot, (orbv.T, v1ao, orbo))
-    print('A_p_B_X.shape',A_p_B_X.shape)
-    A_p_B_X = A_p_B_X.ravel().reshape(n_vir*n_occ,-1)
-    print('A_p_B_X.shape',A_p_B_X.shape)
-    A_p_B_X_standard = static_polarizability_matrix_vector(origin_X)
-    print('difference from standard (A+B)X = ', np.linalg.norm(A_p_B_X - A_p_B_X_standard))
 
-    AX_standard = TDA_matrix_vector(origin_X)
-    print('difference from standard AX = ', np.linalg.norm(A_p_B_X - AX_standard))
-
+    print('X shape',X.shape)
+    A_p_B_X = fvind(X.T)
+    A_p_B_X = A_p_B_X.reshape(A_size,-1)
+    print('A_p_B_X.shape',A_p_B_X.shape)
     return A_p_B_X
 
-test_X = np.random.rand(n_occ*n_vir,1)
+test_X = np.ones((A_size,1))
 
-static_polarizability_matrix_vector2(test_X)
+A_p_B_X = CPHF(test_X)
+A_p_B_X_standard = static_polarizability_matrix_vector(test_X)
+print('A_p_B_X_standard.shape',A_p_B_X_standard.shape)
+
+diff = A_p_B_X - A_p_B_X_standard
+
+print('difference from standard (A+B)X = ', np.linalg.norm(diff))
+# print('difference from standard AX = ', np.linalg.norm(diffA))
+# print('ratio',np.linalg.norm(ratio))
+#
+#
+# test_V = np.random.rand(1,A_size)
+#
+# vind_V = TDDFT_vind(np.hstack((test_V,test_V)))[0, A_size:]
+# CPHF_V = fvind(test_V)
+# print('difference from standard vind_V = ', np.linalg.norm(vind_V-CPHF_V))
