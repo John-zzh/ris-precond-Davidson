@@ -61,9 +61,9 @@ def main():
     '''
     spectra comparation
     '''
-    spectra.gen_spectra(energies = Excitation_energies,
-               transition_vector = transition_vector_X,
-                            name = 'TDA')
+    # spectra.gen_spectra(energies = Excitation_energies,
+    #            transition_vector = transition_vector_X,
+    #                         name = 'TDA')
 
 if __name__ == '__main__':
     main()
