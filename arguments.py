@@ -72,8 +72,8 @@ def gen_args():
 
     parser.add_argument('-Uk_tune','--Uk_tune',     type=str2bool,  default = False, help='tune the k parameter of k/R**0.5')
 
-    parser.add_argument('-TV','--truncate_virtual',  type=float, default = [100000,40], nargs='+', help='the threshold to truncate virtual orbitals, in eV or %')
-    parser.add_argument('-TO','--truncate_occupied', type=float, default = [100000,40], nargs='+', help='the threshold to truncate occupied orbitals, in eV or %')
+    parser.add_argument('-TV','--truncate_virtual',  type=float, default = [100000,100000], nargs='+', help='the threshold to truncate virtual orbitals, in eV or %')
+    parser.add_argument('-TO','--truncate_occupied', type=float, default = [100000,100000], nargs='+', help='the threshold to truncate occupied orbitals, in eV or %')
     # parser.add_argument('-Tex','--truncate_exchange_only', type=str2bool, default = True,    help='only truncate the exchange integrals')
     parser.add_argument('-GS','--GS_double',        type=str2bool, default = False, help='double filter in GS orthonormalization')
 
