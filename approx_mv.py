@@ -5,9 +5,13 @@ from arguments import args
 if args.sTDA == True:
     from sTDA.sTDA_mv_lib import sTDA as approx
 
-if args.TDDFT_as == True:
+elif args.TDDFT_as == True:
     from TDDFT_as.TDDFT_as_lib import TDDFT_as as approx
 
+else:
+    class approx(object):
+        def build(self):
+            return None, None, None
 
 approx_mv = approx()
 

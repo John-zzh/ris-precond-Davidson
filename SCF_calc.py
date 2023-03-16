@@ -46,6 +46,7 @@ def SCF_kernel(xyzfile = args.xyzfile,
     mol.basis = basis_set
     mol.verbose = verbose
     mol.max_memory = max_memory
+    print('basis set:', basis_set)
     print('mol.max_memory =', mol.max_memory)
 
     mol.build(parse_arg = False)
@@ -63,7 +64,9 @@ def SCF_kernel(xyzfile = args.xyzfile,
     if 'KS' in args.method:
         print('RKS')
         mf.xc = functional
+        print('functional:',functional)
         mf.grids.level = grid_level
+        print('grid level:', grid_level)
     else:
         print('HF')
     if density_fit:
@@ -73,7 +76,8 @@ def SCF_kernel(xyzfile = args.xyzfile,
         '''use the *.chk file as scf input'''
         mf.chkfile = basename + '_' + functional + '.chk'
         mf.init_guess = 'chkfile'
-        if args.dscf == True:
+        if dscf == True:
+            # mf.converged = True
             mf.max_cycle = 0
     mf.conv_tol = scf_tolerence
 
@@ -92,7 +96,7 @@ def SCF_kernel(xyzfile = args.xyzfile,
     print ('Molecule built')
     print ('Calculating SCF Energy...')
     mf.kernel()
-    # [print(k, v,'\n') for k, v in mol._basis.items()]
+
 
     kernel_1 = time.time()
     kernel_t = kernel_1 - kernel_0
@@ -355,11 +359,16 @@ def gen_ip_func(diag_i, iter_i, diag_p, iter_p):
     dict[3] = (iter_i, diag_p)
     return dict
 
+iter = 'iter'
+if args.sTDA:
+    iter = 'sTDA'
+if args.TDDFT_as:
+    iter = 'risp'
 ip_name = [            # option
-['iter','iter'],       # 0
+[iter,iter],       # 0
 ['diag','diag'],       # 1
-['diag','iter'],       # 2
-['iter','diag']]       # 3
+['diag',iter],       # 2
+[iter,'diag']]       # 3
 
 def gen_calc():
     dict={}
