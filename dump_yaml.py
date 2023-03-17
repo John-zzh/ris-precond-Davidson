@@ -7,6 +7,8 @@ from SCF_calc import (n_occ, n_vir, reduced_occ, reduced_vir, ex_rest_occ, ex_re
                     a_x, alpha, beta, basename,
                       kernel_t, A_size, ip_name, calc_name)
 
+
+
 def fill_dictionary(dict, icost, pcost, wall_time, N_itr, N_mv,
                     initial_solution, final_solution, difference, overlap):
     '''

@@ -108,3 +108,8 @@ def gen_args():
     return args
 
 args = gen_args()
+
+if args.CPKS:
+    args.nstates = 1
+elif args.dpolar or args.spolar:
+    args.nstates = 3
