@@ -35,14 +35,19 @@ sTDA no trunc [7.03457351 8.57113829 8.85193968 9.77450474 9.89962781]
 TDA           [7.2875264  8.93645089 9.18027002 9.92054961 10.16937337]
 '''
 def main():
+
+    if args.jacobi:
+        # TDA_ip_dict[0] = (TDA_iter_initial_guess, Jacobi_preconditioner)
+        TDA_iter_preconditioner = Jacobi_preconditioner
+    if args.projector:
+        # TDA_ip_dict[0] = (TDA_iter_initial_guess, projector_preconditioner)
+        TDA_iter_preconditioner = projector_preconditioner
+
     TDA_ip_dict = gen_ip_func(diag_i = TDA_diag_initial_guess,
                               iter_i = TDA_iter_initial_guess,
                               diag_p = TDA_diag_preconditioner,
                               iter_p = TDA_iter_preconditioner)
-    if args.jacobi:
-        TDA_ip_dict[0] = (TDA_iter_initial_guess, Jacobi_preconditioner)
-    if args.projector:
-        TDA_ip_dict[0] = (TDA_iter_initial_guess, projector_preconditioner)
+
 
     for option in args.ip_options:
         initial_guess, preconditioner = TDA_ip_dict[option]
