@@ -2,7 +2,7 @@ A matrix size: 351
 N_itr: 7
 N_mv: 32
 N_states: 5
-SCF time: 2.862429141998291
+SCF time: 2.7184650897979736
 dynamic polarizability wavelength: []
 ex_reduced_occ: 9
 ex_reduced_vir: 39
@@ -14,7 +14,7 @@ final solution:
 - 10.169371141067803
 functional: pbe0
 initial guess threshold: 0.001
-initial guess time: 0.0005409717559814453
+initial guess time: 0.0005772113800048828
 initial solution:
 - 9.180653470600962
 - 10.445186947174738
@@ -25,56 +25,56 @@ initial-final difference: 1.6186678078309034
 initial-final overlap: 2.214760314697561
 initial_guess: diag
 iteration:
-- iteration MV cost: 1.1388919353485107
-  iteration cost: 1.1411492824554443
+- iteration MV cost: 1.0809500217437744
+  iteration cost: 1.0833580493927002
   residual norms:
   - 0.05102203088923939
   - 0.03645631755180939
   - 0.07528252680392265
   - 0.030845358659719466
   - 0.07101599051376122
-- iteration MV cost: 0.7812080383300781
-  iteration cost: 0.7830348014831543
+- iteration MV cost: 0.7732470035552979
+  iteration cost: 0.7756490707397461
   residual norms:
   - 0.008347485144258175
   - 0.004686189864142285
   - 0.01759765181869483
   - 0.0056557435603414785
   - 0.0183991961162754
-- iteration MV cost: 0.7766940593719482
-  iteration cost: 0.7786459922790527
+- iteration MV cost: 0.7977809906005859
+  iteration cost: 0.8002302646636963
   residual norms:
   - 0.0005189624417217532
   - 0.0005451253408707957
   - 0.005174069908911216
   - 0.0015421342289583524
   - 0.00611802791171818
-- iteration MV cost: 0.7852537631988525
-  iteration cost: 0.7874758243560791
+- iteration MV cost: 0.7789230346679688
+  iteration cost: 0.7811088562011719
   residual norms:
   - 3.602644514149682e-05
   - 7.578140741631901e-05
   - 0.0009598683574870908
   - 0.00028522974002250987
   - 0.00156984283294066
-- iteration MV cost: 0.7722411155700684
-  iteration cost: 0.7742130756378174
+- iteration MV cost: 0.7885110378265381
+  iteration cost: 0.7910957336425781
   residual norms:
   - 2.452610234846647e-06
   - 6.831532452796252e-06
   - 0.00021768179406219345
   - 5.009554699279289e-05
   - 0.00024062650851113053
-- iteration MV cost: 0.4881007671356201
-  iteration cost: 0.48987293243408203
+- iteration MV cost: 0.506829023361206
+  iteration cost: 0.5086710453033447
   residual norms:
   - 2.465692939370825e-06
   - 4.489379806710478e-06
   - 4.672170508903265e-05
   - 4.259683314232034e-06
   - 4.2247891056063066e-05
-- iteration MV cost: 0.33539509773254395
-  iteration total cost: 0.33607912063598633
+- iteration MV cost: 0.3350400924682617
+  iteration total cost: 0.3357717990875244
   residual norms:
   - 2.465692930454028e-06
   - 4.489379431456032e-06
@@ -85,8 +85,8 @@ method: RKS
 molecule: methanol
 n_occ: 9
 n_vir: 39
-precondition time: 0.006751298904418945
-preconditioner: risp
+precondition time: 0.008803367614746094
+preconditioner: iter
 preconditioner threshold: 0.01
 reduced_occ: 9
 reduced_vir: 39
@@ -97,4 +97,4 @@ threshold: 1.0e-05
 virtual truncation tol:
 - 1000000.0
 - 1000000.0
-wall time: 5.091531038284302
+wall time: 5.077057123184204

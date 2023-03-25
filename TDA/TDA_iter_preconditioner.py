@@ -62,7 +62,7 @@ def TDA_iter_preconditioner(residual, sub_eigenvalue,
     P = P.reshape(A_reduced_size,-1)
 
     pnorm = np.linalg.norm(P, axis=0, keepdims = True)
-    P /= pnorm
+    P = P/pnorm
 
     start = time.time()
 

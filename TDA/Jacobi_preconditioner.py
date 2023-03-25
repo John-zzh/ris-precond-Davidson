@@ -16,21 +16,21 @@ from mathlib.diag_ip import TDA_diag_preconditioner
 
 
 def Jacobi_preconditioner(residual, sub_eigenvalue, hdiag = None, misc=[]):
-    '''(1-uu*)(A-Ω*I)t = -r
+    '''(I-uu.T)(A-Ω*I)z = -r
+        r is residual, we want to solve z (approximately)
         u is full guess
+        let K = A-Ω*I
+        (1-uu*)Kz = -r
+        Kz - uu*Kz = -r
+        Kz - αu = -r
+        α = u*Kz
+        z =  αK^-1u - K^-1r
 
-        (1-uu*)Kz = y
-        Kz - uu*Kz = y
-        Kz + αu = y
-        z =  K^-1y - αK^-1u
-       r is residual, we want to solve t (approximately)
-       z approximates t
-       z = (A-Ω*I)^(-1)*r - α(A-Ω*I)^(-1)*u
         let K_inv_r = (A-Ω*I)^(-1)*r
         and K_inv_u = (A-Ω*I)^(-1)*u
-       z = K_inv_r - α*K_inv_u
-       where α = [u*(A-Ω*I)^(-1)y]/[u*(A-Ω*I)^(-1)u]  (using uz = 0)
-       first, solve (A-Ω*I)^(-1)y and (A-Ω*I)^(-1)u
+       z = α*K_inv_u - K_inv_r
+       where α = [u*(A-Ω*I)^(-1)r]/[u*(A-Ω*I)^(-1)u]  (using uz = 0)
+       first, solve (A-Ω*I)^(-1)r and (A-Ω*I)^(-1)u
 
        misc = [full_guess, W_H, V_H, sub_A]
     '''
@@ -51,9 +51,10 @@ def Jacobi_preconditioner(residual, sub_eigenvalue, hdiag = None, misc=[]):
     n = np.multiply(full_guess, K_inv_r).sum(axis=0)
     d = np.multiply(full_guess, K_inv_u).sum(axis=0)
     Alpha = n/d
-    print('N in Jacobi =', np.average(n))
-    print('D in Jacobi =', np.average(d))
-    print('Alpha in Jacobi =', np.average(Alpha))
+    print('Alpha = N/D')
+    print('N in Jacobi =', n)
+    print('D in Jacobi =', d)
+    print('Alpha in Jacobi =', Alpha)
 
     z = Alpha*K_inv_u - K_inv_r
 
