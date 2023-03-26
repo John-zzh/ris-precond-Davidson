@@ -20,7 +20,7 @@ def Jacobi_preconditioner(residual, sub_eigenvalue, hdiag = None, misc=[]):
         r is residual, we want to solve z (approximately)
         u is full guess
         let K = A-Ω*I
-        (1-uu*)Kz = -r
+        (1-uu.T)Kz = -r
         Kz - uu*Kz = -r
         Kz - αu = -r
         α = u*Kz
@@ -56,7 +56,7 @@ def Jacobi_preconditioner(residual, sub_eigenvalue, hdiag = None, misc=[]):
     print('D in Jacobi =', d)
     print('Alpha in Jacobi =', Alpha)
 
-    z = Alpha*K_inv_u - K_inv_r
+    z = -Alpha*K_inv_u - K_inv_r
 
     print('K_inv_u norm =', np.linalg.norm(K_inv_u, axis=0))
     print('Alpha*K_inv_u norm =', np.linalg.norm(Alpha*K_inv_u, axis=0))
