@@ -56,7 +56,7 @@ def Jacobi_preconditioner(residual, sub_eigenvalue, hdiag = None, misc=[]):
     print('D in Jacobi =', d)
     print('Alpha in Jacobi =', Alpha)
 
-    z = -Alpha*K_inv_u - K_inv_r
+    z = Alpha*K_inv_u - K_inv_r
 
     print('K_inv_u norm =', np.linalg.norm(K_inv_u, axis=0))
     print('Alpha*K_inv_u norm =', np.linalg.norm(Alpha*K_inv_u, axis=0))
