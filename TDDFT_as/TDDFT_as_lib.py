@@ -9,12 +9,13 @@ script_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(script_dir)
 
 from arguments import args
-from SCF_calc import (atom_coordinates, mol, n_occ, N_bf, N_atm, delta_hdiag2_fly,
+from SCF_calc import (mf, atom_coordinates, mol, n_occ, N_bf, N_atm, delta_hdiag2_fly,
                     un_ortho_C_matrix, delta_hdiag, delta_hdiag2, a_x, delta_fly,
                     n_occ, n_vir, A_size, cl_A_rest_size,
                     cl_rest_vir, cl_truc_occ, cl_rest_occ, cl_rest_vir,
                     ex_rest_vir, ex_truc_occ)
 from mathlib import parameter, math
+from functools import partial
 
 # print('type(delta_hdiag2_fly)',type(delta_hdiag2_fly))
 
@@ -238,7 +239,39 @@ class TDDFT_as(object):
         return ijab_fly, ibja_fly
 
 
-    def gen_mv_fly(self, iajb_fly, ijab_fly, ibja_fly, a_x=a_x, diag_cl_correct=None, diag_ex_correct=None):
+    def gen_mv_fly(self, iajb_fly, ijab_fly, ibja_fly, a_x=a_x,
+                    diag_cl_correct=None,
+                    diag_ex_correct=None,
+                             fxc_on=False,
+                         max_memory=4000):
+
+
+        from pyscf.dft import numint
+        ni = mf._numint
+        rho0, vxc, fxc = ni.cache_xc_kernel(mol, mf.grids, mf.xc, [mf.mo_coeff]*2, [mf.mo_occ*.5]*2, spin=1)
+        fxc_kernel = partial(ni.nr_rks_fxc_st, mol=mol,
+                                             grids=mf.grids,
+                                            xc_code=mf.xc,
+                                                dm0=None,
+                                         relativity=0,
+                                            singlet=True,
+                                              rho0=rho0,
+                                              vxc=vxc,
+                                              fxc=fxc,
+                                        max_memory=max_memory)
+        orbv = mf.mo_coeff[:,n_occ:]
+        orbo = mf.mo_coeff[:,:n_occ]
+        def fxc_kernel_fly(X):
+            X = X.reshape(cl_rest_occ, cl_rest_vir, -1)
+            # x = lib.einsum('Nai->Nia',x)
+            # dm = reduce(np.dot, (orbv, 2*x.reshape(:,n_vir,n_occ), orbo.T))
+            dm = lib.einsum('pa,iaN,iq->Nqp',orbv,X,orbo.T)
+            dmT = lib.einsum('Nqp->Npq',dm)
+            v1ao = fxc_kernel(dms_alpha = dm+dmT)
+            v1vo = lib.einsum('ap,Npq,qi->Nia',orbv.T, v1ao, orbo)
+            v1vo = v1vo.reshape(-1,cl_A_rest_size)
+            v1vo = 0.5*v1vo.T
+            return v1vo
 
         def TDA_mv(X):
             ''' return AX
@@ -257,8 +290,10 @@ class TDDFT_as(object):
                 # pass
                 # print('diag correction')
                 AX += 2*diag_cl_correct(X_cl) - a_x*diag_ex_correct(X_cl)
-
             AX = AX.reshape(cl_A_rest_size, -1)
+
+            if fxc_on:
+                AX += fxc_kernel_fly(X)
             return AX
 
         def TDDFT_mv(X, Y):
@@ -334,8 +369,8 @@ class TDDFT_as(object):
 
     def build(self):
 
-        auxmol_cl = self.gen_auxmol(U=args.coulomb_U, add_p=args.coulomb_aux_add_p, add_d=args.coulomb_aux_add_d, full_fitting=False)
-        auxmol_ex = self.gen_auxmol(U=args.exchange_U, add_p=args.exchange_aux_add_p, full_fitting=False)
+        auxmol_cl = self.gen_auxmol(U=args.coulomb_U, add_p=args.coulomb_aux_add_p, add_d=args.coulomb_aux_add_d, full_fitting=args.full_fitting)
+        auxmol_ex = self.gen_auxmol(U=args.exchange_U, add_p=args.exchange_aux_add_p, full_fitting=args.full_fitting)
 
         '''
         the 2c2e and 3c2e integrals with/without RSH
@@ -417,6 +452,8 @@ class TDDFT_as(object):
                             ijab_fly=ijab_fly,
                             ibja_fly=ibja_fly,
                      diag_cl_correct=diag_cl_correct,
-                     diag_ex_correct=diag_ex_correct)
+                     diag_ex_correct=diag_ex_correct,
+                             fxc_on=args.fxc_on,
+                         max_memory=0.5*args.memory)
 
         return TDA_mv, TDDFT_mv, TDDFT_spolar_mv

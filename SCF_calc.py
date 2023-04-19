@@ -281,7 +281,7 @@ def TDDFT_matrix_vector(X, Y):
 #     return U1
 
 
-from functools import reduce
+# from functools import reduce
 vresp = mf.gen_response(singlet=None, hermi=1)
 orbv = mf.mo_coeff[:,n_occ:]
 orbo = mf.mo_coeff[:,:n_occ]
