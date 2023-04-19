@@ -369,23 +369,23 @@ class TDDFT_as(object):
 
     def build(self):
 
-        auxmol_cl = self.gen_auxmol(U=args.coulomb_U, add_p=args.coulomb_aux_add_p, add_d=args.coulomb_aux_add_d, full_fitting=args.full_fitting)
-        auxmol_ex = self.gen_auxmol(U=args.exchange_U, add_p=args.exchange_aux_add_p, full_fitting=args.full_fitting)
+        if not args.full_fitting:
+            auxmol_cl = self.gen_auxmol(U=args.coulomb_U, add_p=args.coulomb_aux_add_p, add_d=args.coulomb_aux_add_d, full_fitting=False)
+            auxmol_ex = self.gen_auxmol(U=args.exchange_U, add_p=args.exchange_aux_add_p, full_fitting=False)
 
-        '''
-        the 2c2e and 3c2e integrals with/without RSH
-        (ij|ab) -> alpha*(ij|1/r|ab)  + beta*(ij|erf(oemga)/r|ab)
-        '''
-        # eri2c_cl, eri3c_cl = self.gen_electron_int(mol=mol, auxmol=auxmol_cl)
-        # eri2c_ex, eri3c_ex = self.gen_electron_int(mol=mol, auxmol=auxmol_ex)
+            '''
+            the 2c2e and 3c2e integrals with/without RSH
+            (ij|ab) -> alpha*(ij|1/r|ab)  + beta*(ij|erf(oemga)/r|ab)
+            '''
 
-        eri2c_cl, eri3c_cl, eri2c_ex, eri3c_ex = self.gen_electron_int(mol=mol,
-                                                                 auxmol_cl=auxmol_cl,
-                                                                 auxmol_ex=auxmol_ex)
-        # if args.functional in parameter.RSH_F:
-        #     eri2c_erf, eri3c_erf = self.gen_electron_int(mol=mol, auxmol=auxmol_ex, RS_omega=parameter.RSH_omega)
-        #     eri2c_ex = alpha_RSH*eri2c_ex + beta_RSH*eri2c_erf
-        #     eri3c_ex = alpha_RSH*eri3c_ex + beta_RSH*eri3c_erf
+            eri2c_cl, eri3c_cl, eri2c_ex, eri3c_ex = self.gen_electron_int(mol=mol,
+                                                                     auxmol_cl=auxmol_cl,
+                                                                     auxmol_ex=auxmol_ex)
+        else:
+            auxmol = self.gen_auxmol(U=args.coulomb_U, add_p=args.coulomb_aux_add_p, add_d=args.coulomb_aux_add_d, full_fitting=True)
+            eri2c_cl, eri3c_cl = self.gen_2c_3c(mol=mol, auxmol=auxmol, RSH_omega=0)
+            eri2c_ex = eri2c_cl
+            eri3c_ex = eri3c_cl
 
         print('eri2c_cl.shape', eri2c_cl.shape)
         print('eri2c_ex.shape', eri2c_ex.shape)

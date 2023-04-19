@@ -15,7 +15,7 @@ python ../../Davidson.py -x methanol.xyz -b def2-svp -f pbe0 -n 5 -ei 2 -df True
 -Uc 1 -Ue 1 \
 -TV 1000000 1000000 -TO 1000000 1000000 \
 -TDA true  -TDA_as_profile true -jacobi false -projector false -approx_p false \
--o 0 -FK true -fxc_on False
+-o 0 -FK true -fxc_on True
 
 # \
 # -w false -FK false -mix_c 0 -o 0 -jacobi false -projector false -approx_p false
