@@ -65,9 +65,9 @@ def gen_args():
     parser.add_argument('-w','--woodbury',          type=str2bool,  default = False, help='only keep diagonal elements in (ij|ab)')
     parser.add_argument('-FK','--full_fitting',          type=str2bool,  default = False, help='full fitting basis for HFX')
     parser.add_argument('-fxc_on','--fxc_on',       type=str2bool,  default = False, help='turn on the ab initio fxc kernel')
-    parser.add_argument('-Uc','--coulomb_U',         type=float,  default = 1.0, help='use Uc/R^2 as orbital exponent for coulomb term')
-    parser.add_argument('-Ue','--exchange_U',        type=float,  default = 1.0, help='use Ue/R^2 as orbital exponent for exchange term')
-    parser.add_argument('-mix_c','--mix_c',         type=float,  default = 1.0, help='use Ue/R^2 as orbital exponent for exchange term')
+    parser.add_argument('-Cl_theta','--coulomb_theta',         type=float,  default = 1.0, help='use theta/R^2 as orbital exponent for coulomb term')
+    parser.add_argument('-Ex_theta','--exchange_theta',        type=float,  default = 1.0, help='use theta/R^2 as orbital exponent for exchange term')
+    parser.add_argument('-mix_c','--mix_c',         type=float,  default = 1.0, help='mixing correction')
 
 
     parser.add_argument('-Uk_tune','--Uk_tune',     type=str2bool,  default = False, help='tune the k parameter of k/R**0.5')

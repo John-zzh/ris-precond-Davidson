@@ -39,9 +39,9 @@ if args.functional in parameter.RSH_F:
 
 class TDDFT_as(object):
 
-    def gen_auxmol(self, U=1, add_p=False, add_d=False, full_fitting=False):
+    def gen_auxmol(self, theta=1, add_p=False, add_d=False, full_fitting=False):
         print('asigning auxiliary basis set, add p function =', add_p)
-        print('U =', U)
+        print('theta =', theta)
         '''
         parse_arg = False turns off PySCF built-in output file
         '''
@@ -76,7 +76,7 @@ class TDDFT_as(object):
                 atom_index = auxmol_basis_keys[i]
                 atom = atom_index.split('^')[0]
 
-                exp = parameter.as_exp[atom] * U
+                exp = parameter.as_exp[atom] * theta
 
                 aux_basis[atom_index] = [[0, [exp, 1.0]]]
 
@@ -86,8 +86,6 @@ class TDDFT_as(object):
                         aux_basis[atom_index].append([1, [exp, 1.0]])
                     if add_d:
                         aux_basis[atom_index].append([2, [exp, 1.0]])
-
-
 
         else:
             print('full aux_basis')
@@ -370,8 +368,8 @@ class TDDFT_as(object):
     def build(self):
 
         if not args.full_fitting:
-            auxmol_cl = self.gen_auxmol(U=args.coulomb_U, add_p=args.coulomb_aux_add_p, add_d=args.coulomb_aux_add_d, full_fitting=False)
-            auxmol_ex = self.gen_auxmol(U=args.exchange_U, add_p=args.exchange_aux_add_p, full_fitting=False)
+            auxmol_cl = self.gen_auxmol(theta=args.coulomb_theta, add_p=args.coulomb_aux_add_p, add_d=args.coulomb_aux_add_d, full_fitting=False)
+            auxmol_ex = self.gen_auxmol(theta=args.exchange_theta, add_p=args.exchange_aux_add_p, full_fitting=False)
 
             '''
             the 2c2e and 3c2e integrals with/without RSH
@@ -382,7 +380,7 @@ class TDDFT_as(object):
                                                                      auxmol_cl=auxmol_cl,
                                                                      auxmol_ex=auxmol_ex)
         else:
-            auxmol = self.gen_auxmol(U=args.coulomb_U, add_p=args.coulomb_aux_add_p, add_d=args.coulomb_aux_add_d, full_fitting=True)
+            auxmol = self.gen_auxmol(theta=args.coulomb_theta, add_p=args.coulomb_aux_add_p, add_d=args.coulomb_aux_add_d, full_fitting=True)
             eri2c_cl, eri3c_cl = self.gen_2c_3c(mol=mol, auxmol=auxmol, RSH_omega=0)
             eri2c_ex = eri2c_cl
             eri3c_ex = eri3c_cl
