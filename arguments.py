@@ -68,7 +68,6 @@ def gen_args():
     parser.add_argument('-Ex_theta','--exchange_theta',        type=float,  default = 1.0, help='use theta/R^2 as orbital exponent for exchange term')
     parser.add_argument('-mix_c','--mix_c',         type=float,  default = 1.0, help='mixing correction')
 
-
     parser.add_argument('-Uk_tune','--Uk_tune',     type=str2bool,  default = False, help='tune the k parameter of k/R**0.5')
 
     parser.add_argument('-TV','--truncate_virtual',  type=float, default = [100000,100000], nargs='+', help='the threshold to truncate virtual orbitals, in eV or %')
