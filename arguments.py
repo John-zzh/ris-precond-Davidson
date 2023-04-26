@@ -20,6 +20,7 @@ def gen_args():
     parser.add_argument('-b', '--basis_set',        type=str,   default='def2-svp',  help='basis set')
     parser.add_argument('-df', '--density_fit',     type=str2bool,  default=True,  help='density fitting turn on')
     parser.add_argument('-g', '--grid_level',       type=int,   default='3',   help='0-9, 9 is best')
+    parser.add_argument('-ris_grid', '--ris_grid',       type=int,   default='0',   help='0-9, 9 is best')
     parser.add_argument('-st', '--scf_tolerence',   type=float,  default=1e-10,   help='SCF convergence tolerence')
     parser.add_argument('-c', '--charge',           type=int,   default=0,   help='molecular net charge')
     parser.add_argument('-sg', '--singular',        type=str2bool,   default=False,   help='remove singularirty')

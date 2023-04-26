@@ -9,7 +9,7 @@ script_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(script_dir)
 
 from arguments import args
-from SCF_calc import (mf, atom_coordinates, mol, n_occ, N_bf, N_atm, delta_hdiag2_fly,
+from SCF_calc import (SCF_kernel, mf, atom_coordinates, mol, n_occ, N_bf, N_atm, delta_hdiag2_fly,
                     un_ortho_C_matrix, delta_hdiag, delta_hdiag2, a_x, delta_fly,
                     n_occ, n_vir, A_size, cl_A_rest_size,
                     cl_rest_vir, cl_truc_occ, cl_rest_occ, cl_rest_vir,
@@ -245,7 +245,15 @@ class TDDFT_as(object):
 
 
         from pyscf.dft import numint
+
+        # mf.grids.level = 1
+        # mf.kernel()
+
+        _, _, mf, _ = SCF_kernel(grid_level = 0)
+
         ni = mf._numint
+        # print('mf.grids =', mf.grids)
+
         rho0, vxc, fxc = ni.cache_xc_kernel(mol, mf.grids, mf.xc, [mf.mo_coeff]*2, [mf.mo_occ*.5]*2, spin=1)
         fxc_kernel = partial(ni.nr_rks_fxc_st, mol=mol,
                                              grids=mf.grids,
