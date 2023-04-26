@@ -243,41 +243,45 @@ class TDDFT_as(object):
                              fxc_on=False,
                          max_memory=4000):
 
+        if fxc_on == True:
+            print('fxc_on == True')
+            from pyscf.dft import numint
 
-        from pyscf.dft import numint
+            # mf.grids.level = 1
+            # mf.kernel()
 
-        # mf.grids.level = 1
-        # mf.kernel()
+            _, _, mf, _ = SCF_kernel(grid_level = args.ris_grid)
 
-        _, _, mf, _ = SCF_kernel(grid_level = 0)
+            ni = mf._numint
+            # print('mf.grids =', mf.grids)
 
-        ni = mf._numint
-        # print('mf.grids =', mf.grids)
-
-        rho0, vxc, fxc = ni.cache_xc_kernel(mol, mf.grids, mf.xc, [mf.mo_coeff]*2, [mf.mo_occ*.5]*2, spin=1)
-        fxc_kernel = partial(ni.nr_rks_fxc_st, mol=mol,
-                                             grids=mf.grids,
-                                            xc_code=mf.xc,
-                                                dm0=None,
-                                         relativity=0,
-                                            singlet=True,
-                                              rho0=rho0,
-                                              vxc=vxc,
-                                              fxc=fxc,
-                                        max_memory=max_memory)
-        orbv = mf.mo_coeff[:,n_occ:]
-        orbo = mf.mo_coeff[:,:n_occ]
-        def fxc_kernel_fly(X):
-            X = X.reshape(cl_rest_occ, cl_rest_vir, -1)
-            # x = lib.einsum('Nai->Nia',x)
-            # dm = reduce(np.dot, (orbv, 2*x.reshape(:,n_vir,n_occ), orbo.T))
-            dm = lib.einsum('pa,iaN,iq->Nqp',orbv,X,orbo.T)
-            dmT = lib.einsum('Nqp->Npq',dm)
-            v1ao = fxc_kernel(dms_alpha = dm+dmT)
-            v1vo = lib.einsum('ap,Npq,qi->Nia',orbv.T, v1ao, orbo)
-            v1vo = v1vo.reshape(-1,cl_A_rest_size)
-            v1vo = 0.5*v1vo.T
-            return v1vo
+            rho0, vxc, fxc = ni.cache_xc_kernel(mol, mf.grids, mf.xc, [mf.mo_coeff]*2, [mf.mo_occ*.5]*2, spin=1)
+            fxc_kernel = partial(ni.nr_rks_fxc_st, mol=mol,
+                                                 grids=mf.grids,
+                                                xc_code=mf.xc,
+                                                    dm0=None,
+                                             relativity=0,
+                                                singlet=True,
+                                                  rho0=rho0,
+                                                  vxc=vxc,
+                                                  fxc=fxc,
+                                            max_memory=max_memory)
+            orbv = mf.mo_coeff[:,n_occ:]
+            orbo = mf.mo_coeff[:,:n_occ]
+            def fxc_kernel_fly(X:np.array) -> np.array:
+                X = X.reshape(cl_rest_occ, cl_rest_vir, -1)
+                # x = lib.einsum('Nai->Nia',x)
+                # dm = reduce(np.dot, (orbv, 2*x.reshape(:,n_vir,n_occ), orbo.T))
+                dm = lib.einsum('pa,iaN,iq->Nqp',orbv,X,orbo.T)
+                dmT = lib.einsum('Nqp->Npq',dm)
+                v1ao = fxc_kernel(dms_alpha = dm+dmT)
+                v1vo = lib.einsum('ap,Npq,qi->Nia',orbv.T, v1ao, orbo)
+                v1vo = v1vo.reshape(-1,cl_A_rest_size)
+                v1vo = 0.5*v1vo.T
+                return v1vo
+        else:
+            def fxc_kernel_fly(X:np.array) -> None:
+                return None
 
         def TDA_mv(X):
             ''' return AX
@@ -298,7 +302,7 @@ class TDDFT_as(object):
                 AX += 2*diag_cl_correct(X_cl) - a_x*diag_ex_correct(X_cl)
             AX = AX.reshape(cl_A_rest_size, -1)
 
-            if fxc_on:
+            if fxc_on == True:
                 AX += fxc_kernel_fly(X)
             return AX
 

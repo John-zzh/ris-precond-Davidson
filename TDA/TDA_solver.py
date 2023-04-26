@@ -109,6 +109,7 @@ def TDA_solver(N_states, initial_guess, preconditioner,
         index = [r_norms.index(i) for i in r_norms if i>conv_tol]
 
         P_start = time.time()
+        print('------- preconditioning statrs -------')
         new_guess = preconditioner(residual = residual[:,index],
                              sub_eigenvalue = sub_eigenvalue[index],
                                       hdiag = hdiag,
@@ -117,6 +118,7 @@ def TDA_solver(N_states, initial_guess, preconditioner,
                                                V_holder[:,:size_new],
                                                sub_A,
                                                index])
+        print('------- preconditioning ends --------')                                     
         P_end = time.time()
         Pcost += P_end - P_start
 
