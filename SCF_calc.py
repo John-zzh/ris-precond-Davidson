@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from arguments import args
-from pyscf import gto, scf, dft, tddft, data, lib
+from pyscf import gto, scf, dft, tddft, lib, df
 import numpy as np
 import time
 import mathlib.parameter as parameter
@@ -50,7 +50,8 @@ def SCF_kernel(xyzfile = args.xyzfile,
     print('mol.max_memory =', mol.max_memory)
 
     mol.build(parse_arg = False)
-
+    mol.cart = False
+    print('mol.cart',mol.cart)
     '''DFT or HF'''
     if method == 'RKS':
         mf = dft.RKS(mol)
@@ -70,7 +71,42 @@ def SCF_kernel(xyzfile = args.xyzfile,
     else:
         print('HF')
     if density_fit:
-        mf = mf.density_fit()
+        if args.dftris:
+            from collections import Counter
+            from mathlib import parameter
+            auxmol = gto.M(atom=atom_coordinates, parse_arg = False)
+            atom_count = Counter(auxmol.elements)
+
+            '''
+            auxmol_basis_keys = ['C', 'H', 'H^2', 'H^3', 'H^4', 'O'}
+            '''
+            auxmol_basis_keys = []
+            for key in atom_count:
+                for i in range(atom_count[key]):
+                    if i > 0:
+                        auxmol_basis_keys.append(key+'^'+str(i+1))
+                    else:
+                        auxmol_basis_keys.append(key)
+            aux_basis = {}
+            for i in range(len(auxmol_basis_keys)):
+                atom_index = auxmol_basis_keys[i]
+                atom = atom_index.split('^')[0]
+
+                exp = parameter.as_exp[atom] * 1.0
+
+                aux_basis[atom_index] = [[0, [exp, 1.0]]]
+
+                add_p = False
+                add_d = False
+                if atom != 'H':
+                    if add_p:
+                        aux_basis[atom_index].append([1, [exp, 1.0]])
+                    if add_d:
+                        aux_basis[atom_index].append([2, [exp, 1.0]])
+            mf = mf.density_fit(auxbasis=aux_basis)
+        else:
+            mf = mf.density_fit()
+        
         print('Density fitting turned on')
     if checkfile == True:
         '''use the *.chk file as scf input'''
@@ -81,22 +117,12 @@ def SCF_kernel(xyzfile = args.xyzfile,
             mf.max_cycle = 0
     mf.conv_tol = scf_tolerence
 
-    if args.singular:
-        def eig(h, s):
-            d, t = np.linalg.eigh(s)
-        # Removing the eigenvectors assoicated to the smallest eigenvalue, the new
-        # basis defined by x matrix has 139 vectors.
-            x = t[:,d>1e-8] / np.sqrt(d[d>1e-8])
-            xhx = np.dot(np.dot(x.T, h), x)
-            e, c = np.linalg.eigh(xhx)
-            c = np.dot(x, c)
-            return e, c
-        mf.eig = eig
+
 
     print ('Molecule built')
     print ('Calculating SCF Energy...')
     mf.kernel()
-
+    # print(mf.with_df.auxmol._basis)
 
     kernel_1 = time.time()
     kernel_t = kernel_1 - kernel_0
@@ -388,3 +414,10 @@ def gen_calc():
 calc_name = gen_calc()
 
 # print(mol._basis)
+# np.set_printoptions(linewidth=500, precision=1)
+# np.set_printoptions(linewidth=250, precision=3, threshold=np.inf)
+# print(print(np.sign(mf.mo_coeff)))
+np.savetxt('mo_coeff.txt', mf.mo_coeff)
+np.savetxt('mo_energy.txt', mf.mo_energy)
+# print(mf.mo_coeff.shape)
+

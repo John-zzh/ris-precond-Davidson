@@ -23,7 +23,7 @@ def gen_args():
     parser.add_argument('-ris_grid', '--ris_grid',       type=int,   default='0',   help='0-9, 9 is best')
     parser.add_argument('-st', '--scf_tolerence',   type=float,  default=1e-10,   help='SCF convergence tolerence')
     parser.add_argument('-c', '--charge',           type=int,   default=0,   help='molecular net charge')
-    parser.add_argument('-sg', '--singular',        type=str2bool,   default=False,   help='remove singularirty')
+    parser.add_argument('-dftris', '--dftris',        type=str2bool,   default=False,   help='ris basis for DFT SCF')
 
 
     parser.add_argument('-n','--nstates',           type=int,   default = 5,      help='number of excited states')

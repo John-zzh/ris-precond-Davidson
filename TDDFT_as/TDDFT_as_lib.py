@@ -90,6 +90,9 @@ class TDDFT_as(object):
         else:
             print('full aux_basis')
             aux_basis = args.basis_set+"-jkfit"
+            # aux_basis = 'STO-3G'
+            aux_basis = {'C': [[0, [71.616837, 0.15432897], [13.045096, 0.53532814], [3.5305122, 0.44463454]], [0, [2.9412494, -0.09996723], [0.6834831, 0.39951283], [0.2222899, 0.70011547]]],
+                        'H': [[0, [3.42525091, 0.15432897], [0.62391373, 0.53532814], [0.1688554, 0.44463454]]]}
         auxmol.basis = aux_basis
         auxmol.build()
         # print(auxmol._basis)
@@ -99,10 +102,10 @@ class TDDFT_as(object):
 
 
     def gen_2c_3c(self, mol, auxmol, RSH_omega=0):
-
+        '''
         nao = mol.nao_nr()
         naux = auxmol.nao_nr()
-
+        '''
         mol.set_range_coulomb(RSH_omega)
         auxmol.set_range_coulomb(RSH_omega)
 
@@ -142,10 +145,9 @@ class TDDFT_as(object):
 
     def gen_GAMMA(self, eri2c, eri3c, truc_occ, rest_vir, calc, n_occ=n_occ):
 
-        N_auxbf = eri2c.shape[0]
-
         '''
         PQ is eri2c shape, N_auxbf
+        N_auxbf = eri2c.shape[0]
         GAMMA.shape = N_bf, N_bf, N_auxbf
         '''
         Delta = einsum("PQ,uvQ->uvP", np.linalg.inv(eri2c), eri3c)
