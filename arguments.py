@@ -61,6 +61,7 @@ def gen_args():
     parser.add_argument('-cl_aux_p','--coulomb_aux_add_p',  type=str2bool,  default = False, help='s or sp')
     parser.add_argument('-cl_aux_d','--coulomb_aux_add_d',  type=str2bool,  default = False, help='turn on spd')
     parser.add_argument('-ex_aux_p','--exchange_aux_add_p', type=str2bool,  default = False, help='s or sp')
+    parser.add_argument('-ex_aux_d','--exchange_aux_add_d', type=str2bool,  default = False, help='s or spd')
 
     parser.add_argument('-w','--woodbury',          type=str2bool,  default = False, help='only keep diagonal elements in (ij|ab)')
     parser.add_argument('-FK','--full_fitting',          type=str2bool,  default = False, help='full fitting basis for HFX')

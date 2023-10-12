@@ -383,7 +383,7 @@ class TDDFT_as(object):
 
         if not args.full_fitting:
             auxmol_cl = self.gen_auxmol(theta=args.coulomb_theta, add_p=args.coulomb_aux_add_p, add_d=args.coulomb_aux_add_d, full_fitting=False)
-            auxmol_ex = self.gen_auxmol(theta=args.exchange_theta, add_p=args.exchange_aux_add_p, full_fitting=False)
+            auxmol_ex = self.gen_auxmol(theta=args.exchange_theta, add_p=args.exchange_aux_add_p, add_d=args.exchange_aux_add_d, full_fitting=False)
 
             '''
             the 2c2e and 3c2e integrals with/without RSH
