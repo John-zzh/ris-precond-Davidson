@@ -31,6 +31,8 @@ def dump_yaml(dict, option):
     i_name, p_name = ip_name[option]
     print('Initia guess  ', i_name)
     print('Preconditioner', p_name)
+    if args.outfilename == '':
+        args.outfilename = 'i_' + i_name + '_p_' + p_name
     '''
     general information before the calculation starts
     '''
