@@ -389,12 +389,12 @@ iter = 'iter'
 if args.sTDA:
     iter = 'sTDA'
 if args.TDDFT_as:
-    iter = 'risp'
-ip_name = [            # option
-[iter,iter],       # 0
-['diag','diag'],       # 1
-['diag',iter],       # 2
-[iter,'diag']]       # 3
+    iter = 'ris'
+ip_name = [             # option
+[iter,iter],            # 0
+['diag','diag'],        # 1
+['diag',iter],          # 2
+[iter,'diag']]          # 3
 
 def gen_calc():
     dict={}
