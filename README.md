@@ -1,27 +1,23 @@
-sTDA Accelerated Davidson Algorithm
-===================================
+# Semiempirical-accelerated Davidson Algorithm
 
-This is a Davidson code (Python3) ased on PySCF pilot codes, to solve excitation energies in TDA-TDDFT scheme.
 
-You can specify different initial guess and preconditioner to compare their efficiency.
+This is a Davidson code (Python3) based on PySCF pilot codes, to calculate TDA/TDDFT excitation energies, static/dynamic polarizabilities and CPKS equations.
+
+You can specify different initial guess and preconditioners to compare their efficiency.
 
 To run this code, use command line:
 
-$ python Davidson -x <molecule.xyz> -m <RHF/RKS/UHF/UKS> -f <xc_functiomal> -b <basis_set>
--g <grid_level> -i <sTDA/Adiag> -p <sTDA/Adiag> -t <tolerance> -n <No.states> -df <True/False>
-
-For example:
-
-$ python Davidson -x methanol.xyz -m RKS -f b3lyp -b def2-SVP -g 9 -i sTDA -p sTDA -t 1e-5 -n 5 
-
-And if you just run $ python Davidson, default setting is:
-
--c methanol.xyz -m RHF -f b3lyp -b def2-SVP -g 3 -i Adiag -p Adiag -t 1e-5 -n 4
+```
+python3 path_to_your_dir/Davidson/Davidson.py -x <molecule>.xyz -b def2-tzvp \
+-f wb97x -n 5 -df True -TDA true -o 0 -M 60000 -v 5 -chk False \
+-TV 1000000 40 -TO 1000000 40 \
+-cl_aux_p True -cl_aux_d True -ex_aux_p False -ex_aux_d False \
+-Cl_theta 0.6 -Ex_theta 0.6 \
+-TDDFT_as True -ei 3 -max 12 -out rispd > rispd.out 2>&1
+```
 
 Note:
 
-(1) sTDA implementation does not support UHF/UKS yet.
+(1) sTDA implementation does not support UHF/UKS yet
+(2) TDDFT_as meas TDDFT-ris
 
-(2) When calling for RHF/UHF and none hybride functional, it use wb97x's fitting parameters in sTDA.
-
-(3) Density fittinf should be turned off if it starts with a converged density-fitting SCF checkpoint file
