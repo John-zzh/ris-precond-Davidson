@@ -9,13 +9,13 @@
 # -w false -FK false -mix_c 0
 
 
-python3 ../../Davidson.py -x methanol.xyz -b def2-svp --method RKS -f pbe0  -n 5 -ei 2 -df True -dscf False \
--v 3 -chk False -TDDFT_as True -sTDA True -it 1e-3 -pt 1e-2 \
--cl_aux_p false -cl_aux_d false  -ex_aux_p false \
--Cl_theta 0.2 -Ex_theta 0.2 \
+python3 ../../Davidson.py -x methanol.xyz -b def2-svp -f pbe0  -n 5 -ei 2 -df True -dscf False \
+-v 3 -chk False -mix True -it 1e-3 -pt 1e-2 \
+-cl_aux_p True -cl_aux_d false  -ex_aux_p false \
+-Cl_theta 1 -Ex_theta 1 \
 -TV 1000000 1000000 -TO 1000000 1000000 \
--TDDFT false  -TDDFT_as_profile true -jacobi false -projector false -approx_p false \
--o 0 -FK false -fxc_on false
+-TDA True -TDDFT_as True -TDDFT_as_profile True \
+-o 0
 
 # \
 # -w false -FK false -mix_c 0 -o 0 -jacobi false -projector false -approx_p false

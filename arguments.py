@@ -80,6 +80,7 @@ def gen_args():
 
     parser.add_argument('-o','--ip_options',        type=int,   default = [0], nargs='+', help='0-7')
     parser.add_argument('-t','--conv_tolerance',    type=float, default= 1e-5, help='residual norm Convergence threhsold')
+    parser.add_argument('-mix','--mix_rid_sTDA',    type=str2bool, default= False, help='rid initial guess and sTDA precond')
 
     parser.add_argument('-it','--initial_TOL',      type=float, default= 1e-3, help='conv for the inital guess')
     parser.add_argument('-pt','--precond_TOL',      type=float, default= 1e-2, help='conv for TDA preconditioner')

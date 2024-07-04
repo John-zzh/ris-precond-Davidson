@@ -12,13 +12,13 @@ import spectra
 from TDA.TDA_solver import TDA_solver
 from TDA.TDA_iter_initial_guess import TDA_iter_initial_guess
 from TDA.TDA_iter_preconditioner import TDA_iter_preconditioner
-from TDA.Jacobi_preconditioner import Jacobi_preconditioner
-from TDA.projector_preconditioner import projector_preconditioner
+# from TDA.Jacobi_preconditioner import Jacobi_preconditioner
+# from TDA.projector_preconditioner import projector_preconditioner
 
 from arguments import args
 from mathlib.diag_ip import TDA_diag_initial_guess, TDA_diag_preconditioner
-from SCF_calc import gen_ip_func, ip_name, calc_name
-from approx_mv import approx_TDA_mv
+from SCF_calc import gen_ip_func
+# from approx_mv import approx_TDA_mv
 from dump_yaml import dump_yaml
 
 
@@ -36,18 +36,18 @@ TDA           [7.2875264  8.93645089 9.18027002 9.92054961 10.16937337]
 '''
 def main():
 
-    TDA_iter_preconditioner2 = TDA_iter_preconditioner
-    if args.jacobi:
-        # TDA_ip_dict[0] = (TDA_iter_initial_guess, Jacobi_preconditioner)
-        TDA_iter_preconditioner2 = Jacobi_preconditioner
-    if args.projector:
-        # TDA_ip_dict[0] = (TDA_iter_initial_guess, projector_preconditioner)
-        TDA_iter_preconditioner2 = projector_preconditioner
+    # TDA_iter_preconditioner2 = TDA_iter_preconditioner
+    # if args.jacobi:
+    #     # TDA_ip_dict[0] = (TDA_iter_initial_guess, Jacobi_preconditioner)
+    #     TDA_iter_preconditioner2 = Jacobi_preconditioner
+    # if args.projector:
+    #     # TDA_ip_dict[0] = (TDA_iter_initial_guess, projector_preconditioner)
+    #     TDA_iter_preconditioner2 = projector_preconditioner
 
     TDA_ip_dict = gen_ip_func(diag_i = TDA_diag_initial_guess,
-                              iter_i = TDA_iter_initial_guess,
-                              diag_p = TDA_diag_preconditioner,
-                              iter_p = TDA_iter_preconditioner2)
+                                iter_i = TDA_iter_initial_guess,
+                                diag_p = TDA_diag_preconditioner,
+                                iter_p = TDA_iter_preconditioner)
 
 
     for option in args.ip_options:

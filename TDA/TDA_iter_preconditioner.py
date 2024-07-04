@@ -10,7 +10,7 @@ sys.path.append(script_dir)
 import time
 import numpy as np
 
-from approx_mv import approx_TDA_mv
+
 
 from arguments import args
 from SCF_calc import (n_occ, n_vir,
@@ -21,7 +21,12 @@ from SCF_calc import (n_occ, n_vir,
 from mathlib import math
 from mathlib.diag_ip import TDA_diag_initial_guess, TDA_diag_preconditioner
 
-
+if args.mix_rid_sTDA:
+    from sTDA.sTDA_mv_lib import sTDA as approx
+    approx_mv = approx()
+    approx_TDA_mv, approx_TDDFT_mv, approx_spolar_mv = approx_mv.build()
+else:
+    from approx_mv import approx_TDA_mv
 
 def TDA_iter_preconditioner(residual, sub_eigenvalue,
                         matrix_vector_product = approx_TDA_mv,

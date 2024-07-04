@@ -40,7 +40,6 @@ def SCF_kernel(xyzfile = args.xyzfile,
         coordinate = f.read().splitlines()[2:]
         atom_coordinates = [i for i in coordinate if i != '']
     '''build geometry in PySCF'''
-
     mol.atom = atom_coordinates
     mol.charge = charge
     mol.basis = basis_set

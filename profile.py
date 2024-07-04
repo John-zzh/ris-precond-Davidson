@@ -27,7 +27,7 @@ def profile(current, standard):
 
 def main():
     '''
-    PBE0/def2-SVP/notruncation/columb with p, exchange no p
+    PBE0/def2-SVP/notruncation/columb with p, exchange no p, theta=1.0
     '''
     if args.TDA_as_profile == True:
         print('args.TDA_as_profile == True')

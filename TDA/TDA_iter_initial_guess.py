@@ -15,8 +15,14 @@ from SCF_calc import (n_occ, n_vir, A_size,
                     cl_rest_vir, cl_truc_occ,
                     ex_truc_occ, cl_rest_occ,
                     delta_hdiag2, hdiag, A_size)
-from approx_mv import approx_TDA_mv
 
+
+if args.mix_rid_sTDA:
+    from TDDFT_as.TDDFT_as_lib import TDDFT_as as approx
+    approx_mv = approx()
+    approx_TDA_mv, approx_TDDFT_mv, approx_spolar_mv = approx_mv.build()
+else:
+    from approx_mv import approx_TDA_mv
 
 def TDA_iter_initial_guess(N_states,
         matrix_vector_product = approx_TDA_mv,

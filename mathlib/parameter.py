@@ -99,11 +99,12 @@ alpha2 = 0.48
 # omega_dic['pbe0'] = 0
 # omega_dic['wb97x_V'] = 0.3
 
-if 'wb97' in args.functional:
-    RSH_omega = 0.3
-else:
-    RSH_omega = 0
-    print('RSH_omega =', RSH_omega)
+if args.functional:
+    if 'wb97' in args.functional:
+        RSH_omega = 0.3
+    else:
+        RSH_omega = 0
+        print('RSH_omega =', RSH_omega)
 
 
 
